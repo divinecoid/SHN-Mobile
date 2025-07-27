@@ -141,16 +141,6 @@ class _TerimaBarangPageState extends State<TerimaBarangPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
-              const Text(
-                'Terima Barang',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 24),
 
               // Location Section
               _buildLocationSection(),
