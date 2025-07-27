@@ -24,6 +24,8 @@ class _QRScanPageState extends State<QRScanPage> {
   bool _isScanning = true;
   bool _isCameraInitialized = false;
   bool _isProcessing = false;
+  int _scanAttempts = 0;
+  String _debugInfo = '';
 
   @override
   void initState() {
@@ -36,7 +38,7 @@ class _QRScanPageState extends State<QRScanPage> {
     if (cameras.isNotEmpty) {
       _cameraController = CameraController(
         cameras.first,
-        ResolutionPreset.medium, // Use medium for better performance
+        ResolutionPreset.high, // Use high resolution for better detection
         enableAudio: false,
       );
 
@@ -69,40 +71,73 @@ class _QRScanPageState extends State<QRScanPage> {
     
     setState(() {
       _isProcessing = true;
+      _scanAttempts++;
+      _debugInfo = 'Processing frame ${_scanAttempts}...';
     });
 
     try {
-      final WriteBuffer allBytes = WriteBuffer();
-      for (final Plane plane in image.planes) {
-        allBytes.putUint8List(plane.bytes);
+      // Try different image formats for better compatibility
+      InputImage inputImage;
+      
+      if (image.format.group == ImageFormatGroup.bgra8888) {
+        final WriteBuffer allBytes = WriteBuffer();
+        for (final Plane plane in image.planes) {
+          allBytes.putUint8List(plane.bytes);
+        }
+        final bytes = allBytes.done().buffer.asUint8List();
+
+        inputImage = InputImage.fromBytes(
+          bytes: bytes,
+          metadata: InputImageMetadata(
+            size: Size(image.width.toDouble(), image.height.toDouble()),
+            rotation: InputImageRotation.rotation0deg,
+            format: InputImageFormat.bgra8888,
+            bytesPerRow: image.planes.first.bytesPerRow,
+          ),
+        );
+      } else if (image.format.group == ImageFormatGroup.yuv420) {
+        final WriteBuffer allBytes = WriteBuffer();
+        for (final Plane plane in image.planes) {
+          allBytes.putUint8List(plane.bytes);
+        }
+        final bytes = allBytes.done().buffer.asUint8List();
+
+        inputImage = InputImage.fromBytes(
+          bytes: bytes,
+          metadata: InputImageMetadata(
+            size: Size(image.width.toDouble(), image.height.toDouble()),
+            rotation: InputImageRotation.rotation0deg,
+            format: InputImageFormat.yuv420,
+            bytesPerRow: image.planes.first.bytesPerRow,
+          ),
+        );
+      } else {
+        // Fallback to taking a picture
+        final XFile picture = await _cameraController!.takePicture();
+        inputImage = InputImage.fromFilePath(picture.path);
       }
-      final bytes = allBytes.done().buffer.asUint8List();
-
-      final Size imageSize = Size(image.width.toDouble(), image.height.toDouble());
-
-      final inputImage = InputImage.fromBytes(
-        bytes: bytes,
-        metadata: InputImageMetadata(
-          size: imageSize,
-          rotation: InputImageRotation.rotation0deg,
-          format: InputImageFormat.bgra8888,
-          bytesPerRow: image.planes.first.bytesPerRow,
-        ),
-      );
 
       final List<Barcode> barcodes = await _barcodeScanner.processImage(inputImage);
+
+      setState(() {
+        _debugInfo = 'Found ${barcodes.length} barcodes';
+      });
 
       if (barcodes.isNotEmpty) {
         final barcode = barcodes.first;
         if (barcode.rawValue != null) {
           setState(() {
             _isScanning = false;
+            _debugInfo = 'QR Code detected: ${barcode.rawValue!.substring(0, 10)}...';
           });
           _showSuccessDialog(barcode.rawValue!);
         }
       }
     } catch (e) {
-      // Ignore processing errors during live scanning
+      setState(() {
+        _debugInfo = 'Error: $e';
+      });
+      // Don't show error dialog for processing errors during live scanning
     } finally {
       setState(() {
         _isProcessing = false;
@@ -274,6 +309,31 @@ class _QRScanPageState extends State<QRScanPage> {
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ),
+          
+          // Debug Info
+          Positioned(
+            top: 200,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _debugInfo,
+                  style: const TextStyle(
+                    color: Colors.yellow,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
                   textAlign: TextAlign.center,
