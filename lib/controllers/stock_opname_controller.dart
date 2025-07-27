@@ -10,6 +10,7 @@ class StockOpnameController extends ChangeNotifier {
   String _selectedWarehouse = '';
   String _detectedLocation = '';
   List<Map<String, dynamic>> _warehouses = [];
+  List<Map<String, dynamic>> _stockItems = [];
   String _errorMessage = '';
 
   // Getters
@@ -20,6 +21,7 @@ class StockOpnameController extends ChangeNotifier {
   String get selectedWarehouse => _selectedWarehouse;
   String get detectedLocation => _detectedLocation;
   List<Map<String, dynamic>> get warehouses => _warehouses;
+  List<Map<String, dynamic>> get stockItems => _stockItems;
   String get errorMessage => _errorMessage;
 
   StockOpnameController() {
@@ -120,6 +122,85 @@ class StockOpnameController extends ChangeNotifier {
     }
   }
 
+  Future<void> _loadStockItems() async {
+    setState(() {
+      _isLoadingWarehouses = true;
+    });
+
+    try {
+      // Mock stock data - in real app, this would come from API
+      await Future.delayed(const Duration(seconds: 1));
+      _stockItems = [
+        {
+          'id': '1',
+          'name': 'Laptop Dell Inspiron 15',
+          'code': 'LAP001',
+          'bookStock': 25,
+          'realStock': null,
+          'unit': 'unit',
+          'category': 'Elektronik',
+          'location': 'Rak A-01',
+        },
+        {
+          'id': '2',
+          'name': 'Mouse Wireless Logitech',
+          'code': 'MOU002',
+          'bookStock': 150,
+          'realStock': null,
+          'unit': 'unit',
+          'category': 'Aksesoris',
+          'location': 'Rak B-03',
+        },
+        {
+          'id': '3',
+          'name': 'Keyboard Mechanical RGB',
+          'code': 'KEY003',
+          'bookStock': 45,
+          'realStock': null,
+          'unit': 'unit',
+          'category': 'Aksesoris',
+          'location': 'Rak B-05',
+        },
+        {
+          'id': '4',
+          'name': 'Monitor 24" Samsung',
+          'code': 'MON004',
+          'bookStock': 30,
+          'realStock': null,
+          'unit': 'unit',
+          'category': 'Elektronik',
+          'location': 'Rak A-02',
+        },
+        {
+          'id': '5',
+          'name': 'Kabel HDMI 2m',
+          'code': 'CAB005',
+          'bookStock': 200,
+          'realStock': null,
+          'unit': 'unit',
+          'category': 'Aksesoris',
+          'location': 'Rak C-01',
+        },
+        {
+          'id': '6',
+          'name': 'Printer HP LaserJet',
+          'code': 'PRI006',
+          'bookStock': 12,
+          'realStock': null,
+          'unit': 'unit',
+          'category': 'Elektronik',
+          'location': 'Rak A-03',
+        },
+      ];
+    } catch (e) {
+      _errorMessage = 'Gagal memuat data stok: $e';
+    } finally {
+      setState(() {
+        _isLoadingWarehouses = false;
+      });
+    }
+  }
+
   Future<void> _selectNearestWarehouse(double lat, double lng) async {
     if (_warehouses.isEmpty) return;
 
@@ -169,6 +250,9 @@ class StockOpnameController extends ChangeNotifier {
       // Simulate API call to freeze stock
       await Future.delayed(const Duration(seconds: 2));
       
+      // Load stock items for the selected warehouse
+      await _loadStockItems();
+      
       // Save opname session data
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('opname_warehouse', _selectedWarehouse);
@@ -179,9 +263,6 @@ class StockOpnameController extends ChangeNotifier {
         _stockFrozen = true;
       });
 
-      // Navigate to opname counting page (you can implement this later)
-      // Navigator.push(context, MaterialPageRoute(builder: (context) => OpnameCountingPage()));
-
     } catch (e) {
       _errorMessage = 'Gagal membekukan stok: $e';
     } finally {
@@ -191,11 +272,38 @@ class StockOpnameController extends ChangeNotifier {
     }
   }
 
+  void markStockAsAccurate(int itemId) {
+    final itemIndex = _stockItems.indexWhere((item) => item['id'] == itemId.toString());
+    if (itemIndex != -1) {
+      _stockItems[itemIndex]['realStock'] = _stockItems[itemIndex]['bookStock'];
+      _stockItems[itemIndex]['status'] = 'accurate';
+      notifyListeners();
+    }
+  }
+
+  void updateRealStock(int itemId, int realStock) {
+    final itemIndex = _stockItems.indexWhere((item) => item['id'] == itemId.toString());
+    if (itemIndex != -1) {
+      _stockItems[itemIndex]['realStock'] = realStock;
+      _stockItems[itemIndex]['status'] = 'different';
+      notifyListeners();
+    }
+  }
+
+  int getCompletedItemsCount() {
+    return _stockItems.where((item) => item['realStock'] != null).length;
+  }
+
+  int getTotalItemsCount() {
+    return _stockItems.length;
+  }
+
   void resetOpname() {
     _stockFrozen = false;
     _selectedWarehouse = '';
     _detectedLocation = '';
     _errorMessage = '';
+    _stockItems.clear();
     notifyListeners();
   }
 
