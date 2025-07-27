@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'dart:io';
@@ -22,6 +23,7 @@ class _QRScanPageState extends State<QRScanPage> {
   final BarcodeScanner _barcodeScanner = BarcodeScanner();
   bool _isScanning = true;
   bool _isCameraInitialized = false;
+  bool _isProcessing = false;
 
   @override
   void initState() {
@@ -34,7 +36,7 @@ class _QRScanPageState extends State<QRScanPage> {
     if (cameras.isNotEmpty) {
       _cameraController = CameraController(
         cameras.first,
-        ResolutionPreset.high,
+        ResolutionPreset.medium, // Use medium for better performance
         enableAudio: false,
       );
 
@@ -43,6 +45,7 @@ class _QRScanPageState extends State<QRScanPage> {
         setState(() {
           _isCameraInitialized = true;
         });
+        _startScanning();
       } catch (e) {
         _showErrorDialog('Gagal menginisialisasi kamera: $e');
       }
@@ -51,44 +54,58 @@ class _QRScanPageState extends State<QRScanPage> {
     }
   }
 
-  Future<void> _takePicture() async {
+  void _startScanning() {
     if (_cameraController != null && _cameraController!.value.isInitialized) {
-      try {
-        setState(() {
-          _isScanning = false;
-        });
-
-        final XFile image = await _cameraController!.takePicture();
-        await _processImage(image.path);
-      } catch (e) {
-        _showErrorDialog('Gagal mengambil gambar: $e');
-        setState(() {
-          _isScanning = true;
-        });
-      }
+      _cameraController!.startImageStream((image) {
+        if (_isScanning && !_isProcessing) {
+          _processImageStream(image);
+        }
+      });
     }
   }
 
-  Future<void> _processImage(String imagePath) async {
+  Future<void> _processImageStream(CameraImage image) async {
+    if (_isProcessing) return;
+    
+    setState(() {
+      _isProcessing = true;
+    });
+
     try {
-      final inputImage = InputImage.fromFilePath(imagePath);
+      final WriteBuffer allBytes = WriteBuffer();
+      for (final Plane plane in image.planes) {
+        allBytes.putUint8List(plane.bytes);
+      }
+      final bytes = allBytes.done().buffer.asUint8List();
+
+      final Size imageSize = Size(image.width.toDouble(), image.height.toDouble());
+
+      final inputImage = InputImage.fromBytes(
+        bytes: bytes,
+        metadata: InputImageMetadata(
+          size: imageSize,
+          rotation: InputImageRotation.rotation0deg,
+          format: InputImageFormat.bgra8888,
+          bytesPerRow: image.planes.first.bytesPerRow,
+        ),
+      );
+
       final List<Barcode> barcodes = await _barcodeScanner.processImage(inputImage);
 
       if (barcodes.isNotEmpty) {
         final barcode = barcodes.first;
         if (barcode.rawValue != null) {
+          setState(() {
+            _isScanning = false;
+          });
           _showSuccessDialog(barcode.rawValue!);
-        } else {
-          _showErrorDialog('QR Code tidak dapat dibaca');
         }
-      } else {
-        _showErrorDialog('Tidak ada QR Code yang ditemukan dalam gambar');
       }
     } catch (e) {
-      _showErrorDialog('Gagal memproses gambar: $e');
+      // Ignore processing errors during live scanning
     } finally {
       setState(() {
-        _isScanning = true;
+        _isProcessing = false;
       });
     }
   }
@@ -265,34 +282,46 @@ class _QRScanPageState extends State<QRScanPage> {
             ),
           ),
           
-          // Capture Button
-          Positioned(
-            bottom: 100,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: GestureDetector(
-                onTap: _isScanning ? _takePicture : null,
+          // Scanning indicator
+          if (_isScanning)
+            Positioned(
+              bottom: 120,
+              left: 0,
+              right: 0,
+              child: Center(
                 child: Container(
-                  width: 80,
-                  height: 80,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   decoration: BoxDecoration(
-                    color: _isScanning ? Colors.white : Colors.grey,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: widget.isRack ? Colors.green : Colors.orange,
-                      width: 4,
-                    ),
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Icon(
-                    Icons.camera,
-                    size: 40,
-                    color: _isScanning ? Colors.black : Colors.white,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            widget.isRack ? Colors.green : Colors.orange,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Memindai QR Code...',
+                        style: TextStyle(
+                          color: widget.isRack ? Colors.green : Colors.orange,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-          ),
           
           // Cancel Button
           Positioned(
