@@ -107,21 +107,64 @@ class _TerimaBarangPageState extends State<TerimaBarangPage> {
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: Colors.grey[900],
-          title: const Text(
-            'Berhasil!',
-            style: TextStyle(color: Colors.green),
+          title: Row(
+            children: [
+              Icon(
+                Icons.check_circle,
+                color: Colors.green[400],
+                size: 28,
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Berhasil!',
+                style: TextStyle(
+                  color: Colors.green,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
           content: Text(
             result['message'],
-            style: const TextStyle(color: Colors.white),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+            ),
           ),
           actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _controller.resetForm();
-              },
-              child: const Text('OK'),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _controller.resetForm();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[600],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 3,
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'OK',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -478,6 +521,12 @@ class _TerimaBarangPageState extends State<TerimaBarangPage> {
             decoration: InputDecoration(
               hintText: 'Masukkan jumlah barang',
               hintStyle: TextStyle(color: Colors.grey[400]),
+              suffixText: 'kg',
+              suffixStyle: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
               filled: true,
               fillColor: Colors.grey[850],
               border: OutlineInputBorder(
