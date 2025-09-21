@@ -17,6 +17,8 @@ class HomeController {
         return 'Mutasi Barang';
       case 2:
         return 'Stock Opname';
+      case 3:
+        return 'Work Order';
       default:
         return 'SHN Mobile';
     }

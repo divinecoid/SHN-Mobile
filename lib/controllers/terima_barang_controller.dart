@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import '../models/terima_barang_model.dart';
 
 class TerimaBarangController extends ChangeNotifier {
   // Location variables
@@ -15,23 +16,23 @@ class TerimaBarangController extends ChangeNotifier {
   final TextEditingController quantityController = TextEditingController();
   final TextEditingController notesController = TextEditingController();
 
-  // Dummy warehouse data
-  final List<Map<String, dynamic>> _warehouses = [
-    {
-      'name': 'Gudang Utama - Jakarta',
-      'address': 'Jl. Sudirman No. 123, Jakarta Pusat',
-      'coordinates': {'lat': -6.2088, 'lng': 106.8456},
-    },
-    {
-      'name': 'Gudang Cabang - Bandung',
-      'address': 'Jl. Asia Afrika No. 45, Bandung',
-      'coordinates': {'lat': -6.9175, 'lng': 107.6191},
-    },
-    {
-      'name': 'Gudang Cabang - Surabaya',
-      'address': 'Jl. Tunjungan No. 67, Surabaya',
-      'coordinates': {'lat': -7.2575, 'lng': 112.7521},
-    },
+  // Warehouse data using model
+  final List<Warehouse> _warehouses = [
+    Warehouse(
+      name: 'Gudang Utama - Jakarta',
+      address: 'Jl. Sudirman No. 123, Jakarta Pusat',
+      coordinates: {'lat': -6.2088, 'lng': 106.8456},
+    ),
+    Warehouse(
+      name: 'Gudang Cabang - Bandung',
+      address: 'Jl. Asia Afrika No. 45, Bandung',
+      coordinates: {'lat': -6.9175, 'lng': 107.6191},
+    ),
+    Warehouse(
+      name: 'Gudang Cabang - Surabaya',
+      address: 'Jl. Tunjungan No. 67, Surabaya',
+      coordinates: {'lat': -7.2575, 'lng': 112.7521},
+    ),
   ];
 
   // Getters
@@ -40,7 +41,7 @@ class TerimaBarangController extends ChangeNotifier {
   bool get isLoadingLocation => _isLoadingLocation;
   String get scannedRackQR => _scannedRackQR;
   String get scannedItemQR => _scannedItemQR;
-  List<Map<String, dynamic>> get warehouses => _warehouses;
+  List<Warehouse> get warehouses => _warehouses;
 
   // Check if form is complete
   bool get isFormComplete => 
@@ -90,19 +91,19 @@ class TerimaBarangController extends ChangeNotifier {
   /// Calculate nearest warehouse based on current position
   String _getNearestWarehouse(Position position) {
     double minDistance = double.infinity;
-    String nearestWarehouse = _warehouses[0]['name'];
+    String nearestWarehouse = _warehouses[0].name;
 
     for (var warehouse in _warehouses) {
       double distance = Geolocator.distanceBetween(
         position.latitude,
         position.longitude,
-        warehouse['coordinates']['lat'],
-        warehouse['coordinates']['lng'],
+        warehouse.coordinates['lat']!,
+        warehouse.coordinates['lng']!,
       );
 
       if (distance < minDistance) {
         minDistance = distance;
-        nearestWarehouse = warehouse['name'];
+        nearestWarehouse = warehouse.name;
       }
     }
 
@@ -153,7 +154,7 @@ class TerimaBarangController extends ChangeNotifier {
   }
 
   /// Submit receipt data
-  Future<Map<String, dynamic>> submitReceipt() async {
+  Future<ReceiptResult> submitReceipt() async {
     // Validate form first
     String? validationError = validateForm();
     if (validationError != null) {
@@ -164,28 +165,28 @@ class TerimaBarangController extends ChangeNotifier {
       // Simulate API call delay
       await Future.delayed(const Duration(seconds: 2));
 
-      // Prepare receipt data
-      Map<String, dynamic> receiptData = {
-        'warehouse': _selectedWarehouse,
-        'rack_qr': _scannedRackQR,
-        'item_qr': _scannedItemQR,
-        'quantity': int.parse(quantityController.text),
-        'notes': notesController.text,
-        'timestamp': DateTime.now().toIso8601String(),
-        'location': _currentPosition != null ? {
+      // Create receipt data using model
+      ReceiptData receiptData = ReceiptData(
+        warehouse: _selectedWarehouse,
+        rackQr: _scannedRackQR,
+        itemQr: _scannedItemQR,
+        quantity: int.parse(quantityController.text),
+        notes: notesController.text,
+        timestamp: DateTime.now(),
+        location: _currentPosition != null ? {
           'latitude': _currentPosition!.latitude,
           'longitude': _currentPosition!.longitude,
         } : null,
-      };
+      );
 
       // Here you would typically send data to your backend API
       // For now, we'll just return the data as if it was successful
       
-      return {
-        'success': true,
-        'message': 'Data penerimaan barang berhasil disimpan',
-        'data': receiptData,
-      };
+      return ReceiptResult(
+        success: true,
+        message: 'Data penerimaan barang berhasil disimpan',
+        data: receiptData,
+      );
     } catch (e) {
       throw Exception('Gagal menyimpan data: $e');
     }
@@ -201,9 +202,9 @@ class TerimaBarangController extends ChangeNotifier {
   }
 
   /// Get warehouse by name
-  Map<String, dynamic>? getWarehouseByName(String name) {
+  Warehouse? getWarehouseByName(String name) {
     try {
-      return _warehouses.firstWhere((warehouse) => warehouse['name'] == name);
+      return _warehouses.firstWhere((warehouse) => warehouse.name == name);
     } catch (e) {
       return null;
     }
@@ -213,14 +214,14 @@ class TerimaBarangController extends ChangeNotifier {
   double? getDistanceToWarehouse(String warehouseName) {
     if (_currentPosition == null) return null;
 
-    Map<String, dynamic>? warehouse = getWarehouseByName(warehouseName);
+    Warehouse? warehouse = getWarehouseByName(warehouseName);
     if (warehouse == null) return null;
 
     return Geolocator.distanceBetween(
       _currentPosition!.latitude,
       _currentPosition!.longitude,
-      warehouse['coordinates']['lat'],
-      warehouse['coordinates']['lng'],
+      warehouse.coordinates['lat']!,
+      warehouse.coordinates['lng']!,
     );
   }
 

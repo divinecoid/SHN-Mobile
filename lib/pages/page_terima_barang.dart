@@ -52,15 +52,15 @@ class _TerimaBarangPageState extends State<TerimaBarangPage> {
               final warehouse = _controller.warehouses[index];
               return ListTile(
                 title: Text(
-                  warehouse['name'],
+                  warehouse.name,
                   style: const TextStyle(color: Colors.white),
                 ),
                 subtitle: Text(
-                  warehouse['address'],
+                  warehouse.address,
                   style: TextStyle(color: Colors.grey[400]),
                 ),
                 onTap: () {
-                  _controller.updateSelectedWarehouse(warehouse['name']);
+                  _controller.updateSelectedWarehouse(warehouse.name);
                   Navigator.pop(context);
                 },
               );
@@ -126,7 +126,7 @@ class _TerimaBarangPageState extends State<TerimaBarangPage> {
             ],
           ),
           content: Text(
-            result['message'],
+            result.message,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -134,7 +134,7 @@ class _TerimaBarangPageState extends State<TerimaBarangPage> {
           ),
           actions: [
             Container(
-              width: double.infinity,
+              width: double.maxFinite,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: ElevatedButton(
                 onPressed: () {

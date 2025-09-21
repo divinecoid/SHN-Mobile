@@ -5,6 +5,7 @@ import 'page_login.dart';
 import 'page_terima_barang.dart';
 import 'page_mutasi_barang.dart';
 import 'page_stock_opname.dart';
+import 'page_work_order.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -22,6 +23,7 @@ class _DashboardPageState extends State<DashboardPage> {
     const TerimaBarangPage(),
     const MutasiBarangPage(),
     const StockOpnamePage(),
+    const WorkOrderPage(),
   ];
 
   final List<String> _menuItems = [
@@ -29,6 +31,7 @@ class _DashboardPageState extends State<DashboardPage> {
     'Terima Barang',
     'Mutasi Barang',
     'Stock Opname',
+    'Work Order',
   ];
 
 
@@ -227,6 +230,8 @@ class _DashboardPageState extends State<DashboardPage> {
         return Icons.swap_horiz;
       case 3:
         return Icons.assessment;
+      case 4:
+        return Icons.work;
       default:
         return Icons.home;
     }

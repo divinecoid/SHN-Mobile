@@ -128,7 +128,11 @@ class _QRScanPageState extends State<QRScanPage> {
         if (barcode.rawValue != null) {
           setState(() {
             _isScanning = false;
-            _debugInfo = 'QR Code detected: ${barcode.rawValue!.substring(0, 10)}...';
+            final rawValue = barcode.rawValue!;
+            final displayValue = rawValue.length > 10 
+                ? '${rawValue.substring(0, 10)}...' 
+                : rawValue;
+            _debugInfo = 'QR Code detected: $displayValue';
           });
           _showSuccessDialog(barcode.rawValue!);
         }

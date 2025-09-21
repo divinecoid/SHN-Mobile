@@ -3,6 +3,7 @@ import 'package:shn_mobile/controllers/home_controller.dart';
 import 'package:shn_mobile/pages/page_terima_barang.dart';
 import 'package:shn_mobile/pages/page_mutasi_barang.dart';
 import 'package:shn_mobile/pages/page_stock_opname.dart';
+import 'package:shn_mobile/pages/page_work_order.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,12 +20,14 @@ class _HomePageState extends State<HomePage> {
     const TerimaBarangPage(),
     const MutasiBarangPage(),
     const StockOpnamePage(),
+    const WorkOrderPage(),
   ];
 
   final List<String> _menuItems = [
     'Terima Barang',
     'Mutasi Barang',
     'Stock Opname',
+    'Work Order',
   ];
 
   @override
@@ -133,6 +136,8 @@ class _HomePageState extends State<HomePage> {
         return Icons.swap_horiz;
       case 2:
         return Icons.assessment;
+      case 3:
+        return Icons.work;
       default:
         return Icons.home;
     }

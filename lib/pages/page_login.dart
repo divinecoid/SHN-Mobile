@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'page_dashboard.dart';
+import '../controllers/login_controller.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,58 +9,24 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isLoading = false;
-  bool _obscurePassword = true;
+  late LoginController _loginController;
+
+  @override
+  void initState() {
+    super.initState();
+    _loginController = LoginController(
+      onStateChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
+  }
 
   @override
   void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
+    _loginController.dispose();
     super.dispose();
   }
 
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    // Simulate API call delay
-    await Future.delayed(const Duration(seconds: 1));
-
-    // Check credentials (admin/admin)
-    if (_usernameController.text == 'admin' && 
-        _passwordController.text == 'admin') {
-      
-      // Save login state
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-      await prefs.setString('username', _usernameController.text);
-
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const DashboardPage()),
-        );
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Username atau password salah!'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-
-    setState(() {
-      _isLoading = false;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -141,12 +106,12 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     child: Form(
-                      key: _formKey,
+                      key: _loginController.formKey,
                       child: Column(
                         children: [
                                                      // Username Field
                            TextFormField(
-                             controller: _usernameController,
+                             controller: _loginController.usernameController,
                              style: const TextStyle(color: Colors.white),
                              cursorColor: Colors.white,
                              decoration: InputDecoration(
@@ -166,19 +131,14 @@ class _LoginPageState extends State<LoginPage> {
                                  borderSide: const BorderSide(color: Colors.white, width: 2),
                                ),
                              ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Username tidak boleh kosong';
-                              }
-                              return null;
-                            },
+                            validator: _loginController.validateUsername,
                           ),
                           const SizedBox(height: 16),
                           
                                                      // Password Field
                            TextFormField(
-                             controller: _passwordController,
-                             obscureText: _obscurePassword,
+                             controller: _loginController.passwordController,
+                             obscureText: _loginController.obscurePassword,
                              style: const TextStyle(color: Colors.white),
                              cursorColor: Colors.white,
                              decoration: InputDecoration(
@@ -187,14 +147,10 @@ class _LoginPageState extends State<LoginPage> {
                                prefixIcon: const Icon(Icons.lock, color: Colors.white70),
                                suffixIcon: IconButton(
                                  icon: Icon(
-                                   _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                                   _loginController.obscurePassword ? Icons.visibility : Icons.visibility_off,
                                    color: Colors.white70,
                                  ),
-                                 onPressed: () {
-                                   setState(() {
-                                     _obscurePassword = !_obscurePassword;
-                                   });
-                                 },
+                                 onPressed: _loginController.togglePasswordVisibility,
                                ),
                                border: OutlineInputBorder(
                                  borderRadius: BorderRadius.circular(12),
@@ -209,12 +165,7 @@ class _LoginPageState extends State<LoginPage> {
                                  borderSide: const BorderSide(color: Colors.white, width: 2),
                                ),
                              ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Password tidak boleh kosong';
-                              }
-                              return null;
-                            },
+                            validator: _loginController.validatePassword,
                           ),
                           const SizedBox(height: 24),
                           
@@ -223,7 +174,7 @@ class _LoginPageState extends State<LoginPage> {
                              width: double.infinity,
                              height: 50,
                              child: ElevatedButton(
-                               onPressed: _isLoading ? null : _login,
+                               onPressed: _loginController.isLoading ? null : () => _loginController.login(context),
                                style: ElevatedButton.styleFrom(
                                  backgroundColor: Colors.grey[800],
                                  foregroundColor: Colors.white,
@@ -232,7 +183,7 @@ class _LoginPageState extends State<LoginPage> {
                                  ),
                                  elevation: 2,
                                ),
-                              child: _isLoading
+                              child: _loginController.isLoading
                                                                      ? const SizedBox(
                                        width: 20,
                                        height: 20,
