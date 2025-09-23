@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/work_order_detail_controller.dart';
+import '../models/work_order_planning_model.dart';
 import 'page_work_order_detail_item.dart';
 
 class WorkOrderDetailPage extends StatefulWidget {
   final Map<String, String> workOrder;
   final bool isEditMode;
+  final WorkOrderPlanning? workOrderPlanning; // Data asli dari model
 
   const WorkOrderDetailPage({
     super.key,
     required this.workOrder,
     this.isEditMode = false,
+    this.workOrderPlanning,
   });
 
   @override
@@ -24,6 +27,11 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
   void initState() {
     super.initState();
     _controller = WorkOrderDetailController();
+    
+    // Set data asli jika tersedia
+    if (widget.workOrderPlanning != null) {
+      _controller.setWorkOrderItems(widget.workOrderPlanning!.workOrderPlanningItems);
+    }
   }
 
   @override
@@ -283,14 +291,27 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
         ),
         const SizedBox(height: 12),
         
+
+        // Row 2: Panjang, Lebar, Tebal
+        Row(
+          children: [
+            Expanded(child: _buildDetailItem('Panjang (mm)', item['panjang'])),
+            const SizedBox(width: 12),
+            Expanded(child: _buildDetailItem('Lebar (mm)', item['lebar'])),
+            const SizedBox(width: 12),
+            Expanded(child: _buildDetailItem('Tebal (mm)', item['tebal'])),
+          ],
+        ),
+        const SizedBox(height: 12),
+
         // Row 2: Ukuran, Qty Planning, Qty Actual
         Row(
           children: [
-            Expanded(child: _buildDetailItem('Ukuran (mm)', item['ukuran'])),
-            const SizedBox(width: 12),
             Expanded(child: _buildDetailItem('Qty Planning', item['qtyPlanning'].toString())),
             const SizedBox(width: 12),
             Expanded(child: _buildDetailItem('Qty Actual', item['qtyActual']?.toString() ?? '-')),
+            const SizedBox(width: 12),
+            Expanded(child: _buildDetailItem('Satuan', item['satuan'])),
           ],
         ),
         const SizedBox(height: 12),
@@ -302,13 +323,21 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
             const SizedBox(width: 12),
             Expanded(child: _buildDetailItem('Berat Actual (kg)', item['beratActual']?.toString() ?? '-')),
             const SizedBox(width: 12),
-            Expanded(child: _buildDetailItem('Luas', '${item['luas']?.toString() ?? '-'}${controller.getLuasSuffix(item['jenisBarang'])}')),
+            Expanded(child: _buildDetailItem('Luas', '${controller.formatNumberWithCommas(item['luas'])}${controller.getLuasSuffix(item['jenisBarang'])}')),
           ],
         ),
         const SizedBox(height: 12),
         
         // Row 4: Plat/Shaft Dasar
-        _buildDetailItem('Plat/Shaft Dasar', item['platShaftDasar']),
+        Row(
+          children: [
+            Expanded(child: _buildDetailItem('Catatan', item['catatan'])),
+            const SizedBox(width: 12),
+            Expanded(child: _buildDetailItem('Plat/Shaft Dasar', '-')),
+            
+          ],
+        ),
+        
       ],
     );
   }

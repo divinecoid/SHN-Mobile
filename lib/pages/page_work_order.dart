@@ -221,15 +221,22 @@ class _WorkOrderPageState extends State<WorkOrderPage> {
   }
 
   Widget _buildWorkOrderCardFromModel(WorkOrderPlanning workOrder, WorkOrderController controller) {
-    // Helper function untuk mendapatkan nama customer dari sales order
+    // Helper function untuk mendapatkan nama customer
     String getCustomerName() {
-      // Sementara menggunakan status sales order, nanti bisa disesuaikan dengan data customer yang sebenarnya
-      return workOrder.pelanggan?.namaPelanggan ?? 'N/A';
+      // Prioritas: gunakan namaPelanggan dari response langsung, fallback ke relasi pelanggan
+      return workOrder.namaPelanggan ?? workOrder.pelanggan?.namaPelanggan ?? 'N/A';
     }
 
     // Helper function untuk mendapatkan info gudang
     String getWarehouseInfo() {
-      return '${workOrder.gudang.nama}'; // Sementara menggunakan ID, nanti bisa disesuaikan
+      // Prioritas: gunakan namaGudang dari response langsung, fallback ke relasi gudang
+      return workOrder.namaGudang ?? workOrder.gudang?.namaGudang ?? 'N/A';
+    }
+
+    // Helper function untuk mendapatkan nomor SO
+    String getSalesOrderNumber() {
+      // Prioritas: gunakan nomorSo dari response langsung, fallback ke relasi salesOrder
+      return workOrder.nomorSo ?? workOrder.salesOrder?.nomorSo ?? 'N/A';
     }
 
     return Container(
@@ -243,12 +250,17 @@ class _WorkOrderPageState extends State<WorkOrderPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+
+            // Wo Unique Id
+            _buildInfoRow('WO Unique Id', workOrder.woUniqueId),
+            const SizedBox(height: 8),
+            
             // No. WO
             _buildInfoRow('No. WO', workOrder.nomorWo),
             const SizedBox(height: 8),
             
             // No. SO
-            _buildInfoRow('No. SO', workOrder.salesOrder?.nomorSo ?? 'N/A'),
+            _buildInfoRow('No. SO', getSalesOrderNumber()),
             const SizedBox(height: 8),
             
             // Nama Customer
@@ -268,11 +280,11 @@ class _WorkOrderPageState extends State<WorkOrderPage> {
             const SizedBox(height: 8),
             
             // Tanggal WO
-            _buildInfoRow('Tanggal WO', _formatDate(workOrder.tanggalWo)),
+            _buildInfoRow('Tanggal WO', '${_formatDate(workOrder.tanggalWo)} ${workOrder.tanggalWo.hour.toString().padLeft(2, '0')}:${workOrder.tanggalWo.minute.toString().padLeft(2, '0')}:${workOrder.tanggalWo.second.toString().padLeft(2, '0')}'),
             const SizedBox(height: 8),
             
             // Jumlah Item
-            _buildInfoRow('Jumlah Item', '${workOrder.workOrderPlanningItems.length} item'),
+            _buildInfoRow('Jumlah Item', '${workOrder.count} item'),
             const SizedBox(height: 20),
             
             // Tombol Aksi
@@ -425,9 +437,9 @@ class _WorkOrderPageState extends State<WorkOrderPage> {
     // Konversi ke format lama untuk kompatibilitas dengan detail page
     final workOrderMap = {
       'noWO': workOrder.nomorWo,
-      'noSO': workOrder.salesOrder?.nomorSo ?? 'N/A',
-      'customerName': workOrder.salesOrder?.status ?? 'N/A',
-      'warehouse': 'Gudang ${workOrder.idGudang}',
+      'noSO': workOrder.nomorSo ?? workOrder.salesOrder?.nomorSo ?? 'N/A',
+      'customerName': workOrder.namaPelanggan ?? workOrder.pelanggan?.namaPelanggan ?? 'N/A',
+      'warehouse': workOrder.namaGudang ?? workOrder.gudang?.namaGudang ?? 'N/A',
       'status': workOrder.status,
     };
     
@@ -437,6 +449,7 @@ class _WorkOrderPageState extends State<WorkOrderPage> {
         builder: (context) => WorkOrderDetailPage(
           workOrder: workOrderMap,
           isEditMode: isEditMode,
+          workOrderPlanning: workOrder, // Kirim data asli
         ),
       ),
     );

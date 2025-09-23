@@ -25,7 +25,8 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
   void initState() {
     super.initState();
     _controller = WorkOrderDetailItemController();
-    _controller.initializeWithItem(widget.item);
+    // Gunakan method baru untuk menangani data API response yang sebenarnya
+    _controller.initializeWithApiData(widget.item);
   }
 
   @override
@@ -569,9 +570,15 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          
+          // Baris 3: Informasi Jadwal (jika sudah assigned)
+          if (assignment['status'] == 'assigned' && assignment['tanggal'] != null)
+            _buildScheduleInfo(assignment),
+          
           const SizedBox(height: 20),
           
-          // Baris 3: Action Buttons
+          // Baris 4: Action Buttons
           Row(
             children: [
               Expanded(
@@ -643,6 +650,81 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                 controller.updateAssignmentPelaksana(index, newValue);
               },
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScheduleInfo(Map<String, dynamic> assignment) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blue[900]!.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue[600]!.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.schedule, color: Colors.blue[300], size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'Jadwal Pengerjaan',
+                style: TextStyle(
+                  color: Colors.blue[300],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildScheduleDetail('Tanggal', assignment['tanggal'] ?? '-'),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildScheduleDetail('Jam Mulai', assignment['jamMulai'] ?? '-'),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildScheduleDetail('Jam Selesai', assignment['jamSelesai'] ?? '-'),
+              ),
+            ],
+          ),
+          if (assignment['catatan'] != null && assignment['catatan'].toString().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _buildScheduleDetail('Catatan', assignment['catatan']),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScheduleDetail(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey[400],
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],

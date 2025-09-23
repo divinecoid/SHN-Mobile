@@ -23,8 +23,8 @@ class WorkOrderController extends ChangeNotifier {
     return _workOrders.map((wo) => {
       'noWO': wo.nomorWo,
       'noSO': wo.salesOrder?.nomorSo ?? '',
-      'customerName': wo.salesOrder?.status ?? '',
-      'warehouse': '', // Tidak ada data gudang di response
+      'customerName': wo.pelanggan?.namaPelanggan ?? '',
+      'warehouse': wo.gudang?.namaGudang ?? '',
       'status': wo.status,
     }).toList();
   }
