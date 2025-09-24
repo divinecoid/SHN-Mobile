@@ -8,12 +8,14 @@ class WorkOrderDetailPage extends StatefulWidget {
   final Map<String, String> workOrder;
   final bool isEditMode;
   final WorkOrderPlanning? workOrderPlanning; // Data asli dari model
+  final int? workOrderId; // ID work order untuk mengambil data detail
 
   const WorkOrderDetailPage({
     super.key,
     required this.workOrder,
     this.isEditMode = false,
     this.workOrderPlanning,
+    this.workOrderId,
   });
 
   @override
@@ -32,6 +34,18 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
     if (widget.workOrderPlanning != null) {
       _controller.setWorkOrderItems(widget.workOrderPlanning!.workOrderPlanningItems);
     }
+    
+    // Fetch data detail jika ada workOrderId
+    if (widget.workOrderId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _controller.fetchWorkOrderPlanningDetail(widget.workOrderId!);
+      });
+    }
+    
+    // Fetch data pelaksana saat halaman dibuka
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.fetchAvailablePelaksana();
+    });
   }
 
   @override
@@ -47,31 +61,112 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
       child: Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header Section
-                _buildHeaderSection(),
-                const SizedBox(height: 20),
-                
-                // Work Order Info Card
-                _buildWorkOrderInfoCard(),
-                const SizedBox(height: 20),
-                
-                // Work Order Items List
-                _buildWorkOrderItemsList(),
-                const SizedBox(height: 20),
-                
-                // Upload Photo Section
-                _buildUploadPhotoSection(),
-                const SizedBox(height: 24),
-                
-                // Save Button
-                _buildSaveButton(),
-              ],
-            ),
+          child: Consumer<WorkOrderDetailController>(
+            builder: (context, controller, child) {
+              // Loading State
+              if (controller.isLoading && controller.getWorkOrderItems.isEmpty) {
+                return const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Memuat data work order...',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              // Error State
+              if (controller.errorMessage != null && controller.getWorkOrderItems.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          color: Colors.red[400],
+                          size: 64,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Terjadi Kesalahan',
+                          style: TextStyle(
+                            color: Colors.red[400],
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          controller.errorMessage!,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: () {
+                            controller.clearError();
+                            if (widget.workOrderId != null) {
+                              controller.fetchWorkOrderPlanningDetail(widget.workOrderId!);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue[600],
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                          ),
+                          child: const Text('Coba Lagi'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header Section
+                    _buildHeaderSection(),
+                    const SizedBox(height: 20),
+                    
+                    // Work Order Info Card
+                    _buildWorkOrderInfoCard(),
+                    const SizedBox(height: 20),
+                    
+                    // Work Order Items List
+                    _buildWorkOrderItemsList(),
+                    const SizedBox(height: 20),
+                    
+                    // Upload Photo Section
+                    _buildUploadPhotoSection(),
+                    const SizedBox(height: 24),
+                    
+                    // Save Button
+                    _buildSaveButton(),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -328,15 +423,19 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
         ),
         const SizedBox(height: 12),
         
-        // Row 4: Plat/Shaft Dasar
+        // Row 4: Catatan dan Pelaksana
         Row(
           children: [
             Expanded(child: _buildDetailItem('Catatan', item['catatan'])),
             const SizedBox(width: 12),
-            Expanded(child: _buildDetailItem('Plat/Shaft Dasar', '-')),
-            
+            Expanded(child: _buildDetailItem('Pelaksana', _getPelaksanaInfo(item, controller))),
           ],
         ),
+        const SizedBox(height: 12),
+        
+        // Row 5: Info Pelaksana Detail
+        if (_hasPelaksanaInfo(item))
+          _buildPelaksanaInfoSection(item, controller),
         
       ],
     );
@@ -364,6 +463,119 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
           ),
         ),
       ],
+    );
+  }
+
+  // Method untuk mendapatkan informasi pelaksana
+  String _getPelaksanaInfo(Map<String, dynamic> item, WorkOrderDetailController controller) {
+    final pelaksanaList = item['hasManyPelaksana'] as List<dynamic>?;
+    if (pelaksanaList == null || pelaksanaList.isEmpty) {
+      return 'Belum ada pelaksana';
+    }
+    
+    final pelaksanaNames = pelaksanaList
+        .where((p) => p['pelaksana'] != null)
+        .map((p) => p['pelaksana']['nama_pelaksana'] as String)
+        .toList();
+    
+    if (pelaksanaNames.isEmpty) {
+      return 'Pelaksana belum ditentukan';
+    }
+    
+    return pelaksanaNames.join(', ');
+  }
+
+  // Method untuk mengecek apakah ada informasi pelaksana
+  bool _hasPelaksanaInfo(Map<String, dynamic> item) {
+    final pelaksanaList = item['hasManyPelaksana'] as List<dynamic>?;
+    return pelaksanaList != null && pelaksanaList.isNotEmpty;
+  }
+
+  // Widget untuk menampilkan informasi detail pelaksana
+  Widget _buildPelaksanaInfoSection(Map<String, dynamic> item, WorkOrderDetailController controller) {
+    final pelaksanaList = item['hasManyPelaksana'] as List<dynamic>;
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[850],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[700]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.people, color: Colors.blue[400], size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'Detail Pelaksana (${pelaksanaList.length} orang)',
+                style: TextStyle(
+                  color: Colors.grey[300],
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...pelaksanaList.map((pelaksana) => _buildPelaksanaItem(pelaksana)).toList(),
+        ],
+      ),
+    );
+  }
+
+  // Widget untuk menampilkan item pelaksana individual
+  Widget _buildPelaksanaItem(Map<String, dynamic> pelaksana) {
+    final pelaksanaData = pelaksana['pelaksana'] as Map<String, dynamic>?;
+    if (pelaksanaData == null) return const SizedBox.shrink();
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: Colors.blue[400],
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${pelaksanaData['nama_pelaksana']} (${pelaksanaData['kode']})',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  'Qty: ${pelaksana['qty']} | ${pelaksana['jam_mulai']} - ${pelaksana['jam_selesai']}',
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 11,
+                  ),
+                ),
+                if (pelaksana['catatan'] != null && pelaksana['catatan'].toString().isNotEmpty)
+                  Text(
+                    'Catatan: ${pelaksana['catatan']}',
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 10,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -482,36 +694,92 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
   }
 
   void _showItemDetailDialog(Map<String, dynamic> item, int index) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => WorkOrderDetailItemPage(
-          item: item,
-          itemIndex: index,
-          workOrder: widget.workOrder,
+    try {
+      debugPrint('_showItemDetailDialog - Starting navigation to detail item');
+      debugPrint('_showItemDetailDialog - Item data: ${item.keys.toList()}');
+      debugPrint('_showItemDetailDialog - Item index: $index');
+      
+      // Cek apakah controller tersedia di context
+      WorkOrderDetailController? controller;
+      try {
+        controller = Provider.of<WorkOrderDetailController>(context, listen: false);
+        debugPrint('_showItemDetailDialog - Controller found, available pelaksana count: ${controller.availablePelaksana.length}');
+      } catch (e) {
+        debugPrint('_showItemDetailDialog - Controller not found in context: $e');
+        // Lanjutkan tanpa controller, akan fetch pelaksana di halaman detail
+      }
+      
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => WorkOrderDetailItemPage(
+            item: item,
+            itemIndex: index,
+            workOrder: widget.workOrder,
+            availablePelaksana: controller?.availablePelaksana,
+          ),
         ),
-      ),
-    );
+      ).then((result) {
+        debugPrint('_showItemDetailDialog - Navigation completed with result: $result');
+      }).catchError((error) {
+        debugPrint('_showItemDetailDialog - Navigation error: $error');
+      });
+    } catch (e) {
+      debugPrint('_showItemDetailDialog - Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error membuka detail item: $e'),
+          backgroundColor: Colors.red[600],
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      );
+    }
   }
 
   void _saveWorkOrder() {
-    // Implementasi untuk menyimpan work order
-    final controller = Provider.of<WorkOrderDetailController>(context, listen: false);
-    final message = controller.getSuccessMessage(widget.workOrder['noWO']!, widget.isEditMode);
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green[600],
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+    try {
+      // Implementasi untuk menyimpan work order
+      WorkOrderDetailController? controller;
+      try {
+        controller = Provider.of<WorkOrderDetailController>(context, listen: false);
+      } catch (e) {
+        debugPrint('_saveWorkOrder - Controller not found: $e');
+      }
+      
+      final message = controller?.getSuccessMessage(widget.workOrder['noWO']!, widget.isEditMode) ?? 
+                     'Work Order ${widget.workOrder['noWO']} berhasil ${widget.isEditMode ? 'diupdate' : 'disimpan'}!';
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.green[600],
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
-      ),
-    );
-    
-    // Kembali ke halaman sebelumnya
-    Navigator.pop(context);
+      );
+      
+      // Kembali ke halaman sebelumnya
+      Navigator.pop(context);
+    } catch (e) {
+      debugPrint('_saveWorkOrder - Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving work order: $e'),
+          backgroundColor: Colors.red[600],
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      );
+    }
   }
 }

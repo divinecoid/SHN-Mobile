@@ -450,6 +450,7 @@ class _WorkOrderPageState extends State<WorkOrderPage> {
           workOrder: workOrderMap,
           isEditMode: isEditMode,
           workOrderPlanning: workOrder, // Kirim data asli
+          workOrderId: workOrder.id, // Kirim ID untuk fetch data detail
         ),
       ),
     );

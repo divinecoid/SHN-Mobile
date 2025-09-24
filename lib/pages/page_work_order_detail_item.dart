@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/work_order_detail_item_controller.dart';
+import '../models/pelaksana_model.dart';
 
 class WorkOrderDetailItemPage extends StatefulWidget {
   final Map<String, dynamic> item;
   final int itemIndex;
   final Map<String, String> workOrder;
+  final List<Pelaksana>? availablePelaksana;
 
   const WorkOrderDetailItemPage({
     super.key,
     required this.item,
     required this.itemIndex,
     required this.workOrder,
+    this.availablePelaksana,
   });
 
   @override
@@ -24,9 +27,20 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
   @override
   void initState() {
     super.initState();
-    _controller = WorkOrderDetailItemController();
-    // Gunakan method baru untuk menangani data API response yang sebenarnya
-    _controller.initializeWithApiData(widget.item);
+    try {
+      debugPrint('WorkOrderDetailItemPage - initState started');
+      debugPrint('WorkOrderDetailItemPage - Item data: ${widget.item.keys.toList()}');
+      debugPrint('WorkOrderDetailItemPage - Item index: ${widget.itemIndex}');
+      debugPrint('WorkOrderDetailItemPage - Available pelaksana count: ${widget.availablePelaksana?.length ?? 0}');
+      
+      _controller = WorkOrderDetailItemController();
+      // Gunakan method baru untuk menangani data API response yang sebenarnya
+      _controller.initializeWithApiData(widget.item, pelaksanaList: widget.availablePelaksana);
+      
+      debugPrint('WorkOrderDetailItemPage - initState completed successfully');
+    } catch (e) {
+      debugPrint('WorkOrderDetailItemPage - Error in initState: $e');
+    }
   }
 
   @override
@@ -37,40 +51,74 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: _controller,
-      child: Scaffold(
+    try {
+      debugPrint('WorkOrderDetailItemPage - build started');
+      return ChangeNotifierProvider.value(
+        value: _controller,
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header dengan tombol back
+                  _buildHeader(),
+                  const SizedBox(height: 20),
+                  
+                  // Detail Item WO Card
+                  _buildDetailItemWOCard(),
+                  const SizedBox(height: 20),
+                  
+                  // Thumbnail dan Input Section
+                  _buildThumbnailAndInputSection(),
+                  const SizedBox(height: 20),
+                  
+                  // Assignment Section
+                  _buildAssignmentSection(),
+                  const SizedBox(height: 24),
+                  
+                  // Save Button
+                  _buildSaveButton(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('WorkOrderDetailItemPage - Error in build: $e');
+      return Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+          child: Center(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Header dengan tombol back
-                _buildHeader(),
-                const SizedBox(height: 20),
-                
-                // Detail Item WO Card
-                _buildDetailItemWOCard(),
-                const SizedBox(height: 20),
-                
-                // Thumbnail dan Input Section
-                _buildThumbnailAndInputSection(),
-                const SizedBox(height: 20),
-                
-                // Assignment Section
-                _buildAssignmentSection(),
+                Icon(Icons.error, color: Colors.red, size: 64),
+                const SizedBox(height: 16),
+                Text(
+                  'Error loading detail item',
+                  style: TextStyle(color: Colors.white, fontSize: 18),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  e.toString(),
+                  style: TextStyle(color: Colors.red, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 24),
-                
-                // Save Button
-                _buildSaveButton(),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Kembali'),
+                ),
               ],
             ),
           ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   Widget _buildHeader() {
@@ -94,135 +142,214 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
   }
 
   Widget _buildDetailItemWOCard() {
-    return Consumer<WorkOrderDetailItemController>(
-      builder: (context, controller, child) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[900],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[800]!),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Item Header
-                Row(
+    try {
+      return Consumer<WorkOrderDetailItemController>(
+        builder: (context, controller, child) {
+          try {
+            debugPrint('_buildDetailItemWOCard - Building detail card');
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[800]!),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      controller.getItemIcon(widget.item['jenisBarang']),
-                      color: Colors.orange[400],
-                      size: 20,
+                    // Item Header
+                    Row(
+                      children: [
+                        Icon(
+                          controller.getItemIcon(widget.item['jenisBarang']),
+                          color: Colors.orange[400],
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Item ${widget.itemIndex + 1}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Item ${widget.itemIndex + 1}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Item Details Grid
+                    _buildItemDetailGrid(controller),
                   ],
                 ),
-                const SizedBox(height: 16),
-                
-                // Item Details Grid
-                _buildItemDetailGrid(controller),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+              ),
+            );
+          } catch (e) {
+            debugPrint('_buildDetailItemWOCard - Error in Consumer builder: $e');
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red[900],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red[600]!),
+              ),
+              child: Text(
+                'Error loading item details: $e',
+                style: TextStyle(color: Colors.white),
+              ),
+            );
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('_buildDetailItemWOCard - Error: $e');
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red[900],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.red[600]!),
+        ),
+        child: Text(
+          'Error loading item details: $e',
+          style: TextStyle(color: Colors.white),
+        ),
+      );
+    }
   }
 
   Widget _buildItemDetailGrid(WorkOrderDetailItemController controller) {
-    return Column(
-      children: [
-        // Row 1: Jenis Barang, Bentuk Barang, Grade
-        Row(
-          children: [
-            Expanded(child: _buildDetailItem('Jenis Barang', widget.item['jenisBarang'])),
-            const SizedBox(width: 12),
-            Expanded(child: _buildDetailItem('Bentuk Barang', widget.item['bentukBarang'])),
-            const SizedBox(width: 12),
-            Expanded(child: _buildDetailItem('Grade', widget.item['grade'])),
-          ],
-        ),
-        const SizedBox(height: 12),
-        
-        // Row 2: Ukuran, Qty Planning, Qty Actual
-        Row(
-          children: [
-            Expanded(child: _buildDetailItem('Ukuran (mm)', widget.item['ukuran'])),
-            const SizedBox(width: 12),
-            Expanded(child: _buildDetailItem('Qty Planning', widget.item['qtyPlanning'].toString())),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildDetailItem('Qty Actual', widget.item['qtyActual']?.toString() ?? '-'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        
-        // Row 3: Berat Planning, Berat Actual, Luas
-        Row(
-          children: [
-            Expanded(child: _buildDetailItem('Berat Planning (kg)', widget.item['beratPlanning'].toString())),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildDetailItem('Berat Actual (kg)', widget.item['beratActual']?.toString() ?? '-'),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildDetailItem(
-                'Luas',
-                '${widget.item['luas']?.toString() ?? '-'}${controller.getLuasSuffix(widget.item['jenisBarang'])}',
+    try {
+      debugPrint('_buildItemDetailGrid - Building item detail grid');
+      return Column(
+        children: [
+          // Row 1: Jenis Barang, Bentuk Barang, Grade
+          Row(
+            children: [
+              Expanded(child: _buildDetailItem('Jenis Barang', widget.item['jenisBarang']?.toString() ?? '-')),
+              const SizedBox(width: 12),
+              Expanded(child: _buildDetailItem('Bentuk Barang', widget.item['bentukBarang']?.toString() ?? '-')),
+              const SizedBox(width: 12),
+              Expanded(child: _buildDetailItem('Grade', widget.item['grade']?.toString() ?? '-')),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Row 2: Ukuran, Qty Planning, Qty Actual
+          Row(
+            children: [
+              Expanded(child: _buildDetailItem('Ukuran (mm)', widget.item['ukuran']?.toString() ?? '-')),
+              const SizedBox(width: 12),
+              Expanded(child: _buildDetailItem('Qty Planning', widget.item['qtyPlanning']?.toString() ?? '-')),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildDetailItem('Qty Actual', widget.item['qtyActual']?.toString() ?? '-'),
               ),
-            ),
-          ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Row 3: Berat Planning, Berat Actual, Luas
+          Row(
+            children: [
+              Expanded(child: _buildDetailItem('Berat Planning (kg)', widget.item['beratPlanning']?.toString() ?? '-')),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildDetailItem('Berat Actual (kg)', widget.item['beratActual']?.toString() ?? '-'),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildDetailItem(
+                  'Luas',
+                  '${widget.item['luas']?.toString() ?? '-'}${controller.getLuasSuffix(widget.item['jenisBarang'])}',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Row 4: Plat/Shaft Dasar
+          _buildDetailItem('Plat/Shaft Dasar', widget.item['platShaftDasar']?.toString() ?? '-'),
+        ],
+      );
+    } catch (e) {
+      debugPrint('_buildItemDetailGrid - Error: $e');
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red[900],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.red[600]!),
         ),
-        const SizedBox(height: 12),
-        
-        // Row 4: Plat/Shaft Dasar
-        _buildDetailItem('Plat/Shaft Dasar', widget.item['platShaftDasar']),
-      ],
-    );
+        child: Text(
+          'Error loading item details: $e',
+          style: TextStyle(color: Colors.white),
+        ),
+      );
+    }
   }
 
   Widget _buildDetailItem(String label, String value, {String suffix = ''}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label + suffix,
-          style: TextStyle(
-            color: Colors.grey[400],
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
+    try {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label + suffix,
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-      ],
-    );
+        ],
+      );
+    } catch (e) {
+      debugPrint('_buildDetailItem - Error: $e');
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label + suffix,
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Error: $e',
+            style: TextStyle(
+              color: Colors.red,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    }
   }
 
 
 
   Widget _buildThumbnailAndInputSection() {
-    return Consumer<WorkOrderDetailItemController>(
-      builder: (context, controller, child) {
-        return Container(
+    try {
+      return Consumer<WorkOrderDetailItemController>(
+        builder: (context, controller, child) {
+          try {
+            debugPrint('_buildThumbnailAndInputSection - Building thumbnail section');
+            return Container(
           decoration: BoxDecoration(
             color: Colors.grey[900],
             borderRadius: BorderRadius.circular(12),
@@ -327,8 +454,38 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
             ),
           ),
         );
-      },
-    );
+          } catch (e) {
+            debugPrint('_buildThumbnailAndInputSection - Error in Consumer builder: $e');
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red[900],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red[600]!),
+              ),
+              child: Text(
+                'Error loading thumbnail section: $e',
+                style: TextStyle(color: Colors.white),
+              ),
+            );
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('_buildThumbnailAndInputSection - Error: $e');
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red[900],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.red[600]!),
+        ),
+        child: Text(
+          'Error loading thumbnail section: $e',
+          style: TextStyle(color: Colors.white),
+        ),
+      );
+    }
   }
 
   Widget _buildInputField(String label, TextEditingController controller, String suffix) {
@@ -426,9 +583,12 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
   }
 
   Widget _buildAssignmentSection() {
-    return Consumer<WorkOrderDetailItemController>(
-      builder: (context, controller, child) {
-        return Container(
+    try {
+      return Consumer<WorkOrderDetailItemController>(
+        builder: (context, controller, child) {
+          try {
+            debugPrint('_buildAssignmentSection - Building assignment section');
+            return Container(
           decoration: BoxDecoration(
             color: Colors.grey[900],
             borderRadius: BorderRadius.circular(12),
@@ -526,8 +686,38 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
             ),
           ),
         );
-      },
-    );
+          } catch (e) {
+            debugPrint('_buildAssignmentSection - Error in Consumer builder: $e');
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red[900],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red[600]!),
+              ),
+              child: Text(
+                'Error loading assignment section: $e',
+                style: TextStyle(color: Colors.white),
+              ),
+            );
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('_buildAssignmentSection - Error: $e');
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red[900],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.red[600]!),
+        ),
+        child: Text(
+          'Error loading assignment section: $e',
+          style: TextStyle(color: Colors.white),
+        ),
+      );
+    }
   }
 
   Widget _buildAssignmentRow(Map<String, dynamic> assignment, int index, WorkOrderDetailItemController controller) {
@@ -573,7 +763,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
           const SizedBox(height: 16),
           
           // Baris 3: Informasi Jadwal (jika sudah assigned)
-          if (assignment['status'] == 'assigned' && assignment['tanggal'] != null)
+          if ((assignment['status'] as String?) == 'assigned' && assignment['tanggal'] != null)
             _buildScheduleInfo(assignment),
           
           const SizedBox(height: 20),
@@ -685,15 +875,15 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
           Row(
             children: [
               Expanded(
-                child: _buildScheduleDetail('Tanggal', assignment['tanggal'] ?? '-'),
+                child: _buildScheduleDetail('Tanggal', assignment['tanggal']),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildScheduleDetail('Jam Mulai', assignment['jamMulai'] ?? '-'),
+                child: _buildScheduleDetail('Jam Mulai', assignment['jamMulai']),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildScheduleDetail('Jam Selesai', assignment['jamSelesai'] ?? '-'),
+                child: _buildScheduleDetail('Jam Selesai', assignment['jamSelesai']),
               ),
             ],
           ),
@@ -706,7 +896,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
     );
   }
 
-  Widget _buildScheduleDetail(String label, String value) {
+  Widget _buildScheduleDetail(String label, String? value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -720,7 +910,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
         ),
         const SizedBox(height: 2),
         Text(
-          value,
+          value ?? '-',
           style: TextStyle(
             color: Colors.white,
             fontSize: 12,
@@ -734,7 +924,8 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
 
 
   Widget _buildActionButton(Map<String, dynamic> assignment, int index, WorkOrderDetailItemController controller) {
-    if (assignment['status'] == 'assigned') {
+    final status = assignment['status'] as String?;
+    if (status == 'assigned') {
       return Container(
         height: 45,
         child: ElevatedButton(
@@ -753,7 +944,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
           ),
         ),
       );
-    } else if (assignment['status'] == 'pending') {
+    } else if (status == 'pending') {
       return Container(
         height: 45,
         child: ElevatedButton(
@@ -816,28 +1007,45 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
   }
 
   Widget _buildSaveButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: () => _saveItemDetail(),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green[600],
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+    try {
+      debugPrint('_buildSaveButton - Building save button');
+      return SizedBox(
+        width: double.infinity,
+        height: 50,
+        child: ElevatedButton(
+          onPressed: () => _saveItemDetail(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green[600],
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            elevation: 3,
           ),
-          elevation: 3,
-        ),
-        child: const Text(
-          'Simpan',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
+          child: const Text(
+            'Simpan',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      debugPrint('_buildSaveButton - Error: $e');
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red[900],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.red[600]!),
+        ),
+        child: Text(
+          'Error loading save button: $e',
+          style: TextStyle(color: Colors.white),
+        ),
+      );
+    }
   }
 
 
@@ -908,13 +1116,49 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
 
 
   void _saveItemDetail() {
-    final controller = Provider.of<WorkOrderDetailItemController>(context, listen: false);
-    
-    // Validasi input
-    if (!controller.validateInput()) {
+    try {
+      debugPrint('_saveItemDetail - Starting save process');
+      final controller = Provider.of<WorkOrderDetailItemController>(context, listen: false);
+      
+      // Validasi input
+      if (!controller.validateInput()) {
+        debugPrint('_saveItemDetail - Validation failed');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(controller.getValidationErrorMessage()),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+        return;
+      }
+
+      // Simpan data
+      debugPrint('_saveItemDetail - Saving data');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(controller.getValidationErrorMessage()),
+          content: Text(controller.getSuccessMessage(widget.itemIndex)),
+          backgroundColor: Colors.green[600],
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      );
+      
+      // Kembali ke halaman sebelumnya
+      debugPrint('_saveItemDetail - Navigating back');
+      Navigator.pop(context);
+    } catch (e) {
+      debugPrint('_saveItemDetail - Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving item detail: $e'),
           backgroundColor: Colors.red[600],
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(16),
@@ -923,23 +1167,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
           ),
         ),
       );
-      return;
     }
-
-    // Simpan data
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(controller.getSuccessMessage(widget.itemIndex)),
-        backgroundColor: Colors.green[600],
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
-    );
-    
-    // Kembali ke halaman sebelumnya
-    Navigator.pop(context);
   }
 }

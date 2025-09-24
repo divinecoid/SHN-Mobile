@@ -1,18 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:convert';
 import '../models/work_order_planning_model.dart';
+import '../models/pelaksana_model.dart';
 
 class WorkOrderDetailController extends ChangeNotifier {
   List<WorkOrderPlanningItem> _workOrderItems = [];
+  WorkOrderPlanning? _workOrderPlanning;
   bool _isLoading = false;
   String? _errorMessage;
+  
+  // Data pelaksana
+  List<Pelaksana> _availablePelaksana = [];
+  bool _isLoadingPelaksana = false;
+  String? _pelaksanaErrorMessage;
 
   // Getter untuk mendapatkan data work order items
   List<Map<String, dynamic>> get getWorkOrderItems {
     return _workOrderItems.map((item) => _convertItemToMap(item)).toList();
   }
 
+  // Getter untuk mendapatkan data work order planning
+  WorkOrderPlanning? get workOrderPlanning => _workOrderPlanning;
+
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  
+  // Getter untuk data pelaksana
+  List<Pelaksana> get availablePelaksana => _availablePelaksana;
+  bool get isLoadingPelaksana => _isLoadingPelaksana;
+  String? get pelaksanaErrorMessage => _pelaksanaErrorMessage;
 
   // Method untuk mengkonversi WorkOrderPlanningItem ke Map untuk UI
   Map<String, dynamic> _convertItemToMap(WorkOrderPlanningItem item) {
@@ -58,6 +77,12 @@ class WorkOrderDetailController extends ChangeNotifier {
         'jam_mulai': pelaksana.jamMulai,
         'jam_selesai': pelaksana.jamSelesai,
         'catatan': pelaksana.catatan,
+        'pelaksana': pelaksana.pelaksana != null ? {
+          'id': pelaksana.pelaksana!.id,
+          'kode': pelaksana.pelaksana!.kode,
+          'nama_pelaksana': pelaksana.pelaksana!.namaPelaksana,
+          'level': pelaksana.pelaksana!.level,
+        } : null,
       }).toList(),
     };
   }
@@ -104,6 +129,77 @@ class WorkOrderDetailController extends ChangeNotifier {
         return '5052';
       default:
         return 'Unknown';
+    }
+  }
+
+  // Method untuk mengambil token dari SharedPreferences
+  Future<String?> _getAuthToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('token');
+    } catch (e) {
+      debugPrint('Error getting auth token: $e');
+      return null;
+    }
+  }
+
+  // Method untuk mengambil data detail work order planning berdasarkan ID
+  Future<void> fetchWorkOrderPlanningDetail(int id) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('Token autentikasi tidak ditemukan. Silakan login kembali.');
+      }
+
+      // Get base URL and endpoint from environment
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final workOrderDetailEndpoint = dotenv.env['API_DETAIL_WO'] ?? '/api/work-order-planning';
+      final url = Uri.parse('$baseUrl$workOrderDetailEndpoint/$id');
+      
+      // Debug: Print URL being used
+      debugPrint('Work Order Detail URL: $url');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+      
+      // Debug: Print response details
+      debugPrint('Detail Response Status Code: ${response.statusCode}');
+      debugPrint('Detail Response Body: ${response.body.length > 200 ? '${response.body.substring(0, 200)}...' : response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        final workOrderResponse = WorkOrderPlanningResult.fromMap(jsonData);
+        
+        if (workOrderResponse.success) {
+          _workOrderPlanning = workOrderResponse.data;
+          _workOrderItems = workOrderResponse.data.workOrderPlanningItems;
+          _errorMessage = null;
+        } else {
+          throw Exception(workOrderResponse.message);
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
+      } else if (response.statusCode == 404) {
+        throw Exception('Work Order tidak ditemukan.');
+      } else {
+        throw Exception('Gagal mengambil data detail: ${response.statusCode}');
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+      debugPrint('Error fetching work order detail: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -219,6 +315,114 @@ class WorkOrderDetailController extends ChangeNotifier {
     final numberString = numericValue.toStringAsFixed(0);
     final regex = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
     return numberString.replaceAllMapped(regex, (match) => '${match[1]}.');
+  }
+
+  // Method untuk mendapatkan informasi pelaksana
+  String getPelaksanaInfo(WorkOrderPlanningItem item) {
+    if (item.pelaksana.isEmpty) {
+      return 'Belum ada pelaksana';
+    }
+    
+    final pelaksanaNames = item.pelaksana
+        .where((p) => p.pelaksana != null)
+        .map((p) => p.pelaksana!.namaPelaksana)
+        .toList();
+    
+    if (pelaksanaNames.isEmpty) {
+      return 'Pelaksana belum ditentukan';
+    }
+    
+    return pelaksanaNames.join(', ');
+  }
+
+  // Method untuk mendapatkan jumlah pelaksana
+  int getPelaksanaCount(WorkOrderPlanningItem item) {
+    return item.pelaksana.length;
+  }
+
+  // Method untuk mendapatkan total qty pelaksana
+  int getTotalQtyPelaksana(WorkOrderPlanningItem item) {
+    return item.pelaksana.fold(0, (sum, pelaksana) => sum + pelaksana.qty);
+  }
+
+  // Method untuk fetch data pelaksana dari API
+  Future<void> fetchAvailablePelaksana() async {
+    _isLoadingPelaksana = true;
+    _pelaksanaErrorMessage = null;
+    notifyListeners();
+
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('Token autentikasi tidak ditemukan. Silakan login kembali.');
+      }
+
+      // Get base URL and endpoint from environment
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final pelaksanaEndpoint = dotenv.env['API_PELAKSANA'] ?? '/api/pelaksana';
+      final url = Uri.parse('$baseUrl$pelaksanaEndpoint');
+      
+      // Debug: Print URL being used
+      debugPrint('Pelaksana API URL: $url');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+      
+      // Debug: Print response details
+      debugPrint('Pelaksana Response Status Code: ${response.statusCode}');
+      debugPrint('Pelaksana Response Body: ${response.body.length > 200 ? '${response.body.substring(0, 200)}...' : response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        final pelaksanaResponse = PelaksanaResult.fromMap(jsonData);
+        
+        if (pelaksanaResponse.success) {
+          _availablePelaksana = pelaksanaResponse.data;
+          _pelaksanaErrorMessage = null;
+        } else {
+          throw Exception(pelaksanaResponse.message);
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
+      } else if (response.statusCode == 404) {
+        throw Exception('Data pelaksana tidak ditemukan.');
+      } else {
+        throw Exception('Gagal mengambil data pelaksana: ${response.statusCode}');
+      }
+    } catch (e) {
+      _pelaksanaErrorMessage = e.toString();
+      debugPrint('Error fetching pelaksana: $e');
+    } finally {
+      _isLoadingPelaksana = false;
+      notifyListeners();
+    }
+  }
+
+  // Method untuk clear error pelaksana
+  void clearPelaksanaError() {
+    _pelaksanaErrorMessage = null;
+    notifyListeners();
+  }
+
+  // Method untuk mendapatkan nama pelaksana berdasarkan ID
+  String getPelaksanaNameById(int pelaksanaId) {
+    for (var pelaksana in _availablePelaksana) {
+      if (pelaksana.id == pelaksanaId) {
+        return pelaksana.namaPelaksana;
+      }
+    }
+    return 'Pelaksana $pelaksanaId';
+  }
+
+  // Method untuk mendapatkan list nama pelaksana untuk dropdown
+  List<String> getPelaksanaNames() {
+    return _availablePelaksana.map((pelaksana) => pelaksana.namaPelaksana).toList();
   }
 
 }

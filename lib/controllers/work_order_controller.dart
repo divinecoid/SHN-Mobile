@@ -174,4 +174,64 @@ class WorkOrderController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
   }
+
+  // Method untuk mengambil detail work order planning berdasarkan ID
+  Future<WorkOrderPlanning?> fetchWorkOrderPlanningDetail(int id) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('Token autentikasi tidak ditemukan. Silakan login kembali.');
+      }
+
+      // Get base URL and endpoint from environment
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final workOrderDetailEndpoint = dotenv.env['API_DETAIL_WO'] ?? '/api/work-order-planning';
+      final url = Uri.parse('$baseUrl$workOrderDetailEndpoint/$id');
+      
+      // Debug: Print URL being used
+      debugPrint('Work Order Detail URL: $url');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+      
+      // Debug: Print response details
+      debugPrint('Detail Response Status Code: ${response.statusCode}');
+      debugPrint('Detail Response Body: ${response.body.length > 200 ? '${response.body.substring(0, 200)}...' : response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        final workOrderResponse = WorkOrderPlanningResult.fromMap(jsonData);
+        
+        if (workOrderResponse.success) {
+          _errorMessage = null;
+          return workOrderResponse.data;
+        } else {
+          throw Exception(workOrderResponse.message);
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
+      } else if (response.statusCode == 404) {
+        throw Exception('Work Order tidak ditemukan.');
+      } else {
+        throw Exception('Gagal mengambil data detail: ${response.statusCode}');
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+      debugPrint('Error fetching work order detail: $e');
+      return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

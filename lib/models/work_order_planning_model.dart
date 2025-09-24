@@ -169,7 +169,7 @@ class WorkOrderPlanningItem {
       gradeBarang: map['grade_barang'] != null 
           ? GradeBarang.fromMap(map['grade_barang'])
           : null,
-      pelaksana: (map['hasManyPelaksana'] as List<dynamic>?)
+      pelaksana: (map['has_many_pelaksana'] as List<dynamic>?)
           ?.map((item) => PelaksanaItem.fromMap(item))
           .toList() ?? [],
     );
@@ -195,7 +195,7 @@ class WorkOrderPlanningItem {
       'jenis_barang': jenisBarang?.toMap(),
       'bentuk_barang': bentukBarang?.toMap(),
       'grade_barang': gradeBarang?.toMap(),
-      'hasManyPelaksana': pelaksana.map((item) => item.toMap()).toList(),
+      'has_many_pelaksana': pelaksana.map((item) => item.toMap()).toList(),
     };
   }
 }
@@ -205,26 +205,24 @@ class PelaksanaItem {
   final int woPlanItemId;
   final int pelaksanaId;
   final int qty;
-  final double? weight;
+  final String weight;
   final String tanggal;
   final String jamMulai;
   final String jamSelesai;
   final String? catatan;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
+  final WorkOrderPelaksana? pelaksana;
 
   PelaksanaItem({
     required this.id,
     required this.woPlanItemId,
     required this.pelaksanaId,
     required this.qty,
-    this.weight,
+    required this.weight,
     required this.tanggal,
     required this.jamMulai,
     required this.jamSelesai,
     this.catatan,
-    this.createdAt,
-    this.updatedAt,
+    this.pelaksana,
   });
 
   factory PelaksanaItem.fromMap(Map<String, dynamic> map) {
@@ -233,13 +231,14 @@ class PelaksanaItem {
       woPlanItemId: map['wo_plan_item_id'] ?? 0,
       pelaksanaId: map['pelaksana_id'] ?? 0,
       qty: map['qty'] ?? 0,
-      weight: map['weight'] != null ? (map['weight'] as num).toDouble() : null,
+      weight: map['weight'] ?? '0.00',
       tanggal: map['tanggal'] ?? '',
       jamMulai: map['jam_mulai'] ?? '',
       jamSelesai: map['jam_selesai'] ?? '',
       catatan: map['catatan'],
-      createdAt: map['created_at'] != null ? DateTime.tryParse(map['created_at']) : null,
-      updatedAt: map['updated_at'] != null ? DateTime.tryParse(map['updated_at']) : null,
+      pelaksana: map['pelaksana'] != null 
+          ? WorkOrderPelaksana.fromMap(map['pelaksana'])
+          : null,
     );
   }
 
@@ -254,8 +253,7 @@ class PelaksanaItem {
       'jam_mulai': jamMulai,
       'jam_selesai': jamSelesai,
       'catatan': catatan,
-      'created_at': createdAt?.toIso8601String(),
-      'updated_at': updatedAt?.toIso8601String(),
+      'pelaksana': pelaksana?.toMap(),
     };
   }
 }
@@ -440,28 +438,28 @@ class Gudang {
   }
 }
 
-class Pelaksana {
+class WorkOrderPelaksana {
   final int id;
   final String kode;
-  final String nama;
+  final String namaPelaksana;
   final String? jabatan;
   final String? departemen;
   final String? level;
 
-  Pelaksana({
+  WorkOrderPelaksana({
     required this.id,
     required this.kode,
-    required this.nama,
+    required this.namaPelaksana,
     this.jabatan,
     this.departemen,
     this.level,
   });
 
-  factory Pelaksana.fromMap(Map<String, dynamic> map) {
-    return Pelaksana(
+  factory WorkOrderPelaksana.fromMap(Map<String, dynamic> map) {
+    return WorkOrderPelaksana(
       id: map['id'] ?? 0,
       kode: map['kode'] ?? '',
-      nama: map['nama_pelaksana'] ?? map['nama'] ?? '',
+      namaPelaksana: map['nama_pelaksana'] ?? '',
       jabatan: map['jabatan'],
       departemen: map['departemen'],
       level: map['level'],
@@ -472,7 +470,7 @@ class Pelaksana {
     return {
       'id': id,
       'kode': kode,
-      'nama_pelaksana': nama,
+      'nama_pelaksana': namaPelaksana,
       'jabatan': jabatan,
       'departemen': departemen,
       'level': level,

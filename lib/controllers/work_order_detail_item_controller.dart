@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/work_order_planning_model.dart';
+import '../models/pelaksana_model.dart';
 
 class WorkOrderDetailItemController extends ChangeNotifier {
   final TextEditingController qtyActualController = TextEditingController();
@@ -16,7 +17,7 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   List<Map<String, dynamic>> assignments = [];
 
   // List pelaksana yang tersedia dari API
-  List<Map<String, dynamic>> availablePelaksana = [];
+  List<Pelaksana> availablePelaksana = [];
 
   // Initialize controller dengan data item
   void initializeWithItem(Map<String, dynamic> item) {
@@ -35,48 +36,50 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   }
   
   // Method untuk initialize dengan data dari API response yang sebenarnya
-  void initializeWithApiData(Map<String, dynamic> apiItem, {List<Map<String, dynamic>>? pelaksanaList}) {
-    // Debug: Print data yang diterima
-    debugPrint('WorkOrderDetailItemController - Data item yang diterima:');
-    debugPrint('Keys: ${apiItem.keys.toList()}');
-    debugPrint('hasManyPelaksana: ${apiItem['hasManyPelaksana']}');
-    
-    // Simpan data item untuk referensi
-    _currentItem = WorkOrderPlanningItem.fromMap(apiItem);
-    
-    // Load data pelaksana yang tersedia dari API
-    if (pelaksanaList != null) {
-      availablePelaksana = pelaksanaList;
-    } else {
-      // Fetch data pelaksana dari API terpisah
-      fetchAvailablePelaksana();
+  void initializeWithApiData(Map<String, dynamic> apiItem, {List<Pelaksana>? pelaksanaList}) {
+    try {
+      // Debug: Print data yang diterima
+      debugPrint('WorkOrderDetailItemController - Data item yang diterima:');
+      debugPrint('Keys: ${apiItem.keys.toList()}');
+      debugPrint('hasManyPelaksana: ${apiItem['hasManyPelaksana']}');
+      
+      // Simpan data item untuk referensi
+      _currentItem = WorkOrderPlanningItem.fromMap(apiItem);
+      
+      // Load data pelaksana yang tersedia dari API
+      if (pelaksanaList != null && pelaksanaList.isNotEmpty) {
+        availablePelaksana = pelaksanaList;
+        debugPrint('WorkOrderDetailItemController - Loaded ${pelaksanaList.length} pelaksana from parameter');
+      } else {
+        // Fetch data pelaksana dari API terpisah
+        debugPrint('WorkOrderDetailItemController - Fetching pelaksana from API');
+        fetchAvailablePelaksana();
+      }
+      
+      // Load data pelaksana yang sudah ada dari API response
+      _loadExistingAssignmentsFromApi(apiItem);
+      
+      // Validasi dan perbaiki assignment yang sudah ada
+      _validateAndFixAssignments();
+      
+      debugPrint('WorkOrderDetailItemController - Initialization completed successfully');
+    } catch (e) {
+      debugPrint('WorkOrderDetailItemController - Error during initialization: $e');
+      // Tetap lanjutkan dengan data yang ada
     }
-    
-    // Load data pelaksana yang sudah ada dari API response
-    _loadExistingAssignmentsFromApi(apiItem);
-    
-    // Validasi dan perbaiki assignment yang sudah ada
-    _validateAndFixAssignments();
   }
   
   // Method untuk mengekstrak data pelaksana dari API response
   void _extractPelaksanaFromApiResponse(Map<String, dynamic> apiItem) {
     // Coba ambil data pelaksana dari berbagai kemungkinan struktur API
-    List<Map<String, dynamic>> pelaksanaData = [];
+    List<Pelaksana> pelaksanaData = [];
     
     // Cek apakah ada data pelaksana di level work order
     if (apiItem['available_pelaksana'] != null) {
       final availablePelaksanaList = apiItem['available_pelaksana'] as List<dynamic>?;
       if (availablePelaksanaList != null) {
         for (var pelaksana in availablePelaksanaList) {
-          pelaksanaData.add({
-            'id': pelaksana['id'],
-            'kode': pelaksana['kode'],
-            'nama': pelaksana['nama_pelaksana'] ?? pelaksana['nama'],
-            'jabatan': pelaksana['jabatan'],
-            'departemen': pelaksana['departemen'],
-            'level': pelaksana['level'],
-          });
+          pelaksanaData.add(Pelaksana.fromMap(pelaksana as Map<String, dynamic>));
         }
       }
     }
@@ -99,23 +102,20 @@ class WorkOrderDetailItemController extends ChangeNotifier {
       
       // Buat data pelaksana default untuk ID yang ada
       for (var id in existingPelaksanaIds) {
-        pelaksanaData.add({
-          'id': id,
-          'kode': 'PLK$id',
-          'nama': 'Pelaksana $id',
-          'jabatan': null,
-          'departemen': null,
-          'level': null,
-        });
+        pelaksanaData.add(Pelaksana(
+          id: id,
+          kode: 'PLK$id',
+          namaPelaksana: 'Pelaksana $id',
+          level: '1',
+        ));
       }
     }
     
     // Pastikan tidak ada duplikasi berdasarkan ID
-    final uniquePelaksana = <int, Map<String, dynamic>>{};
+    final uniquePelaksana = <int, Pelaksana>{};
     for (var pelaksana in pelaksanaData) {
-      final id = pelaksana['id'] as int;
-      if (!uniquePelaksana.containsKey(id)) {
-        uniquePelaksana[id] = pelaksana;
+      if (!uniquePelaksana.containsKey(pelaksana.id)) {
+        uniquePelaksana[pelaksana.id] = pelaksana;
       }
     }
     
@@ -124,41 +124,52 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   
   // Load data pelaksana yang sudah ada dari API response
   void _loadExistingAssignmentsFromApi(Map<String, dynamic> apiItem) {
-    assignments.clear();
-    
-    // Debug: Print data pelaksana
-    debugPrint('_loadExistingAssignmentsFromApi - hasManyPelaksana: ${apiItem['hasManyPelaksana']}');
-    
-    // Ambil data pelaksana dari hasManyPelaksana
-    final pelaksanaList = apiItem['hasManyPelaksana'] as List<dynamic>?;
-    
-    debugPrint('_loadExistingAssignmentsFromApi - pelaksanaList: $pelaksanaList');
-    debugPrint('_loadExistingAssignmentsFromApi - pelaksanaList length: ${pelaksanaList?.length ?? 0}');
-    
-    if (pelaksanaList != null && pelaksanaList.isNotEmpty) {
-      for (var pelaksanaData in pelaksanaList) {
-        // Ambil nama pelaksana berdasarkan pelaksana_id
-        String namaPelaksana = _getPelaksanaNameById(pelaksanaData['pelaksana_id']);
-        
-        debugPrint('_loadExistingAssignmentsFromApi - Adding assignment: $namaPelaksana');
-        
-        assignments.add({
-          'id': pelaksanaData['id'],
-          'qty': pelaksanaData['qty'],
-          'berat': pelaksanaData['weight'] ?? 0.0,
-          'pelaksana': namaPelaksana,
-          'pelaksana_id': pelaksanaData['pelaksana_id'],
-          'tanggal': _formatDateFromApi(pelaksanaData['tanggal']),
-          'jamMulai': pelaksanaData['jam_mulai'],
-          'jamSelesai': pelaksanaData['jam_selesai'],
-          'catatan': pelaksanaData['catatan'],
-          'status': 'assigned',
-        });
+    try {
+      assignments.clear();
+      
+      // Debug: Print data pelaksana
+      debugPrint('_loadExistingAssignmentsFromApi - hasManyPelaksana: ${apiItem['hasManyPelaksana']}');
+      
+      // Ambil data pelaksana dari hasManyPelaksana
+      final pelaksanaList = apiItem['hasManyPelaksana'] as List<dynamic>?;
+      
+      debugPrint('_loadExistingAssignmentsFromApi - pelaksanaList: $pelaksanaList');
+      debugPrint('_loadExistingAssignmentsFromApi - pelaksanaList length: ${pelaksanaList?.length ?? 0}');
+      
+      if (pelaksanaList != null && pelaksanaList.isNotEmpty) {
+        for (var pelaksanaData in pelaksanaList) {
+          try {
+            // Ambil nama pelaksana berdasarkan pelaksana_id
+            String namaPelaksana = _getPelaksanaNameById(pelaksanaData['pelaksana_id']);
+            
+            debugPrint('_loadExistingAssignmentsFromApi - Adding assignment: $namaPelaksana');
+            
+            assignments.add({
+              'id': pelaksanaData['id'],
+              'qty': pelaksanaData['qty'],
+              'berat': pelaksanaData['weight'] ?? 0.0,
+              'pelaksana': namaPelaksana,
+              'pelaksana_id': pelaksanaData['pelaksana_id'],
+              'tanggal': _formatDateFromApi(pelaksanaData['tanggal']),
+              'jamMulai': pelaksanaData['jam_mulai'],
+              'jamSelesai': pelaksanaData['jam_selesai'],
+              'catatan': pelaksanaData['catatan'],
+              'status': 'assigned',
+            });
+          } catch (e) {
+            debugPrint('_loadExistingAssignmentsFromApi - Error processing pelaksana data: $e');
+            // Skip this pelaksana and continue
+          }
+        }
       }
+      
+      debugPrint('_loadExistingAssignmentsFromApi - Final assignments: ${assignments.length}');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('_loadExistingAssignmentsFromApi - Error: $e');
+      // Tetap lanjutkan dengan assignments kosong
+      notifyListeners();
     }
-    
-    debugPrint('_loadExistingAssignmentsFromApi - Final assignments: ${assignments.length}');
-    notifyListeners();
   }
   
   // Load data pelaksana yang sudah ada
@@ -202,9 +213,11 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   // Helper method untuk mendapatkan nama pelaksana berdasarkan ID
   String _getPelaksanaNameById(int pelaksanaId) {
     // Cari pelaksana berdasarkan ID dari data yang tersedia
-    for (var pelaksana in availablePelaksana) {
-      if (pelaksana['id'] == pelaksanaId) {
-        return pelaksana['nama_pelaksana'] ?? pelaksana['nama'] ?? 'Pelaksana $pelaksanaId';
+    if (availablePelaksana.isNotEmpty) {
+      for (var pelaksana in availablePelaksana) {
+        if (pelaksana.id == pelaksanaId) {
+          return pelaksana.namaPelaksana;
+        }
       }
     }
     return 'Pelaksana $pelaksanaId';
@@ -218,9 +231,8 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   List<String> get getAvailablePelaksana {
     // Pastikan tidak ada duplikasi dan filter null values
     final names = availablePelaksana
-        .map((pelaksana) => pelaksana['nama'] as String?)
-        .where((name) => name != null && name.isNotEmpty)
-        .cast<String>()
+        .map((pelaksana) => pelaksana.namaPelaksana)
+        .where((name) => name.isNotEmpty)
         .toSet() // Remove duplicates
         .toList();
     
@@ -229,10 +241,10 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   }
   
   // Getter untuk mendapatkan available pelaksana dengan detail
-  List<Map<String, dynamic>> get getAvailablePelaksanaWithDetails => availablePelaksana;
+  List<Pelaksana> get getAvailablePelaksanaWithDetails => availablePelaksana;
   
   // Method untuk mengupdate data pelaksana yang tersedia
-  void updateAvailablePelaksana(List<Map<String, dynamic>> pelaksanaList) {
+  void updateAvailablePelaksana(List<Pelaksana> pelaksanaList) {
     availablePelaksana = pelaksanaList;
     notifyListeners();
   }
@@ -287,17 +299,9 @@ class WorkOrderDetailItemController extends ChangeNotifier {
         }
         
         // Convert to our format
-        List<Map<String, dynamic>> pelaksanaData = [];
+        List<Pelaksana> pelaksanaData = [];
         for (var pelaksana in pelaksanaList) {
-          pelaksanaData.add({
-            'id': pelaksana['id'],
-            'kode': pelaksana['kode'],
-            'nama': pelaksana['nama_pelaksana'],
-            'nama_pelaksana': pelaksana['nama_pelaksana'],
-            'jabatan': pelaksana['jabatan'],
-            'departemen': pelaksana['departemen'],
-            'level': pelaksana['level'],
-          });
+          pelaksanaData.add(Pelaksana.fromMap(pelaksana as Map<String, dynamic>));
         }
         
         availablePelaksana = pelaksanaData;
@@ -313,7 +317,11 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   }
 
   // Method untuk mendapatkan icon berdasarkan jenis barang
-  IconData getItemIcon(String jenisBarang) {
+  IconData getItemIcon(String? jenisBarang) {
+    if (jenisBarang == null || jenisBarang.isEmpty) {
+      return Icons.inventory;
+    }
+    
     switch (jenisBarang.toLowerCase()) {
       case 'bronze':
         return Icons.circle;
@@ -325,12 +333,19 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   }
 
   // Method untuk mendapatkan suffix luas berdasarkan jenis barang
-  String getLuasSuffix(String jenisBarang) {
+  String getLuasSuffix(String? jenisBarang) {
+    if (jenisBarang == null || jenisBarang.isEmpty) {
+      return '';
+    }
     return jenisBarang == 'Aluminium' ? ' (mm²)' : '';
   }
 
   // Method untuk mendapatkan warna border assignment berdasarkan status
-  Color getAssignmentBorderColor(String status) {
+  Color getAssignmentBorderColor(String? status) {
+    if (status == null || status.isEmpty) {
+      return Colors.grey[600]!;
+    }
+    
     switch (status) {
       case 'assigned':
         return Colors.green[600]!;
@@ -345,7 +360,20 @@ class WorkOrderDetailItemController extends ChangeNotifier {
 
   // Method untuk menghitung total qty
   int calculateTotalQty() {
-    return assignments.fold(0, (int sum, assignment) => sum + (assignment['qty'] as int));
+    try {
+      return assignments.fold(0, (int sum, assignment) {
+        final qty = assignment['qty'];
+        if (qty is int) {
+          return sum + qty;
+        } else if (qty is String) {
+          return sum + (int.tryParse(qty) ?? 0);
+        }
+        return sum;
+      });
+    } catch (e) {
+      debugPrint('Error calculating total qty: $e');
+      return 0;
+    }
   }
 
   // Method untuk menghitung total assigned
@@ -417,8 +445,8 @@ class WorkOrderDetailItemController extends ChangeNotifier {
     if (newValue != null) {
       // Cari ID pelaksana berdasarkan nama
       for (var pelaksana in availablePelaksana) {
-        if (pelaksana['nama'] == newValue) {
-          assignments[index]['pelaksana_id'] = pelaksana['id'];
+        if (pelaksana.namaPelaksana == newValue) {
+          assignments[index]['pelaksana_id'] = pelaksana.id;
           break;
         }
       }
