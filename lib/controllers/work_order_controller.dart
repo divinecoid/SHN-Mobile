@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/work_order_planning_model.dart';
+import '../utils/auth_helper.dart';
 
 class WorkOrderController extends ChangeNotifier {
   // State management
@@ -44,6 +45,7 @@ class WorkOrderController extends ChangeNotifier {
   Future<void> fetchWorkOrderPlanning({
     int page = 1,
     int perPage = 100,
+    BuildContext? context,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -94,6 +96,9 @@ class WorkOrderController extends ChangeNotifier {
           throw Exception(workOrderResponse.message);
         }
       } else if (response.statusCode == 401) {
+        if (context != null) {
+          await AuthHelper.handleUnauthorized(context, 'Sesi Anda telah berakhir. Silakan login kembali.');
+        }
         throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
       } else {
         throw Exception('Gagal mengambil data: ${response.statusCode}');
@@ -108,8 +113,8 @@ class WorkOrderController extends ChangeNotifier {
   }
 
   // Method untuk refresh data
-  Future<void> refreshData() async {
-    await fetchWorkOrderPlanning();
+  Future<void> refreshData({BuildContext? context}) async {
+    await fetchWorkOrderPlanning(context: context);
   }
 
   // Method untuk load more data (pagination)
@@ -176,7 +181,7 @@ class WorkOrderController extends ChangeNotifier {
   }
 
   // Method untuk mengambil detail work order planning berdasarkan ID
-  Future<WorkOrderPlanning?> fetchWorkOrderPlanningDetail(int id) async {
+  Future<WorkOrderPlanning?> fetchWorkOrderPlanningDetail(int id, {BuildContext? context}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -228,6 +233,9 @@ class WorkOrderController extends ChangeNotifier {
           throw Exception(workOrderResponse.message);
         }
       } else if (response.statusCode == 401) {
+        if (context != null) {
+          await AuthHelper.handleUnauthorized(context, 'Sesi Anda telah berakhir. Silakan login kembali.');
+        }
         throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
       } else if (response.statusCode == 404) {
         throw Exception('Work Order tidak ditemukan.');

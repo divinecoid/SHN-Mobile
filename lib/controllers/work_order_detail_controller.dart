@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
 import '../models/work_order_planning_model.dart';
 import '../models/pelaksana_model.dart';
+import '../utils/auth_helper.dart';
 
 class WorkOrderDetailController extends ChangeNotifier {
   List<WorkOrderPlanningItem> _workOrderItems = [];
@@ -145,7 +146,7 @@ class WorkOrderDetailController extends ChangeNotifier {
   }
 
   // Method untuk mengambil data detail work order planning berdasarkan ID
-  Future<void> fetchWorkOrderPlanningDetail(int id) async {
+  Future<void> fetchWorkOrderPlanningDetail(int id, {BuildContext? context}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -197,6 +198,9 @@ class WorkOrderDetailController extends ChangeNotifier {
           throw Exception(workOrderResponse.message);
         }
       } else if (response.statusCode == 401) {
+        if (context != null) {
+          await AuthHelper.handleUnauthorized(context, 'Sesi Anda telah berakhir. Silakan login kembali.');
+        }
         throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
       } else if (response.statusCode == 404) {
         throw Exception('Work Order tidak ditemukan.');
@@ -355,7 +359,7 @@ class WorkOrderDetailController extends ChangeNotifier {
   }
 
   // Method untuk fetch data pelaksana dari API
-  Future<void> fetchAvailablePelaksana() async {
+  Future<void> fetchAvailablePelaksana({BuildContext? context}) async {
     _isLoadingPelaksana = true;
     _pelaksanaErrorMessage = null;
     notifyListeners();
@@ -398,6 +402,9 @@ class WorkOrderDetailController extends ChangeNotifier {
           throw Exception(pelaksanaResponse.message);
         }
       } else if (response.statusCode == 401) {
+        if (context != null) {
+          await AuthHelper.handleUnauthorized(context, 'Sesi Anda telah berakhir. Silakan login kembali.');
+        }
         throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
       } else if (response.statusCode == 404) {
         throw Exception('Data pelaksana tidak ditemukan.');
@@ -435,7 +442,7 @@ class WorkOrderDetailController extends ChangeNotifier {
   }
 
   // Method untuk mengambil data detail work order item berdasarkan ID
-  Future<Map<String, dynamic>?> fetchWorkOrderItemDetail(int itemId) async {
+  Future<Map<String, dynamic>?> fetchWorkOrderItemDetail(int itemId, {BuildContext? context}) async {
     try {
       final token = await _getAuthToken();
       if (token == null) {
@@ -480,6 +487,9 @@ class WorkOrderDetailController extends ChangeNotifier {
           throw Exception(jsonData['message'] ?? 'Gagal mengambil data item detail');
         }
       } else if (response.statusCode == 401) {
+        if (context != null) {
+          await AuthHelper.handleUnauthorized(context, 'Sesi Anda telah berakhir. Silakan login kembali.');
+        }
         throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
       } else if (response.statusCode == 404) {
         throw Exception('Item work order tidak ditemukan.');

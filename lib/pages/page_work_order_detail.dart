@@ -38,13 +38,13 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
     // Fetch data detail jika ada workOrderId
     if (widget.workOrderId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _controller.fetchWorkOrderPlanningDetail(widget.workOrderId!);
+        _controller.fetchWorkOrderPlanningDetail(widget.workOrderId!, context: context);
       });
     }
     
     // Fetch data pelaksana saat halaman dibuka
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.fetchAvailablePelaksana();
+      _controller.fetchAvailablePelaksana(context: context);
     });
   }
 
@@ -121,7 +121,7 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
                           onPressed: () {
                             controller.clearError();
                             if (widget.workOrderId != null) {
-                              controller.fetchWorkOrderPlanningDetail(widget.workOrderId!);
+                              controller.fetchWorkOrderPlanningDetail(widget.workOrderId!, context: context);
                             }
                           },
                           style: ElevatedButton.styleFrom(

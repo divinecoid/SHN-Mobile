@@ -6,6 +6,7 @@ import 'page_terima_barang.dart';
 import 'page_mutasi_barang.dart';
 import 'page_stock_opname.dart';
 import 'page_work_order.dart';
+import '../utils/auth_helper.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -99,14 +100,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
     // If user confirms logout
     if (shouldLogout == true) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-      
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const LoginPage()),
-        );
-      }
+      await AuthHelper.logout(context);
     }
   }
 

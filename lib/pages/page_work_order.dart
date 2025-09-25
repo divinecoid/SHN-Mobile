@@ -20,7 +20,7 @@ class _WorkOrderPageState extends State<WorkOrderPage> {
     _controller = WorkOrderController();
     // Fetch data saat halaman dimuat
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.fetchWorkOrderPlanning();
+      _controller.fetchWorkOrderPlanning(context: context);
     });
   }
 
@@ -113,7 +113,7 @@ class _WorkOrderPageState extends State<WorkOrderPage> {
                   ElevatedButton(
                     onPressed: () {
                       controller.clearError();
-                      controller.fetchWorkOrderPlanning();
+                      controller.fetchWorkOrderPlanning(context: context);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue[600],
@@ -164,7 +164,7 @@ class _WorkOrderPageState extends State<WorkOrderPage> {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: () => controller.refreshData(),
+                    onPressed: () => controller.refreshData(context: context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue[600],
                       foregroundColor: Colors.white,
@@ -183,7 +183,7 @@ class _WorkOrderPageState extends State<WorkOrderPage> {
 
         // Data List with Pull to Refresh
         return RefreshIndicator(
-          onRefresh: () => controller.refreshData(),
+          onRefresh: () => controller.refreshData(context: context),
           color: Colors.blue,
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16),

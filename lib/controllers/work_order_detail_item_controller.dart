@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/work_order_planning_model.dart';
 import '../models/pelaksana_model.dart';
+import '../utils/auth_helper.dart';
 
 class WorkOrderDetailItemController extends ChangeNotifier {
   final TextEditingController qtyActualController = TextEditingController();
@@ -257,7 +258,7 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   }
   
   // Method untuk fetch data pelaksana dari API
-  Future<void> fetchAvailablePelaksana() async {
+  Future<void> fetchAvailablePelaksana({BuildContext? context}) async {
     try {
       final token = await _getAuthToken();
       if (token == null) {
@@ -304,6 +305,11 @@ class WorkOrderDetailItemController extends ChangeNotifier {
         notifyListeners();
         
         debugPrint('Loaded ${pelaksanaData.length} pelaksana');
+      } else if (response.statusCode == 401) {
+        if (context != null) {
+          await AuthHelper.handleUnauthorized(context, 'Sesi Anda telah berakhir. Silakan login kembali.');
+        }
+        debugPrint('Unauthorized: Sesi telah berakhir');
       } else {
         debugPrint('Failed to fetch pelaksana: ${response.statusCode}');
       }
