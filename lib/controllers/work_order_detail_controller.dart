@@ -44,6 +44,7 @@ class WorkOrderDetailController extends ChangeNotifier {
         : null;
 
     return {
+      'id': item.id, // ID work order planning item
       'jenisBarang': item.jenisBarang?.namaJenis ?? _getJenisBarangName(item.jenisBarangId),
       'bentukBarang': item.bentukBarang?.namaBentuk ?? _getBentukBarangName(item.bentukBarangId),
       'grade': item.gradeBarang?.nama ?? _getGradeBarangName(item.gradeBarangId),
@@ -158,10 +159,18 @@ class WorkOrderDetailController extends ChangeNotifier {
       // Get base URL and endpoint from environment
       final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
       final workOrderDetailEndpoint = dotenv.env['API_DETAIL_WO'] ?? '/api/work-order-planning';
-      final url = Uri.parse('$baseUrl$workOrderDetailEndpoint/$id');
+      
+      // Build URL with query parameter directly in string
+      final urlString = '$baseUrl$workOrderDetailEndpoint/$id?create_actual=true';
+      debugPrint('URL String before parse: $urlString');
+      
+      final url = Uri.parse(urlString);
       
       // Debug: Print URL being used
       debugPrint('Work Order Detail URL: $url');
+      debugPrint('URL toString: ${url.toString()}');
+      debugPrint('Has query: ${url.hasQuery}');
+      debugPrint('Query string: ${url.query}');
 
       final response = await http.get(
         url,
@@ -423,6 +432,64 @@ class WorkOrderDetailController extends ChangeNotifier {
   // Method untuk mendapatkan list nama pelaksana untuk dropdown
   List<String> getPelaksanaNames() {
     return _availablePelaksana.map((pelaksana) => pelaksana.namaPelaksana).toList();
+  }
+
+  // Method untuk mengambil data detail work order item berdasarkan ID
+  Future<Map<String, dynamic>?> fetchWorkOrderItemDetail(int itemId) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('Token autentikasi tidak ditemukan. Silakan login kembali.');
+      }
+
+      // Get base URL and endpoint from environment
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final showItemEndpoint = dotenv.env['API_SHOW_ITEM'] ?? '/api/work-order-planning/item';
+      
+      // Build URL with query parameter
+      final urlString = '$baseUrl$showItemEndpoint/$itemId?create_actual=true';
+      debugPrint('Show Item URL String: $urlString');
+      
+      final url = Uri.parse(urlString);
+      
+      // Debug: Print URL being used
+      debugPrint('Show Item API URL: $url');
+      debugPrint('URL toString: ${url.toString()}');
+      debugPrint('Has query: ${url.hasQuery}');
+      debugPrint('Query string: ${url.query}');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+      
+      // Debug: Print response details
+      debugPrint('Show Item Response Status Code: ${response.statusCode}');
+      debugPrint('Show Item Response Body: ${response.body.length > 200 ? '${response.body.substring(0, 200)}...' : response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        
+        if (jsonData['success'] == true) {
+          return jsonData['data'];
+        } else {
+          throw Exception(jsonData['message'] ?? 'Gagal mengambil data item detail');
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
+      } else if (response.statusCode == 404) {
+        throw Exception('Item work order tidak ditemukan.');
+      } else {
+        throw Exception('Gagal mengambil data item detail: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error fetching work order item detail: $e');
+      rethrow;
+    }
   }
 
 }

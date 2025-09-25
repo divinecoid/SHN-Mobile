@@ -693,39 +693,71 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
     );
   }
 
-  void _showItemDetailDialog(Map<String, dynamic> item, int index) {
+  void _showItemDetailDialog(Map<String, dynamic> item, int index) async {
     try {
-      debugPrint('_showItemDetailDialog - Starting navigation to detail item');
-      debugPrint('_showItemDetailDialog - Item data: ${item.keys.toList()}');
-      debugPrint('_showItemDetailDialog - Item index: $index');
-      
       // Cek apakah controller tersedia di context
       WorkOrderDetailController? controller;
       try {
         controller = Provider.of<WorkOrderDetailController>(context, listen: false);
-        debugPrint('_showItemDetailDialog - Controller found, available pelaksana count: ${controller.availablePelaksana.length}');
       } catch (e) {
-        debugPrint('_showItemDetailDialog - Controller not found in context: $e');
         // Lanjutkan tanpa controller, akan fetch pelaksana di halaman detail
       }
-      
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => WorkOrderDetailItemPage(
-            item: item,
-            itemIndex: index,
-            workOrder: widget.workOrder,
-            availablePelaksana: controller?.availablePelaksana,
-          ),
+
+      // Tampilkan loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
         ),
-      ).then((result) {
-        debugPrint('_showItemDetailDialog - Navigation completed with result: $result');
-      }).catchError((error) {
-        debugPrint('_showItemDetailDialog - Navigation error: $error');
-      });
+      );
+
+      try {
+        // Ambil ID work order planning item dari data item
+        final itemId = item['id'] as int?;
+        if (itemId == null) {
+          throw Exception('ID item tidak ditemukan');
+        }
+
+        // Panggil API showItem untuk mendapatkan data detail item
+        Map<String, dynamic>? itemDetail;
+        if (controller != null) {
+          itemDetail = await controller.fetchWorkOrderItemDetail(itemId);
+        }
+
+        // Tutup loading dialog
+        Navigator.of(context).pop();
+
+        // Navigate ke halaman detail item dengan data yang sudah di-fetch
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WorkOrderDetailItemPage(
+              item: itemDetail ?? item, // Gunakan data dari API jika tersedia, fallback ke data asli
+              itemIndex: index,
+              workOrder: widget.workOrder,
+              availablePelaksana: controller?.availablePelaksana,
+            ),
+          ),
+        );
+      } catch (e) {
+        // Tutup loading dialog jika ada error
+        Navigator.of(context).pop();
+        
+        // Tampilkan error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error mengambil data item: $e'),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+      }
     } catch (e) {
-      debugPrint('_showItemDetailDialog - Error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error membuka detail item: $e'),
@@ -747,7 +779,7 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
       try {
         controller = Provider.of<WorkOrderDetailController>(context, listen: false);
       } catch (e) {
-        debugPrint('_saveWorkOrder - Controller not found: $e');
+        // Controller tidak ditemukan, gunakan fallback message
       }
       
       final message = controller?.getSuccessMessage(widget.workOrder['noWO']!, widget.isEditMode) ?? 
@@ -768,7 +800,6 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
       // Kembali ke halaman sebelumnya
       Navigator.pop(context);
     } catch (e) {
-      debugPrint('_saveWorkOrder - Error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error saving work order: $e'),

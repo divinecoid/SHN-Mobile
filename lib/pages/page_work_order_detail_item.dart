@@ -28,18 +28,11 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
   void initState() {
     super.initState();
     try {
-      debugPrint('WorkOrderDetailItemPage - initState started');
-      debugPrint('WorkOrderDetailItemPage - Item data: ${widget.item.keys.toList()}');
-      debugPrint('WorkOrderDetailItemPage - Item index: ${widget.itemIndex}');
-      debugPrint('WorkOrderDetailItemPage - Available pelaksana count: ${widget.availablePelaksana?.length ?? 0}');
-      
       _controller = WorkOrderDetailItemController();
       // Gunakan method baru untuk menangani data API response yang sebenarnya
       _controller.initializeWithApiData(widget.item, pelaksanaList: widget.availablePelaksana);
-      
-      debugPrint('WorkOrderDetailItemPage - initState completed successfully');
     } catch (e) {
-      debugPrint('WorkOrderDetailItemPage - Error in initState: $e');
+      // Error handling sudah ada di controller
     }
   }
 
@@ -52,7 +45,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
   @override
   Widget build(BuildContext context) {
     try {
-      debugPrint('WorkOrderDetailItemPage - build started');
       return ChangeNotifierProvider.value(
         value: _controller,
         child: Scaffold(
@@ -88,7 +80,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
         ),
       );
     } catch (e) {
-      debugPrint('WorkOrderDetailItemPage - Error in build: $e');
       return Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
@@ -146,7 +137,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
       return Consumer<WorkOrderDetailItemController>(
         builder: (context, controller, child) {
           try {
-            debugPrint('_buildDetailItemWOCard - Building detail card');
             return Container(
               decoration: BoxDecoration(
                 color: Colors.grey[900],
@@ -186,7 +176,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
               ),
             );
           } catch (e) {
-            debugPrint('_buildDetailItemWOCard - Error in Consumer builder: $e');
             return Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -203,7 +192,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
         },
       );
     } catch (e) {
-      debugPrint('_buildDetailItemWOCard - Error: $e');
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -221,7 +209,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
 
   Widget _buildItemDetailGrid(WorkOrderDetailItemController controller) {
     try {
-      debugPrint('_buildItemDetailGrid - Building item detail grid');
       return Column(
         children: [
           // Row 1: Jenis Barang, Bentuk Barang, Grade
@@ -274,7 +261,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
         ],
       );
     } catch (e) {
-      debugPrint('_buildItemDetailGrid - Error: $e');
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -315,7 +301,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
         ],
       );
     } catch (e) {
-      debugPrint('_buildDetailItem - Error: $e');
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -348,7 +333,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
       return Consumer<WorkOrderDetailItemController>(
         builder: (context, controller, child) {
           try {
-            debugPrint('_buildThumbnailAndInputSection - Building thumbnail section');
             return Container(
           decoration: BoxDecoration(
             color: Colors.grey[900],
@@ -379,7 +363,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                     border: Border.all(color: Colors.grey[700]!),
                   ),
                   child: InkWell(
-                    onTap: _selectThumbnail,
+                    onTap: _enlargeThumbnail,
                     borderRadius: BorderRadius.circular(8),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -391,7 +375,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Tap untuk memilih thumbnail',
+                          'Placeholder thumbnail',
                           style: TextStyle(
                             color: Colors.grey[400],
                             fontSize: 14,
@@ -455,7 +439,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
           ),
         );
           } catch (e) {
-            debugPrint('_buildThumbnailAndInputSection - Error in Consumer builder: $e');
             return Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -472,7 +455,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
         },
       );
     } catch (e) {
-      debugPrint('_buildThumbnailAndInputSection - Error: $e');
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -587,7 +569,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
       return Consumer<WorkOrderDetailItemController>(
         builder: (context, controller, child) {
           try {
-            debugPrint('_buildAssignmentSection - Building assignment section');
             return Container(
           decoration: BoxDecoration(
             color: Colors.grey[900],
@@ -687,7 +668,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
           ),
         );
           } catch (e) {
-            debugPrint('_buildAssignmentSection - Error in Consumer builder: $e');
             return Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -704,7 +684,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
         },
       );
     } catch (e) {
-      debugPrint('_buildAssignmentSection - Error: $e');
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -1008,7 +987,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
 
   Widget _buildSaveButton() {
     try {
-      debugPrint('_buildSaveButton - Building save button');
       return SizedBox(
         width: double.infinity,
         height: 50,
@@ -1032,7 +1010,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
         ),
       );
     } catch (e) {
-      debugPrint('_buildSaveButton - Error: $e');
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -1050,19 +1027,8 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
 
 
 
-  void _selectThumbnail() {
-    // Implementasi untuk memilih thumbnail
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Fitur upload thumbnail akan diimplementasikan'),
-        backgroundColor: Colors.blue[600],
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
-    );
+  void _enlargeThumbnail() {
+    // Implementasi untuk enlarge thumbnail
   }
 
   void _deleteAssignment(int index, WorkOrderDetailItemController controller) {
@@ -1117,12 +1083,10 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
 
   void _saveItemDetail() {
     try {
-      debugPrint('_saveItemDetail - Starting save process');
       final controller = Provider.of<WorkOrderDetailItemController>(context, listen: false);
       
       // Validasi input
       if (!controller.validateInput()) {
-        debugPrint('_saveItemDetail - Validation failed');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(controller.getValidationErrorMessage()),
@@ -1138,7 +1102,6 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
       }
 
       // Simpan data
-      debugPrint('_saveItemDetail - Saving data');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(controller.getSuccessMessage(widget.itemIndex)),
@@ -1152,10 +1115,8 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
       );
       
       // Kembali ke halaman sebelumnya
-      debugPrint('_saveItemDetail - Navigating back');
       Navigator.pop(context);
     } catch (e) {
-      debugPrint('_saveItemDetail - Error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error saving item detail: $e'),

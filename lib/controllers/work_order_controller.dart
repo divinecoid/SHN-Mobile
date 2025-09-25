@@ -190,10 +190,19 @@ class WorkOrderController extends ChangeNotifier {
       // Get base URL and endpoint from environment
       final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
       final workOrderDetailEndpoint = dotenv.env['API_DETAIL_WO'] ?? '/api/work-order-planning';
-      final url = Uri.parse('$baseUrl$workOrderDetailEndpoint/$id');
+      
+      // Build URL with query parameter directly in string
+      final urlString = '$baseUrl$workOrderDetailEndpoint/$id?create_actual=true';
+      debugPrint('URL String before parse: $urlString');
+      
+      final url = Uri.parse(urlString);
       
       // Debug: Print URL being used
       debugPrint('Work Order Detail URL: $url');
+      debugPrint('URL toString: ${url.toString()}');
+      debugPrint('Query Parameters: create_actual=true');
+      debugPrint('Has query: ${url.hasQuery}');
+      debugPrint('Query string: ${url.query}');
 
       final response = await http.get(
         url,

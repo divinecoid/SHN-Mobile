@@ -38,21 +38,14 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   // Method untuk initialize dengan data dari API response yang sebenarnya
   void initializeWithApiData(Map<String, dynamic> apiItem, {List<Pelaksana>? pelaksanaList}) {
     try {
-      // Debug: Print data yang diterima
-      debugPrint('WorkOrderDetailItemController - Data item yang diterima:');
-      debugPrint('Keys: ${apiItem.keys.toList()}');
-      debugPrint('hasManyPelaksana: ${apiItem['hasManyPelaksana']}');
-      
       // Simpan data item untuk referensi
       _currentItem = WorkOrderPlanningItem.fromMap(apiItem);
       
       // Load data pelaksana yang tersedia dari API
       if (pelaksanaList != null && pelaksanaList.isNotEmpty) {
         availablePelaksana = pelaksanaList;
-        debugPrint('WorkOrderDetailItemController - Loaded ${pelaksanaList.length} pelaksana from parameter');
       } else {
         // Fetch data pelaksana dari API terpisah
-        debugPrint('WorkOrderDetailItemController - Fetching pelaksana from API');
         fetchAvailablePelaksana();
       }
       
@@ -61,10 +54,7 @@ class WorkOrderDetailItemController extends ChangeNotifier {
       
       // Validasi dan perbaiki assignment yang sudah ada
       _validateAndFixAssignments();
-      
-      debugPrint('WorkOrderDetailItemController - Initialization completed successfully');
     } catch (e) {
-      debugPrint('WorkOrderDetailItemController - Error during initialization: $e');
       // Tetap lanjutkan dengan data yang ada
     }
   }
@@ -127,22 +117,30 @@ class WorkOrderDetailItemController extends ChangeNotifier {
     try {
       assignments.clear();
       
-      // Debug: Print data pelaksana
-      debugPrint('_loadExistingAssignmentsFromApi - hasManyPelaksana: ${apiItem['hasManyPelaksana']}');
-      
       // Ambil data pelaksana dari hasManyPelaksana
       final pelaksanaList = apiItem['hasManyPelaksana'] as List<dynamic>?;
-      
-      debugPrint('_loadExistingAssignmentsFromApi - pelaksanaList: $pelaksanaList');
-      debugPrint('_loadExistingAssignmentsFromApi - pelaksanaList length: ${pelaksanaList?.length ?? 0}');
       
       if (pelaksanaList != null && pelaksanaList.isNotEmpty) {
         for (var pelaksanaData in pelaksanaList) {
           try {
-            // Ambil nama pelaksana berdasarkan pelaksana_id
-            String namaPelaksana = _getPelaksanaNameById(pelaksanaData['pelaksana_id']);
-            
-            debugPrint('_loadExistingAssignmentsFromApi - Adding assignment: $namaPelaksana');
+            // Ambil nama pelaksana dari data pelaksana yang sudah ada
+            String namaPelaksana = 'Pelaksana ${pelaksanaData['pelaksana']['nama_pelaksana']}';
+            if (pelaksanaData['pelaksana'] != null) {
+              final pelaksanaInfo = pelaksanaData['pelaksana'] as Map<String, dynamic>;
+              namaPelaksana = pelaksanaInfo['nama_pelaksana'] ?? namaPelaksana;
+              
+              // Tambahkan pelaksana ke available list jika belum ada
+              final pelaksanaId = pelaksanaData['pelaksana']['id'] as int;
+              final existingPelaksana = availablePelaksana.where((p) => p.id == pelaksanaId).isEmpty;
+              if (existingPelaksana) {
+                availablePelaksana.add(Pelaksana(
+                  id: pelaksanaId,
+                  kode: pelaksanaInfo['kode'] ?? 'PLK$pelaksanaId',
+                  namaPelaksana: namaPelaksana,
+                  level: pelaksanaInfo['level'] ?? '1',
+                ));
+              }
+            }
             
             assignments.add({
               'id': pelaksanaData['id'],
@@ -157,16 +155,13 @@ class WorkOrderDetailItemController extends ChangeNotifier {
               'status': 'assigned',
             });
           } catch (e) {
-            debugPrint('_loadExistingAssignmentsFromApi - Error processing pelaksana data: $e');
             // Skip this pelaksana and continue
           }
         }
       }
       
-      debugPrint('_loadExistingAssignmentsFromApi - Final assignments: ${assignments.length}');
       notifyListeners();
     } catch (e) {
-      debugPrint('_loadExistingAssignmentsFromApi - Error: $e');
       // Tetap lanjutkan dengan assignments kosong
       notifyListeners();
     }
@@ -237,6 +232,7 @@ class WorkOrderDetailItemController extends ChangeNotifier {
         .toList();
     
     debugPrint('getAvailablePelaksana: $names');
+    debugPrint('getAvailablePelaksana - availablePelaksana count: ${availablePelaksana.length}');
     return names;
   }
   
@@ -460,6 +456,7 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   void _validateAndFixAssignments() {
     final availableNames = getAvailablePelaksana;
     debugPrint('_validateAndFixAssignments - Available names: $availableNames');
+    debugPrint('_validateAndFixAssignments - Current assignments: ${assignments.map((a) => a['pelaksana']).toList()}');
     
     for (int i = 0; i < assignments.length; i++) {
       final assignment = assignments[i];
@@ -467,10 +464,12 @@ class WorkOrderDetailItemController extends ChangeNotifier {
       
       debugPrint('_validateAndFixAssignments - Assignment $i: $currentPelaksana');
       
+      // Hanya reset jika pelaksana tidak valid dan bukan dari data yang sudah ada
       if (currentPelaksana != null && !availableNames.contains(currentPelaksana)) {
-        debugPrint('_validateAndFixAssignments - Invalid pelaksana "$currentPelaksana" found, resetting to null');
-        assignments[i]['pelaksana'] = null;
-        assignments[i]['pelaksana_id'] = null;
+        debugPrint('_validateAndFixAssignments - Invalid pelaksana "$currentPelaksana" found, but keeping it as it might be from existing data');
+        // Jangan reset, biarkan data yang sudah ada tetap ada
+        // assignments[i]['pelaksana'] = null;
+        // assignments[i]['pelaksana_id'] = null;
       }
     }
     
