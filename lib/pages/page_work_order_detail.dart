@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:convert';
 import '../controllers/work_order_detail_controller.dart';
 import '../models/work_order_planning_model.dart';
 import 'page_work_order_detail_item.dart';
@@ -834,6 +835,87 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
     );
   }
 
+  // Method untuk menampilkan dialog dengan JSON data sementara
+  Future<void> _showJsonDataDialog(Map<String, dynamic> allTempData) async {
+    // Convert data ke JSON string dengan formatting yang rapi
+    final jsonEncoder = const JsonEncoder.withIndent('  ');
+    final jsonString = jsonEncoder.convert(allTempData);
+    
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: Row(
+          children: [
+            Icon(Icons.data_object, color: Colors.blue[400], size: 24),
+            const SizedBox(width: 8),
+            const Text(
+              'Data Sementara JSON',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Container(
+          width: double.maxFinite,
+          height: 400,
+          decoration: BoxDecoration(
+            color: Colors.grey[850],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[700]!),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(12),
+            child: SelectableText(
+              jsonString,
+              style: TextStyle(
+                color: Colors.green[300],
+                fontSize: 12,
+                fontFamily: 'monospace',
+                height: 1.4,
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Tutup',
+              style: TextStyle(color: Colors.grey[400]),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // Copy to clipboard functionality
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('JSON data berhasil disalin ke clipboard'),
+                  backgroundColor: Colors.green[600],
+                  behavior: SnackBarBehavior.floating,
+                  margin: const EdgeInsets.all(16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              );
+              Navigator.of(context).pop();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue[600],
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Salin JSON'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showItemDetailDialog(Map<String, dynamic> item, int index) async {
     try {
       // Cek apakah controller tersedia di context
@@ -934,65 +1016,31 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
         ),
       );
 
-      WorkOrderDetailController? controller;
-      try {
-        controller = Provider.of<WorkOrderDetailController>(context, listen: false);
-      } catch (e) {
-        // Controller tidak ditemukan
-      }
-
-      if (controller != null && widget.workOrderId != null) {
+      // Gunakan controller yang sudah ada di state
+      if (widget.workOrderId != null) {
         // Ambil semua data sementara
-        final allTempData = await controller.getAllTemporaryWorkOrderData(widget.workOrderId!);
+        final allTempData = await _controller.getAllTemporaryWorkOrderData(widget.workOrderId!);
+        
+        // Tutup loading dialog
+        Navigator.of(context).pop();
         
         if (allTempData.isNotEmpty) {
-          // Simpan data actual ke API
-          final success = await controller.saveActualWorkOrderData(
-            widget.workOrderId!, 
-            allTempData, 
-            context: context
+          // Tampilkan dialog dengan JSON data sementara
+          await _showJsonDataDialog(allTempData);
+          
+          // Tampilkan pesan bahwa data sementara telah ditampilkan
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Data sementara untuk ${allTempData.length} item ditampilkan di dialog JSON'),
+              backgroundColor: Colors.blue[600],
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
           );
-          
-          // Tutup loading dialog
-          Navigator.of(context).pop();
-          
-          if (success) {
-            // Hapus data sementara setelah berhasil disimpan
-            await controller.clearAllTemporaryWorkOrderData(widget.workOrderId!);
-            
-            final message = controller.getSuccessMessage(widget.workOrder['noWO']!, widget.isEditMode);
-            
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(message),
-                backgroundColor: Colors.green[600],
-                behavior: SnackBarBehavior.floating,
-                margin: const EdgeInsets.all(16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            );
-            
-            // Kembali ke halaman sebelumnya
-            Navigator.pop(context);
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('Gagal menyimpan data actual. Silakan coba lagi.'),
-                backgroundColor: Colors.red[600],
-                behavior: SnackBarBehavior.floating,
-                margin: const EdgeInsets.all(16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            );
-          }
         } else {
-          // Tutup loading dialog
-          Navigator.of(context).pop();
-          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Tidak ada data sementara yang ditemukan. Silakan isi detail item terlebih dahulu.'),
@@ -1006,17 +1054,13 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
           );
         }
       } else {
-        // Fallback untuk controller yang tidak tersedia
         // Tutup loading dialog
         Navigator.of(context).pop();
         
-        final message = controller?.getSuccessMessage(widget.workOrder['noWO']!, widget.isEditMode) ?? 
-                       'Work Order ${widget.workOrder['noWO']} berhasil ${widget.isEditMode ? 'diupdate' : 'disimpan'}!';
-        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(message),
-            backgroundColor: Colors.green[600],
+            content: const Text('Work Order ID tidak tersedia.'),
+            backgroundColor: Colors.orange[600],
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(16),
             shape: RoundedRectangleBorder(
@@ -1024,9 +1068,6 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
             ),
           ),
         );
-        
-        // Kembali ke halaman sebelumnya
-        Navigator.pop(context);
       }
     } catch (e) {
       // Tutup loading dialog jika ada error
