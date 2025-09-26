@@ -157,6 +157,10 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
                     _buildWorkOrderItemsList(),
                     const SizedBox(height: 20),
                     
+                    // Temporary Data Status
+                    _buildTemporaryDataStatus(),
+                    const SizedBox(height: 20),
+                    
                     // Upload Photo Section
                     _buildUploadPhotoSection(),
                     const SizedBox(height: 24),
@@ -649,6 +653,64 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
     );
   }
 
+  Widget _buildTemporaryDataStatus() {
+    return Consumer<WorkOrderDetailController>(
+      builder: (context, controller, child) {
+        return FutureBuilder<Map<String, dynamic>>(
+          future: widget.workOrderId != null 
+              ? controller.getAllTemporaryWorkOrderData(widget.workOrderId!)
+              : Future.value({}),
+          builder: (context, snapshot) {
+            if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue[900]!.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue[600]!),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.save_alt,
+                      color: Colors.blue[300],
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Data Sementara Tersimpan',
+                            style: TextStyle(
+                              color: Colors.blue[300],
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${snapshot.data!.length} item memiliki data sementara yang belum disimpan ke server',
+                            style: TextStyle(
+                              color: Colors.blue[200],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildSaveButton() {
     return Consumer<WorkOrderDetailController>(
       builder: (context, controller, child) {
@@ -772,34 +834,117 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
     }
   }
 
-  void _saveWorkOrder() {
+  void _saveWorkOrder() async {
     try {
-      // Implementasi untuk menyimpan work order
+      // Tampilkan loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
       WorkOrderDetailController? controller;
       try {
         controller = Provider.of<WorkOrderDetailController>(context, listen: false);
       } catch (e) {
-        // Controller tidak ditemukan, gunakan fallback message
+        // Controller tidak ditemukan
+      }
+
+      if (controller != null && widget.workOrderId != null) {
+        // Ambil semua data sementara
+        final allTempData = await controller.getAllTemporaryWorkOrderData(widget.workOrderId!);
+        
+        if (allTempData.isNotEmpty) {
+          // Simpan data actual ke API
+          final success = await controller.saveActualWorkOrderData(
+            widget.workOrderId!, 
+            allTempData, 
+            context: context
+          );
+          
+          // Tutup loading dialog
+          Navigator.of(context).pop();
+          
+          if (success) {
+            // Hapus data sementara setelah berhasil disimpan
+            await controller.clearAllTemporaryWorkOrderData(widget.workOrderId!);
+            
+            final message = controller.getSuccessMessage(widget.workOrder['noWO']!, widget.isEditMode);
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(message),
+                backgroundColor: Colors.green[600],
+                behavior: SnackBarBehavior.floating,
+                margin: const EdgeInsets.all(16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            );
+            
+            // Kembali ke halaman sebelumnya
+            Navigator.pop(context);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Gagal menyimpan data actual. Silakan coba lagi.'),
+                backgroundColor: Colors.red[600],
+                behavior: SnackBarBehavior.floating,
+                margin: const EdgeInsets.all(16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            );
+          }
+        } else {
+          // Tutup loading dialog
+          Navigator.of(context).pop();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Tidak ada data sementara yang ditemukan. Silakan isi detail item terlebih dahulu.'),
+              backgroundColor: Colors.orange[600],
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          );
+        }
+      } else {
+        // Fallback untuk controller yang tidak tersedia
+        // Tutup loading dialog
+        Navigator.of(context).pop();
+        
+        final message = controller?.getSuccessMessage(widget.workOrder['noWO']!, widget.isEditMode) ?? 
+                       'Work Order ${widget.workOrder['noWO']} berhasil ${widget.isEditMode ? 'diupdate' : 'disimpan'}!';
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+        
+        // Kembali ke halaman sebelumnya
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      // Tutup loading dialog jika ada error
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
       }
       
-      final message = controller?.getSuccessMessage(widget.workOrder['noWO']!, widget.isEditMode) ?? 
-                     'Work Order ${widget.workOrder['noWO']} berhasil ${widget.isEditMode ? 'diupdate' : 'disimpan'}!';
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.green[600],
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-      );
-      
-      // Kembali ke halaman sebelumnya
-      Navigator.pop(context);
-    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error saving work order: $e'),

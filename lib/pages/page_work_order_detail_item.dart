@@ -31,8 +31,25 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
       _controller = WorkOrderDetailItemController();
       // Gunakan method baru untuk menangani data API response yang sebenarnya
       _controller.initializeWithApiData(widget.item, pelaksanaList: widget.availablePelaksana);
+      
+      // Load data sementara jika ada
+      _loadTemporaryData();
     } catch (e) {
       // Error handling sudah ada di controller
+    }
+  }
+
+  // Method untuk memuat data sementara
+  Future<void> _loadTemporaryData() async {
+    try {
+      final workOrderId = int.tryParse(widget.workOrder['id'] ?? '0') ?? 0;
+      final itemId = widget.item['id'] as int? ?? 0;
+      
+      if (workOrderId > 0 && itemId > 0) {
+        await _controller.loadTemporaryData(workOrderId, itemId);
+      }
+    } catch (e) {
+      debugPrint('Error loading temporary data: $e');
     }
   }
 
@@ -1001,7 +1018,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
             elevation: 3,
           ),
           child: const Text(
-            'Simpan',
+            'Simpan Sementara',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -1081,9 +1098,10 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
 
 
 
-  void _saveItemDetail() {
+  void _saveItemDetail() async {
     try {
-      final controller = Provider.of<WorkOrderDetailItemController>(context, listen: false);
+      // Gunakan controller yang sudah ada di state, bukan Provider.of
+      final controller = _controller;
       
       // Validasi input
       if (!controller.validateInput()) {
@@ -1101,7 +1119,14 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
         return;
       }
 
-      // Simpan data
+      // Ambil work order ID dari widget.workOrder
+      final workOrderId = int.tryParse(widget.workOrder['id'] ?? '0') ?? 0;
+      final itemId = widget.item['id'] as int? ?? 0;
+
+      // Simpan data sementara
+      await controller.saveTemporaryData(workOrderId, itemId);
+
+      // Tampilkan pesan sukses
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(controller.getSuccessMessage(widget.itemIndex)),

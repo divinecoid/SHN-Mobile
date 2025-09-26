@@ -495,7 +495,83 @@ class WorkOrderDetailItemController extends ChangeNotifier {
 
   // Method untuk mendapatkan message success
   String getSuccessMessage(int itemIndex) {
-    return 'Detail Item ${itemIndex + 1} berhasil disimpan!';
+    return 'Detail Item ${itemIndex + 1} berhasil disimpan sementara!';
+  }
+
+  // Method untuk menyimpan data sementara ke SharedPreferences
+  Future<void> saveTemporaryData(int workOrderId, int itemId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Buat key untuk data sementara berdasarkan work order ID dan item ID
+      final tempDataKey = 'temp_work_order_${workOrderId}_item_${itemId}';
+      
+      // Siapkan data yang akan disimpan
+      final tempData = {
+        'qtyActual': qtyActualController.text,
+        'beratActual': beratActualController.text,
+        'assignments': assignments,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+      
+      // Simpan ke SharedPreferences
+      await prefs.setString(tempDataKey, json.encode(tempData));
+      
+      debugPrint('Data sementara disimpan untuk work order $workOrderId, item $itemId');
+    } catch (e) {
+      debugPrint('Error saving temporary data: $e');
+    }
+  }
+
+  // Method untuk memuat data sementara dari SharedPreferences
+  Future<void> loadTemporaryData(int workOrderId, int itemId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final tempDataKey = 'temp_work_order_${workOrderId}_item_${itemId}';
+      
+      final tempDataString = prefs.getString(tempDataKey);
+      if (tempDataString != null) {
+        final tempData = json.decode(tempDataString) as Map<String, dynamic>;
+        
+        // Load data ke controller
+        qtyActualController.text = tempData['qtyActual'] ?? '';
+        beratActualController.text = tempData['beratActual'] ?? '';
+        
+        // Load assignments
+        if (tempData['assignments'] != null) {
+          assignments = List<Map<String, dynamic>>.from(
+            (tempData['assignments'] as List).map((item) => Map<String, dynamic>.from(item))
+          );
+        }
+        
+        notifyListeners();
+        debugPrint('Data sementara dimuat untuk work order $workOrderId, item $itemId');
+      }
+    } catch (e) {
+      debugPrint('Error loading temporary data: $e');
+    }
+  }
+
+  // Method untuk menghapus data sementara
+  Future<void> clearTemporaryData(int workOrderId, int itemId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final tempDataKey = 'temp_work_order_${workOrderId}_item_${itemId}';
+      
+      await prefs.remove(tempDataKey);
+      debugPrint('Data sementara dihapus untuk work order $workOrderId, item $itemId');
+    } catch (e) {
+      debugPrint('Error clearing temporary data: $e');
+    }
+  }
+
+  // Method untuk mendapatkan data yang akan dikirim ke API
+  Map<String, dynamic> getDataForApi() {
+    return {
+      'qtyActual': qtyActualController.text,
+      'beratActual': beratActualController.text,
+      'assignments': assignments,
+    };
   }
 
   @override

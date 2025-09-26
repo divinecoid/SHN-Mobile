@@ -134,7 +134,7 @@ class WorkOrderController extends ChangeNotifier {
       case 'planning':
         return Colors.orange[400]!;
       case 'actual':
-      case 'in_progress':
+      case 'on progress':
         return Colors.blue[400]!;
       case 'completed':
         return Colors.green[400]!;

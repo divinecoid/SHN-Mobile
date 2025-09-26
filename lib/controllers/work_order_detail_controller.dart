@@ -259,7 +259,7 @@ class WorkOrderDetailController extends ChangeNotifier {
 
   // Method untuk mendapatkan text button save berdasarkan mode
   String getSaveButtonText(bool isEditMode) {
-    return isEditMode ? 'UPDATE' : 'SIMPAN';
+    return isEditMode ? 'UPDATE ACTUAL' : 'SIMPAN ACTUAL';
   }
 
   // Method untuk mendapatkan message success berdasarkan mode
@@ -499,6 +499,106 @@ class WorkOrderDetailController extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error fetching work order item detail: $e');
       rethrow;
+    }
+  }
+
+  // Method untuk menyimpan data sementara work order item
+  Future<void> saveTemporaryWorkOrderItem(int workOrderId, int itemId, Map<String, dynamic> itemData) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final tempDataKey = 'temp_work_order_${workOrderId}_item_${itemId}';
+      
+      final tempData = {
+        'itemData': itemData,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+      
+      await prefs.setString(tempDataKey, json.encode(tempData));
+      debugPrint('Data sementara work order item disimpan untuk work order $workOrderId, item $itemId');
+    } catch (e) {
+      debugPrint('Error saving temporary work order item: $e');
+    }
+  }
+
+  // Method untuk memuat data sementara work order item
+  Future<Map<String, dynamic>?> loadTemporaryWorkOrderItem(int workOrderId, int itemId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final tempDataKey = 'temp_work_order_${workOrderId}_item_${itemId}';
+      
+      final tempDataString = prefs.getString(tempDataKey);
+      if (tempDataString != null) {
+        final tempData = json.decode(tempDataString) as Map<String, dynamic>;
+        return tempData['itemData'] as Map<String, dynamic>?;
+      }
+    } catch (e) {
+      debugPrint('Error loading temporary work order item: $e');
+    }
+    return null;
+  }
+
+  // Method untuk mendapatkan semua data sementara work order
+  Future<Map<String, dynamic>> getAllTemporaryWorkOrderData(int workOrderId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys();
+      
+      // Filter keys yang sesuai dengan work order ID
+      final workOrderKeys = keys.where((key) => key.startsWith('temp_work_order_${workOrderId}_item_')).toList();
+      
+      Map<String, dynamic> allTempData = {};
+      
+      for (String key in workOrderKeys) {
+        final tempDataString = prefs.getString(key);
+        if (tempDataString != null) {
+          final tempData = json.decode(tempDataString) as Map<String, dynamic>;
+          // Extract item ID from key
+          final itemId = key.split('_').last;
+          allTempData[itemId] = tempData;
+        }
+      }
+      
+      return allTempData;
+    } catch (e) {
+      debugPrint('Error getting all temporary work order data: $e');
+      return {};
+    }
+  }
+
+  // Method untuk menghapus semua data sementara work order
+  Future<void> clearAllTemporaryWorkOrderData(int workOrderId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys();
+      
+      // Filter keys yang sesuai dengan work order ID
+      final workOrderKeys = keys.where((key) => key.startsWith('temp_work_order_${workOrderId}_item_')).toList();
+      
+      for (String key in workOrderKeys) {
+        await prefs.remove(key);
+      }
+      
+      debugPrint('Semua data sementara work order $workOrderId dihapus');
+    } catch (e) {
+      debugPrint('Error clearing all temporary work order data: $e');
+    }
+  }
+
+  // Method untuk menyimpan data actual ke API (dummy implementation)
+  Future<bool> saveActualWorkOrderData(int workOrderId, Map<String, dynamic> allTempData, {BuildContext? context}) async {
+    try {
+      // TODO: Implementasi API call yang sebenarnya
+      // Untuk sekarang, hanya simulasi delay dan return true
+      await Future.delayed(const Duration(seconds: 2));
+      
+      debugPrint('Simulasi API call untuk menyimpan data actual work order $workOrderId');
+      debugPrint('Data yang akan dikirim: $allTempData');
+      
+      // Simulasi success
+      return true;
+    } catch (e) {
+      debugPrint('Error saving actual work order data: $e');
+      return false;
     }
   }
 
