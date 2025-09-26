@@ -54,6 +54,18 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
     super.dispose();
   }
 
+  // Method untuk refresh data saat kembali dari halaman detail item
+  Future<void> _refreshData() async {
+    if (widget.workOrderId != null) {
+      debugPrint('Refreshing data for work order ${widget.workOrderId}');
+      await _controller.loadAndUpdateTempData(widget.workOrderId!);
+      // Force rebuild dengan setState
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider.value(
@@ -285,16 +297,41 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
         const SizedBox(height: 12),
         Consumer<WorkOrderDetailController>(
           builder: (context, controller, child) {
-            return ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: controller.getWorkOrderItems.length,
-              itemBuilder: (context, index) {
-                final item = controller.getWorkOrderItems[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: _buildItemCard(item, index, controller),
-                );
+            return FutureBuilder<List<Map<String, dynamic>>>(
+              future: widget.workOrderId != null 
+                  ? controller.getWorkOrderItemsWithTempData(widget.workOrderId!)
+                  : Future.value(controller.getWorkOrderItems),
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  debugPrint('Displaying ${snapshot.data!.length} items with temp data');
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: snapshot.data!.length,
+                    itemBuilder: (context, index) {
+                      final item = snapshot.data![index];
+                      debugPrint('Item $index: qtyActual=${item['qtyActual']}, beratActual=${item['beratActual']}');
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: _buildItemCard(item, index, controller),
+                      );
+                    },
+                  );
+                } else {
+                  debugPrint('Using fallback data without temp data');
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: controller.getWorkOrderItems.length,
+                    itemBuilder: (context, index) {
+                      final item = controller.getWorkOrderItems[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: _buildItemCard(item, index, controller),
+                      );
+                    },
+                  );
+                }
               },
             );
           },
@@ -408,7 +445,11 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
           children: [
             Expanded(child: _buildDetailItem('Qty Planning', item['qtyPlanning'].toString())),
             const SizedBox(width: 12),
-            Expanded(child: _buildDetailItem('Qty Actual', item['qtyActual']?.toString() ?? '-')),
+            Expanded(child: _buildDetailItemWithHighlight(
+              'Qty Actual', 
+              item['qtyActual']?.toString() ?? '-',
+              item['qtyActual'] != null && item['qtyActual'] != '-'
+            )),
             const SizedBox(width: 12),
             Expanded(child: _buildDetailItem('Satuan', item['satuan'])),
           ],
@@ -420,7 +461,11 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
           children: [
             Expanded(child: _buildDetailItem('Berat Planning (kg)', item['beratPlanning'].toString())),
             const SizedBox(width: 12),
-            Expanded(child: _buildDetailItem('Berat Actual (kg)', item['beratActual']?.toString() ?? '-')),
+            Expanded(child: _buildDetailItemWithHighlight(
+              'Berat Actual (kg)', 
+              item['beratActual']?.toString() ?? '-',
+              item['beratActual'] != null && item['beratActual'] != '-'
+            )),
             const SizedBox(width: 12),
             Expanded(child: _buildDetailItem('Luas', '${controller.formatNumberWithCommas(item['luas'])}${controller.getLuasSuffix(item['jenisBarang'])}')),
           ],
@@ -464,6 +509,40 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
             color: Colors.white,
             fontSize: 14,
             fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Method untuk menampilkan detail item dengan highlight hijau untuk data yang sudah terset
+  Widget _buildDetailItemWithHighlight(String label, String value, bool isHighlighted) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey[400],
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: isHighlighted ? Colors.green[100] : Colors.transparent,
+            borderRadius: BorderRadius.circular(4),
+            border: isHighlighted ? Border.all(color: Colors.green[300]!, width: 1) : null,
+          ),
+          child: Text(
+            value,
+            style: TextStyle(
+              color: isHighlighted ? Colors.green[800] : Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],
@@ -791,17 +870,27 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
         Navigator.of(context).pop();
 
         // Navigate ke halaman detail item dengan data yang sudah di-fetch
-        Navigator.push(
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => WorkOrderDetailItemPage(
               item: itemDetail ?? item, // Gunakan data dari API jika tersedia, fallback ke data asli
               itemIndex: index,
-              workOrder: widget.workOrder,
+              workOrder: {
+                ...widget.workOrder,
+                'id': widget.workOrderId?.toString() ?? '0', // Tambahkan work order ID
+              },
               availablePelaksana: controller?.availablePelaksana,
             ),
           ),
         );
+        
+        // Refresh data setelah kembali dari halaman detail item
+        debugPrint('Refreshing data after returning from detail item');
+        await _refreshData();
+        
+        // Tambahkan delay kecil untuk memastikan data sementara sudah tersimpan
+        await Future.delayed(const Duration(milliseconds: 500));
       } catch (e) {
         // Tutup loading dialog jika ada error
         Navigator.of(context).pop();

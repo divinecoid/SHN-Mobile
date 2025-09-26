@@ -23,6 +23,33 @@ class WorkOrderDetailController extends ChangeNotifier {
     return _workOrderItems.map((item) => _convertItemToMap(item)).toList();
   }
 
+  // Method untuk mendapatkan data work order items dengan data sementara
+  Future<List<Map<String, dynamic>>> getWorkOrderItemsWithTempData(int workOrderId) async {
+    List<Map<String, dynamic>> items = [];
+    
+    for (var item in _workOrderItems) {
+      Map<String, dynamic> itemMap = _convertItemToMap(item);
+      
+      // Cek apakah ada data sementara untuk item ini
+      final tempData = await loadTemporaryWorkOrderItem(workOrderId, item.id);
+      debugPrint('Loading temp data for item ${item.id}: $tempData');
+      
+      if (tempData != null) {
+        // Update dengan data sementara
+        itemMap['qtyActual'] = tempData['qtyActual'];
+        itemMap['beratActual'] = tempData['beratActual'];
+        debugPrint('Updated item ${item.id} with temp data - qtyActual: ${tempData['qtyActual']}, beratActual: ${tempData['beratActual']}');
+      } else {
+        debugPrint('No temp data found for item ${item.id}');
+      }
+      
+      items.add(itemMap);
+    }
+    
+    debugPrint('Returning ${items.length} items with temp data');
+    return items;
+  }
+
   // Getter untuk mendapatkan data work order planning
   WorkOrderPlanning? get workOrderPlanning => _workOrderPlanning;
 
@@ -226,6 +253,123 @@ class WorkOrderDetailController extends ChangeNotifier {
   void clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+  // Method untuk refresh data dengan data sementara
+  Future<void> refreshDataWithTempData(int workOrderId) async {
+    debugPrint('Refreshing data with temp data for work order $workOrderId');
+    // Trigger rebuild dengan data sementara
+    notifyListeners();
+  }
+
+  // Method untuk memuat ulang data work order items dengan data sementara
+  Future<void> reloadWorkOrderItemsWithTempData(int workOrderId) async {
+    debugPrint('Reloading work order items with temp data for work order $workOrderId');
+    
+    // Ambil semua data sementara
+    final allTempData = await getAllTemporaryWorkOrderData(workOrderId);
+    debugPrint('Found ${allTempData.length} temporary data items');
+    
+    // Log semua data sementara yang ditemukan
+    for (var entry in allTempData.entries) {
+      final itemId = entry.key;
+      final tempData = entry.value;
+      debugPrint('Temp data for item $itemId: $tempData');
+    }
+    
+    // Trigger rebuild
+    notifyListeners();
+  }
+
+  // Method untuk memuat data sementara dan mengupdate UI
+  Future<void> loadAndUpdateTempData(int workOrderId) async {
+    debugPrint('Loading and updating temp data for work order $workOrderId');
+    
+    // Ambil semua data sementara
+    final allTempData = await getAllTemporaryWorkOrderData(workOrderId);
+    debugPrint('Found ${allTempData.length} temporary data items');
+    
+    // Log semua data sementara yang ditemukan
+    for (var entry in allTempData.entries) {
+      final itemId = entry.key;
+      final tempData = entry.value;
+      debugPrint('Temp data for item $itemId: $tempData');
+    }
+    
+    // Trigger rebuild
+    notifyListeners();
+  }
+
+  // Method untuk mendapatkan data work order items dengan data sementara yang sudah di-cache
+  List<Map<String, dynamic>> getWorkOrderItemsWithCachedTempData(int workOrderId) {
+    List<Map<String, dynamic>> items = [];
+    
+    for (var item in _workOrderItems) {
+      Map<String, dynamic> itemMap = _convertItemToMap(item);
+      
+      // Cek apakah ada data sementara yang sudah di-cache
+      final tempDataKey = 'temp_work_order_${workOrderId}_item_${item.id}';
+      debugPrint('Checking cached temp data for key: $tempDataKey');
+      
+      items.add(itemMap);
+    }
+    
+    return items;
+  }
+
+  // Method untuk mendapatkan data work order items dengan data sementara secara sinkron
+  List<Map<String, dynamic>> getWorkOrderItemsWithTempDataSync(int workOrderId) {
+    List<Map<String, dynamic>> items = [];
+    
+    for (var item in _workOrderItems) {
+      Map<String, dynamic> itemMap = _convertItemToMap(item);
+      
+      // Cek data sementara secara sinkron (akan di-load di background)
+      _loadTempDataForItem(workOrderId, item.id, itemMap);
+      
+      items.add(itemMap);
+    }
+    
+    return items;
+  }
+
+  // Method untuk memuat data sementara untuk item tertentu
+  void _loadTempDataForItem(int workOrderId, int itemId, Map<String, dynamic> itemMap) {
+    loadTemporaryWorkOrderItem(workOrderId, itemId).then((tempData) {
+      if (tempData != null) {
+        itemMap['qtyActual'] = tempData['qtyActual'];
+        itemMap['beratActual'] = tempData['beratActual'];
+        debugPrint('Updated item $itemId with temp data - qtyActual: ${tempData['qtyActual']}, beratActual: ${tempData['beratActual']}');
+        notifyListeners();
+      }
+    });
+  }
+
+  // Method untuk mendapatkan data work order items dengan data sementara secara langsung
+  Future<List<Map<String, dynamic>>> getWorkOrderItemsWithTempDataDirect(int workOrderId) async {
+    List<Map<String, dynamic>> items = [];
+    
+    for (var item in _workOrderItems) {
+      Map<String, dynamic> itemMap = _convertItemToMap(item);
+      
+      // Cek apakah ada data sementara untuk item ini
+      final tempData = await loadTemporaryWorkOrderItem(workOrderId, item.id);
+      debugPrint('Loading temp data for item ${item.id}: $tempData');
+      
+      if (tempData != null) {
+        // Update dengan data sementara
+        itemMap['qtyActual'] = tempData['qtyActual'];
+        itemMap['beratActual'] = tempData['beratActual'];
+        debugPrint('Updated item ${item.id} with temp data - qtyActual: ${tempData['qtyActual']}, beratActual: ${tempData['beratActual']}');
+      } else {
+        debugPrint('No temp data found for item ${item.id}');
+      }
+      
+      items.add(itemMap);
+    }
+    
+    debugPrint('Returning ${items.length} items with temp data');
+    return items;
   }
 
   // Method untuk mendapatkan warna status
@@ -529,7 +673,15 @@ class WorkOrderDetailController extends ChangeNotifier {
       final tempDataString = prefs.getString(tempDataKey);
       if (tempDataString != null) {
         final tempData = json.decode(tempDataString) as Map<String, dynamic>;
-        return tempData['itemData'] as Map<String, dynamic>?;
+        
+        // Cek apakah data memiliki struktur itemData (dari WorkOrderDetailController)
+        if (tempData.containsKey('itemData')) {
+          return tempData['itemData'] as Map<String, dynamic>?;
+        } 
+        // Jika tidak, berarti data langsung dari WorkOrderDetailItemController
+        else {
+          return tempData;
+        }
       }
     } catch (e) {
       debugPrint('Error loading temporary work order item: $e');
@@ -543,21 +695,28 @@ class WorkOrderDetailController extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final keys = prefs.getKeys();
       
+      debugPrint('All SharedPreferences keys: $keys');
+      debugPrint('Looking for keys starting with: temp_work_order_${workOrderId}_item_');
+      
       // Filter keys yang sesuai dengan work order ID
       final workOrderKeys = keys.where((key) => key.startsWith('temp_work_order_${workOrderId}_item_')).toList();
+      debugPrint('Found work order keys: $workOrderKeys');
       
       Map<String, dynamic> allTempData = {};
       
       for (String key in workOrderKeys) {
         final tempDataString = prefs.getString(key);
+        debugPrint('Reading key $key: $tempDataString');
         if (tempDataString != null) {
           final tempData = json.decode(tempDataString) as Map<String, dynamic>;
+          debugPrint('Decoded temp data for $key: $tempData');
           // Extract item ID from key
           final itemId = key.split('_').last;
           allTempData[itemId] = tempData;
         }
       }
       
+      debugPrint('Final allTempData: $allTempData');
       return allTempData;
     } catch (e) {
       debugPrint('Error getting all temporary work order data: $e');

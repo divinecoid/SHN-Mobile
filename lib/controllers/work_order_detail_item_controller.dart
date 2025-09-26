@@ -514,8 +514,17 @@ class WorkOrderDetailItemController extends ChangeNotifier {
         'timestamp': DateTime.now().toIso8601String(),
       };
       
+      debugPrint('Saving temporary data with key: $tempDataKey');
+      debugPrint('Data to save: $tempData');
+      debugPrint('Qty Actual: ${qtyActualController.text}');
+      debugPrint('Berat Actual: ${beratActualController.text}');
+      
       // Simpan ke SharedPreferences
       await prefs.setString(tempDataKey, json.encode(tempData));
+      
+      // Verifikasi bahwa data benar-benar tersimpan
+      final savedData = prefs.getString(tempDataKey);
+      debugPrint('Verification - saved data: $savedData');
       
       debugPrint('Data sementara disimpan untuk work order $workOrderId, item $itemId');
     } catch (e) {
