@@ -161,9 +161,12 @@ class WorkOrderDetailItemController extends ChangeNotifier {
         }
       }
       
+      // Update actual values setelah load assignments
+      _updateActualValues();
       notifyListeners();
     } catch (e) {
       // Tetap lanjutkan dengan assignments kosong
+      _updateActualValues();
       notifyListeners();
     }
   }
@@ -191,6 +194,9 @@ class WorkOrderDetailItemController extends ChangeNotifier {
         });
       }
     }
+    
+    // Update actual values setelah load assignments
+    _updateActualValues();
     notifyListeners();
   }
   
@@ -397,6 +403,7 @@ class WorkOrderDetailItemController extends ChangeNotifier {
       'catatan': null,
       'status': 'empty',
     });
+    _updateActualValues();
     notifyListeners();
   }
 
@@ -405,6 +412,7 @@ class WorkOrderDetailItemController extends ChangeNotifier {
     assignments[index]['status'] = 'pending';
     assignments[index]['qty'] = 0;
     assignments[index]['berat'] = 0.0;
+    _updateActualValues();
     notifyListeners();
   }
 
@@ -417,18 +425,21 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   // Method untuk menghapus assignment
   void deleteAssignment(int index) {
     assignments.removeAt(index);
+    _updateActualValues();
     notifyListeners();
   }
 
   // Method untuk update qty assignment
   void updateAssignmentQty(int index, String value) {
     assignments[index]['qty'] = int.tryParse(value) ?? 0;
+    _updateActualValues();
     notifyListeners();
   }
 
   // Method untuk update berat assignment
   void updateAssignmentBerat(int index, String value) {
     assignments[index]['berat'] = double.tryParse(value) ?? 0.0;
+    _updateActualValues();
     notifyListeners();
   }
 
@@ -480,7 +491,40 @@ class WorkOrderDetailItemController extends ChangeNotifier {
     }
     
     debugPrint('_validateAndFixAssignments - Final assignments: ${assignments.map((a) => a['pelaksana']).toList()}');
+    _updateActualValues();
     notifyListeners();
+  }
+
+  // Method untuk mengupdate actual qty dan weight berdasarkan assignments
+  void _updateActualValues() {
+    int totalQty = 0;
+    double totalWeight = 0.0;
+    
+    // Hitung total dari semua assignment yang memiliki pelaksana
+    for (var assignment in assignments) {
+      if (assignment['pelaksana'] != null && assignment['pelaksana'].toString().isNotEmpty) {
+        final qty = assignment['qty'];
+        final berat = assignment['berat'];
+        
+        if (qty is int) {
+          totalQty += qty;
+        } else if (qty is String) {
+          totalQty += int.tryParse(qty) ?? 0;
+        }
+        
+        if (berat is double) {
+          totalWeight += berat;
+        } else if (berat is String) {
+          totalWeight += double.tryParse(berat) ?? 0.0;
+        }
+      }
+    }
+    
+    // Update controller text fields
+    qtyActualController.text = totalQty.toString();
+    beratActualController.text = totalWeight.toString();
+    
+    debugPrint('_updateActualValues - Total Qty: $totalQty, Total Weight: $totalWeight');
   }
 
   // Method untuk validasi input
@@ -542,16 +586,15 @@ class WorkOrderDetailItemController extends ChangeNotifier {
       if (tempDataString != null) {
         final tempData = json.decode(tempDataString) as Map<String, dynamic>;
         
-        // Load data ke controller
-        qtyActualController.text = tempData['qtyActual'] ?? '';
-        beratActualController.text = tempData['beratActual'] ?? '';
-        
-        // Load assignments
+        // Load assignments terlebih dahulu
         if (tempData['assignments'] != null) {
           assignments = List<Map<String, dynamic>>.from(
             (tempData['assignments'] as List).map((item) => Map<String, dynamic>.from(item))
           );
         }
+        
+        // Update actual values berdasarkan assignments
+        _updateActualValues();
         
         notifyListeners();
         debugPrint('Data sementara dimuat untuk work order $workOrderId, item $itemId');

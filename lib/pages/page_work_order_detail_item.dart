@@ -412,6 +412,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                         'Actual Qty',
                         controller.qtyActualController,
                         'pcs',
+                        isReadOnly: true,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -420,6 +421,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                         'Actual Weight',
                         controller.beratActualController,
                         'kg',
+                        isReadOnly: true,
                       ),
                     ),
                   ],
@@ -487,7 +489,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
     }
   }
 
-  Widget _buildInputField(String label, TextEditingController controller, String suffix) {
+  Widget _buildInputField(String label, TextEditingController controller, String suffix, {bool isReadOnly = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -502,30 +504,46 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
         const SizedBox(height: 4),
         TextField(
           controller: controller,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
+          readOnly: isReadOnly,
+          style: TextStyle(
+            color: isReadOnly ? Colors.grey[300] : Colors.white, 
+            fontSize: 14,
+            fontWeight: isReadOnly ? FontWeight.w600 : FontWeight.normal,
+          ),
           keyboardType: TextInputType.number,
           decoration: InputDecoration(
             hintText: '0',
             hintStyle: TextStyle(color: Colors.grey[600], fontSize: 12),
             filled: true,
-            fillColor: Colors.grey[850],
+            fillColor: isReadOnly ? Colors.grey[800] : Colors.grey[850],
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide(color: Colors.grey[700]!),
+              borderSide: BorderSide(color: isReadOnly ? Colors.grey[600]! : Colors.grey[700]!),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide(color: Colors.grey[700]!),
+              borderSide: BorderSide(color: isReadOnly ? Colors.grey[600]! : Colors.grey[700]!),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide(color: Colors.blue[400]!),
+              borderSide: BorderSide(color: isReadOnly ? Colors.grey[600]! : Colors.blue[400]!),
             ),
             contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             suffixText: suffix,
             suffixStyle: TextStyle(color: Colors.grey[400], fontSize: 12),
           ),
         ),
+        if (isReadOnly) ...[
+          const SizedBox(height: 4),
+          Text(
+            'Otomatis dihitung dari assignment pelaksana',
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: 10,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
       ],
     );
   }
