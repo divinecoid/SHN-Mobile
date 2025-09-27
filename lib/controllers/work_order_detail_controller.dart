@@ -848,18 +848,57 @@ class WorkOrderDetailController extends ChangeNotifier {
     }
   }
 
-  // Method untuk menyimpan data actual ke API (dummy implementation)
+  // Method untuk menyimpan data actual ke API
   Future<bool> saveActualWorkOrderData(int workOrderId, Map<String, dynamic> allTempData, {BuildContext? context}) async {
     try {
-      // TODO: Implementasi API call yang sebenarnya
-      // Untuk sekarang, hanya simulasi delay dan return true
-      await Future.delayed(const Duration(seconds: 2));
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('Token autentikasi tidak ditemukan. Silakan login kembali.');
+      }
+
+      // Get base URL and endpoint from environment
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final workOrderActualEndpoint = dotenv.env['API_LIST_WO_ACT'] ?? '/api/work-order-actual';
+      final url = Uri.parse('$baseUrl$workOrderActualEndpoint');
       
-      debugPrint('Simulasi API call untuk menyimpan data actual work order $workOrderId');
+      // Debug: Print URL being used
+      debugPrint('Work Order Actual API URL: $url');
       debugPrint('Data yang akan dikirim: $allTempData');
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode(allTempData),
+      );
       
-      // Simulasi success
-      return true;
+      // Debug: Print response details
+      debugPrint('Work Order Actual Response Status Code: ${response.statusCode}');
+      debugPrint('Work Order Actual Response Body: ${response.body.length > 200 ? '${response.body.substring(0, 200)}...' : response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final jsonData = json.decode(response.body);
+        
+        if (jsonData['success'] == true) {
+          debugPrint('Work order actual berhasil disimpan');
+          return true;
+        } else {
+          throw Exception(jsonData['message'] ?? 'Gagal menyimpan data actual work order');
+        }
+      } else if (response.statusCode == 401) {
+        if (context != null) {
+          await AuthHelper.handleUnauthorized(context, 'Sesi Anda telah berakhir. Silakan login kembali.');
+        }
+        throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
+      } else if (response.statusCode == 422) {
+        final jsonData = json.decode(response.body);
+        throw Exception(jsonData['message'] ?? 'Data tidak valid');
+      } else {
+        throw Exception('Gagal menyimpan data actual work order: ${response.statusCode}');
+      }
     } catch (e) {
       debugPrint('Error saving actual work order data: $e');
       return false;

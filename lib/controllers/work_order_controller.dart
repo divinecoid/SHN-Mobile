@@ -136,7 +136,7 @@ class WorkOrderController extends ChangeNotifier {
       case 'actual':
       case 'on progress':
         return Colors.blue[400]!;
-      case 'completed':
+      case 'selesai':
         return Colors.green[400]!;
       case 'cancelled':
         return Colors.red[400]!;
