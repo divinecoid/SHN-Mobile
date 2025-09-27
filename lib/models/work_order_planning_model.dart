@@ -17,6 +17,7 @@ class WorkOrderPlanning {
   final SalesOrder? salesOrder;
   final Pelanggan? pelanggan;
   final Gudang? gudang;
+  final WorkOrderActual? workOrderActual;
   final DateTime? deletedAt;
 
   WorkOrderPlanning({
@@ -38,6 +39,7 @@ class WorkOrderPlanning {
     this.salesOrder,
     this.pelanggan,
     this.gudang,
+    this.workOrderActual,
     this.deletedAt,
   });
 
@@ -69,6 +71,9 @@ class WorkOrderPlanning {
       gudang: map['gudang'] != null 
           ? Gudang.fromMap(map['gudang'])
           : null,
+      workOrderActual: map['work_order_actual'] != null 
+          ? WorkOrderActual.fromMap(map['work_order_actual'])
+          : null,
       deletedAt: map['deleted_at'] != null 
           ? DateTime.tryParse(map['deleted_at'])
           : null,
@@ -95,6 +100,7 @@ class WorkOrderPlanning {
       'sales_order': salesOrder?.toMap(),
       'pelanggan': pelanggan?.toMap(),
       'gudang': gudang?.toMap(),
+      'work_order_actual': workOrderActual?.toMap(),
       'deleted_at': deletedAt?.toIso8601String(),
     };
   }
@@ -656,6 +662,42 @@ class GradeBarang {
       'id': id,
       'kode': kode,
       'nama': nama,
+    };
+  }
+}
+
+class WorkOrderActual {
+  final int id;
+  final int workOrderPlanningId;
+  final DateTime tanggalActual;
+  final String status;
+  final String? catatan;
+
+  WorkOrderActual({
+    required this.id,
+    required this.workOrderPlanningId,
+    required this.tanggalActual,
+    required this.status,
+    this.catatan,
+  });
+
+  factory WorkOrderActual.fromMap(Map<String, dynamic> map) {
+    return WorkOrderActual(
+      id: map['id'] ?? 0,
+      workOrderPlanningId: map['work_order_planning_id'] ?? 0,
+      tanggalActual: DateTime.tryParse(map['tanggal_actual'] ?? '') ?? DateTime.now(),
+      status: map['status'] ?? '',
+      catatan: map['catatan'],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'work_order_planning_id': workOrderPlanningId,
+      'tanggal_actual': tanggalActual.toIso8601String(),
+      'status': status,
+      'catatan': catatan,
     };
   }
 }

@@ -17,10 +17,50 @@ class WorkOrderDetailController extends ChangeNotifier {
   List<Pelaksana> _availablePelaksana = [];
   bool _isLoadingPelaksana = false;
   String? _pelaksanaErrorMessage;
+  
+  // Actual work order ID
+  int? _actualWorkOrderId;
 
   // Getter untuk mendapatkan data work order items
   List<Map<String, dynamic>> get getWorkOrderItems {
     return _workOrderItems.map((item) => _convertItemToMap(item)).toList();
+  }
+  
+  // Getter untuk actual work order ID
+  int? get actualWorkOrderId => _actualWorkOrderId;
+  
+  // Method untuk set actual work order ID
+  void setActualWorkOrderId(int? id) {
+    _actualWorkOrderId = id;
+    notifyListeners();
+  }
+  
+  // Method untuk test parsing JSON response
+  void testJsonParsing(Map<String, dynamic> jsonResponse) {
+    try {
+      final workOrderResponse = WorkOrderPlanningResult.fromMap(jsonResponse);
+      if (workOrderResponse.success) {
+        final workOrder = workOrderResponse.data;
+        debugPrint('Parsed Work Order ID: ${workOrder.id}');
+        debugPrint('Parsed Work Order Status: ${workOrder.status}');
+        
+        if (workOrder.workOrderActual != null) {
+          debugPrint('Parsed Actual Work Order ID: ${workOrder.workOrderActual!.id}');
+          debugPrint('Parsed Actual Work Order Status: ${workOrder.workOrderActual!.status}');
+          debugPrint('Parsed Actual Work Order Catatan: ${workOrder.workOrderActual!.catatan}');
+        } else {
+          debugPrint('No actual work order found in parsed data');
+        }
+        
+        debugPrint('Parsed Items Count: ${workOrder.workOrderPlanningItems.length}');
+        for (var item in workOrder.workOrderPlanningItems) {
+          debugPrint('Item ${item.id}: ${item.woItemUniqueId} - Qty: ${item.qty}');
+          debugPrint('  Pelaksana Count: ${item.pelaksana.length}');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error parsing JSON response: $e');
+    }
   }
 
   // Method untuk mendapatkan data work order items dengan data sementara
@@ -220,6 +260,15 @@ class WorkOrderDetailController extends ChangeNotifier {
         if (workOrderResponse.success) {
           _workOrderPlanning = workOrderResponse.data;
           _workOrderItems = workOrderResponse.data.workOrderPlanningItems;
+          
+          // Set actual work order ID jika ada
+          if (_workOrderPlanning?.workOrderActual != null) {
+            _actualWorkOrderId = _workOrderPlanning!.workOrderActual!.id;
+            debugPrint('Actual Work Order ID set to: $_actualWorkOrderId');
+          } else {
+            debugPrint('No actual work order found in response');
+          }
+          
           _errorMessage = null;
         } else {
           throw Exception(workOrderResponse.message);
@@ -717,10 +766,22 @@ class WorkOrderDetailController extends ChangeNotifier {
       }
       
       debugPrint('Final allTempData: $allTempData');
-      return allTempData;
+      
+      // Tambahkan workOrderId ke dalam response
+      final response = {
+        'actualWorkOrderId': _actualWorkOrderId,
+        'planningWorkOrderId': workOrderId,
+        'items': allTempData,
+      };
+      
+      return response;
     } catch (e) {
       debugPrint('Error getting all temporary work order data: $e');
-      return {};
+      return {
+        'actualWorkOrderId': _actualWorkOrderId,
+        'planningWorkOrderId': workOrderId,
+        'items': {},
+      };
     }
   }
 
