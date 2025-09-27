@@ -804,6 +804,50 @@ class WorkOrderDetailController extends ChangeNotifier {
     }
   }
 
+  // Method untuk memvalidasi apakah semua item sudah diproses
+  Future<bool> validateAllItemsProcessed(int workOrderId) async {
+    try {
+      // Ambil semua data sementara
+      final allTempData = await getAllTemporaryWorkOrderData(workOrderId);
+      final tempDataItems = allTempData['items'] as Map<String, dynamic>;
+      
+      // Hitung jumlah data sementara yang ada
+      final tempDataCount = tempDataItems.length;
+      
+      // Hitung jumlah total detail item
+      final totalDetailItems = _workOrderItems.length;
+      
+      debugPrint('Validasi item: Temp data count = $tempDataCount, Total detail items = $totalDetailItems');
+      
+      // Return true jika jumlah data sementara sama dengan jumlah detail item
+      return tempDataCount == totalDetailItems;
+    } catch (e) {
+      debugPrint('Error validating items processed: $e');
+      return false;
+    }
+  }
+
+  // Method untuk mendapatkan jumlah item yang belum diproses
+  Future<int> getUnprocessedItemsCount(int workOrderId) async {
+    try {
+      // Ambil semua data sementara
+      final allTempData = await getAllTemporaryWorkOrderData(workOrderId);
+      final tempDataItems = allTempData['items'] as Map<String, dynamic>;
+      
+      // Hitung jumlah data sementara yang ada
+      final tempDataCount = tempDataItems.length;
+      
+      // Hitung jumlah total detail item
+      final totalDetailItems = _workOrderItems.length;
+      
+      // Return selisih (jumlah item yang belum diproses)
+      return totalDetailItems - tempDataCount;
+    } catch (e) {
+      debugPrint('Error getting unprocessed items count: $e');
+      return _workOrderItems.length; // Return total items jika error
+    }
+  }
+
   // Method untuk menyimpan data actual ke API (dummy implementation)
   Future<bool> saveActualWorkOrderData(int workOrderId, Map<String, dynamic> allTempData, {BuildContext? context}) async {
     try {

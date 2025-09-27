@@ -1005,6 +1005,187 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
     }
   }
 
+  // Method untuk menampilkan dialog konfirmasi item yang belum diproses
+  Future<void> _showUnprocessedItemsDialog(int unprocessedCount) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.orange[600],
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Konfirmasi Simpan Actual',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Ada $unprocessedCount item yang belum diproses.',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Yakin lanjut simpan actual?',
+                style: TextStyle(
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange[200]!),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.orange[600],
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Pastikan semua detail item sudah diisi sebelum menyimpan actual.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.orange[700],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'Batal',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                // Lanjutkan dengan proses simpan actual
+                await _proceedWithSaveActual();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange[600],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Ya, Lanjutkan',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Method untuk melanjutkan proses simpan actual setelah konfirmasi
+  Future<void> _proceedWithSaveActual() async {
+    try {
+      // Tampilkan loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      if (widget.workOrderId != null) {
+        // Ambil semua data sementara
+        final allTempData = await _controller.getAllTemporaryWorkOrderData(widget.workOrderId!);
+        
+        // Tutup loading dialog
+        Navigator.of(context).pop();
+        
+        if (allTempData.isNotEmpty) {
+          // Tampilkan dialog dengan JSON data sementara
+          await _showJsonDataDialog(allTempData);
+          
+          // Tampilkan pesan bahwa data sementara telah ditampilkan
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Data sementara untuk ${allTempData.length} item ditampilkan di dialog JSON'),
+              backgroundColor: Colors.blue[600],
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Tidak ada data sementara yang ditemukan. Silakan isi detail item terlebih dahulu.'),
+              backgroundColor: Colors.orange[600],
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Tutup loading dialog jika ada error
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving work order: $e'),
+          backgroundColor: Colors.red[600],
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      );
+    }
+  }
+
   void _saveWorkOrder() async {
     try {
       // Tampilkan loading indicator
@@ -1018,11 +1199,21 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
 
       // Gunakan controller yang sudah ada di state
       if (widget.workOrderId != null) {
-        // Ambil semua data sementara
-        final allTempData = await _controller.getAllTemporaryWorkOrderData(widget.workOrderId!);
+        // Validasi apakah semua item sudah diproses
+        final allItemsProcessed = await _controller.validateAllItemsProcessed(widget.workOrderId!);
         
         // Tutup loading dialog
         Navigator.of(context).pop();
+        
+        if (!allItemsProcessed) {
+          // Ada item yang belum diproses, tampilkan dialog konfirmasi
+          final unprocessedCount = await _controller.getUnprocessedItemsCount(widget.workOrderId!);
+          await _showUnprocessedItemsDialog(unprocessedCount);
+          return;
+        }
+        
+        // Ambil semua data sementara
+        final allTempData = await _controller.getAllTemporaryWorkOrderData(widget.workOrderId!);
         
         if (allTempData.isNotEmpty) {
           // Tampilkan dialog dengan JSON data sementara
