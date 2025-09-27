@@ -168,11 +168,7 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
                     
                     // Work Order Items List
                     _buildWorkOrderItemsList(),
-                    const SizedBox(height: 20),
-                    
-                    // Temporary Data Status
-                    _buildTemporaryDataStatus(),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 5),
                     
                     // Upload Photo Section
                     _buildUploadPhotoSection(),
@@ -733,63 +729,6 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
     );
   }
 
-  Widget _buildTemporaryDataStatus() {
-    return Consumer<WorkOrderDetailController>(
-      builder: (context, controller, child) {
-        return FutureBuilder<Map<String, dynamic>>(
-          future: widget.workOrderId != null 
-              ? controller.getAllTemporaryWorkOrderData(widget.workOrderId!)
-              : Future.value({}),
-          builder: (context, snapshot) {
-            if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue[900]!.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue[600]!),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.save_alt,
-                      color: Colors.blue[300],
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Data Sementara Tersimpan',
-                            style: TextStyle(
-                              color: Colors.blue[300],
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${snapshot.data!.length} item memiliki data sementara yang belum disimpan ke server',
-                            style: TextStyle(
-                              color: Colors.blue[200],
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-            return const SizedBox.shrink();
-          },
-        );
-      },
-    );
-  }
 
   Widget _buildSaveButton() {
     return Consumer<WorkOrderDetailController>(
