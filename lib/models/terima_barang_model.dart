@@ -1,3 +1,19 @@
+enum Unit {
+  single,
+  bulk,
+}
+
+extension UnitExtension on Unit {
+  String get displayName {
+    switch (this) {
+      case Unit.single:
+        return 'Single';
+      case Unit.bulk:
+        return 'Bulk';
+    }
+  }
+}
+
 class Warehouse {
   final String name;
   final String address;
@@ -31,7 +47,9 @@ class ReceiptData {
   final String rackQr;
   final String itemQr;
   final int quantity;
+  final Unit unit;
   final String notes;
+  final String? imagePath;
   final DateTime timestamp;
   final Map<String, double>? location;
 
@@ -40,7 +58,9 @@ class ReceiptData {
     required this.rackQr,
     required this.itemQr,
     required this.quantity,
+    required this.unit,
     required this.notes,
+    this.imagePath,
     required this.timestamp,
     this.location,
   });
@@ -51,7 +71,12 @@ class ReceiptData {
       rackQr: map['rack_qr'] ?? '',
       itemQr: map['item_qr'] ?? '',
       quantity: map['quantity'] ?? 0,
+      unit: Unit.values.firstWhere(
+        (e) => e.name == map['unit'],
+        orElse: () => Unit.single,
+      ),
       notes: map['notes'] ?? '',
+      imagePath: map['image_path'],
       timestamp: DateTime.tryParse(map['timestamp'] ?? '') ?? DateTime.now(),
       location: map['location'] != null 
           ? Map<String, double>.from(map['location'])
@@ -65,7 +90,9 @@ class ReceiptData {
       'rack_qr': rackQr,
       'item_qr': itemQr,
       'quantity': quantity,
+      'unit': unit.name,
       'notes': notes,
+      'image_path': imagePath,
       'timestamp': timestamp.toIso8601String(),
       'location': location,
     };

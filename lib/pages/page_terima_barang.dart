@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../controllers/terima_barang_controller.dart';
+import '../models/terima_barang_model.dart';
 import 'qr_scan_page.dart';
 
 class TerimaBarangPage extends StatefulWidget {
@@ -52,15 +55,15 @@ class _TerimaBarangPageState extends State<TerimaBarangPage> {
               final warehouse = _controller.warehouses[index];
               return ListTile(
                 title: Text(
-                  warehouse.name,
+                  warehouse.namaGudang,
                   style: const TextStyle(color: Colors.white),
                 ),
                 subtitle: Text(
-                  warehouse.address,
+                  '${warehouse.kode}${warehouse.teleponHp != null ? ' • ${warehouse.teleponHp}' : ''}',
                   style: TextStyle(color: Colors.grey[400]),
                 ),
                 onTap: () {
-                  _controller.updateSelectedWarehouse(warehouse.name);
+                  _controller.updateSelectedWarehouse(warehouse.namaGudang);
                   Navigator.pop(context);
                 },
               );
@@ -94,6 +97,46 @@ class _TerimaBarangPageState extends State<TerimaBarangPage> {
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showImageSourceDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          'Pilih Sumber Gambar',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Colors.blue),
+              title: const Text(
+                'Kamera',
+                style: TextStyle(color: Colors.white),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _controller.pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.green),
+              title: const Text(
+                'Galeri',
+                style: TextStyle(color: Colors.white),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _controller.pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -197,12 +240,20 @@ class _TerimaBarangPageState extends State<TerimaBarangPage> {
               _buildItemSection(),
               const SizedBox(height: 16),
 
+              // Unit Section
+              _buildUnitSection(),
+              const SizedBox(height: 16),
+
               // Quantity Section
               _buildQuantitySection(),
               const SizedBox(height: 16),
 
               // Notes Section
               _buildNotesSection(),
+              const SizedBox(height: 16),
+
+              // Image Upload Section
+              _buildImageSection(),
               const SizedBox(height: 24),
 
               // Submit Button
@@ -488,63 +539,143 @@ class _TerimaBarangPageState extends State<TerimaBarangPage> {
     );
   }
 
-  Widget _buildQuantitySection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[800]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+  Widget _buildUnitSection() {
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, child) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[800]!),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.numbers, color: Colors.purple[400], size: 24),
-              const SizedBox(width: 8),
-              const Text(
-                'Jumlah Barang',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+              Row(
+                children: [
+                  Icon(Icons.category, color: Colors.cyan[400], size: 24),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Unit Barang',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[850],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[700]!),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<Unit>(
+                    value: _controller.selectedUnit,
+                    isExpanded: true,
+                    dropdownColor: Colors.grey[850],
+                    style: const TextStyle(color: Colors.white),
+                    icon: Icon(Icons.arrow_drop_down, color: Colors.grey[400]),
+                    items: Unit.values.map((Unit unit) {
+                      return DropdownMenuItem<Unit>(
+                        value: unit,
+                        child: Text(
+                          unit.displayName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (Unit? newValue) {
+                      if (newValue != null) {
+                        _controller.updateSelectedUnit(newValue);
+                      }
+                    },
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _controller.quantityController,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: 'Masukkan jumlah barang',
-              hintStyle: TextStyle(color: Colors.grey[400]),
-              suffixText: 'kg',
-              suffixStyle: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-              filled: true,
-              fillColor: Colors.grey[850],
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.grey[700]!),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.grey[700]!),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.purple[400]!),
-              ),
-            ),
+        );
+      },
+    );
+  }
+
+  Widget _buildQuantitySection() {
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, child) {
+        // Only show quantity field when unit is bulk
+        if (_controller.selectedUnit == Unit.single) {
+          return const SizedBox.shrink(); // Hide the field
+        }
+        
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[800]!),
           ),
-        ],
-      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.numbers, color: Colors.purple[400], size: 24),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Jumlah Barang',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _controller.quantityController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Masukkan jumlah barang',
+                  hintStyle: TextStyle(color: Colors.grey[400]),
+                  suffixText: 'kg',
+                  suffixStyle: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[850],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[700]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[700]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.purple[400]!),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -599,6 +730,144 @@ class _TerimaBarangPageState extends State<TerimaBarangPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildImageSection() {
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[800]!),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.photo_camera, color: Colors.green[400], size: 24),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Upload Bukti Foto',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (_controller.selectedImage == null)
+                  // Upload button when no image selected
+                  Container(
+                    width: double.infinity,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[850],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.grey[700]!,
+                        style: BorderStyle.solid,
+                        width: 2,
+                      ),
+                    ),
+                    child: InkWell(
+                      onTap: _showImageSourceDialog,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.add_a_photo,
+                            color: Colors.grey[400],
+                            size: 32,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Tap untuk memilih foto',
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  // Image preview when image is selected
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[850],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[700]!),
+                    ),
+                    child: Column(
+                      children: [
+                        // Image preview
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                          child: Image.file(
+                            _controller.selectedImage!,
+                            width: double.infinity,
+                            height: 200,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        // Action buttons
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: _showImageSourceDialog,
+                                  icon: const Icon(Icons.refresh, size: 18),
+                                  label: const Text('Ganti Foto'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green[600],
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _controller.removeImage(),
+                                  icon: const Icon(Icons.delete, size: 18),
+                                  label: const Text('Hapus'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red[600],
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
