@@ -145,73 +145,75 @@ class _TerimaBarangPageState extends State<TerimaBarangPage> {
     try {
       final result = await _controller.submitReceipt();
       
-      // Show success dialog
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: Row(
-            children: [
-              Icon(
-                Icons.check_circle,
-                color: Colors.green[400],
-                size: 28,
+      if (result != null) {
+        // Show success dialog
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: Colors.grey[900],
+            title: Row(
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Colors.green[400],
+                  size: 28,
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'Berhasil!',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            content: const Text(
+              'Data penerimaan barang berhasil disimpan',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
               ),
-              const SizedBox(width: 10),
-              const Text(
-                'Berhasil!',
-                style: TextStyle(
-                  color: Colors.green,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+            ),
+            actions: [
+              Container(
+                width: double.maxFinite,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _controller.resetForm();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green[600],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 3,
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.check, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'OK',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
-          content: Text(
-            result.message,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
-          ),
-          actions: [
-            Container(
-              width: double.maxFinite,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _controller.resetForm();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[600],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  elevation: 3,
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.check, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'OK',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
+        );
+      }
     } catch (e) {
       _showSnackBar(e.toString());
     }
@@ -219,6 +221,9 @@ class _TerimaBarangPageState extends State<TerimaBarangPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Set context for session handling
+    _controller.setContext(context);
+    
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(

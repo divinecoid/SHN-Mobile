@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shn_mobile/controllers/home_controller.dart';
-import 'package:shn_mobile/pages/page_terima_barang.dart';
+import 'package:shn_mobile/pages/terima_barang_main_page.dart';
 import 'package:shn_mobile/pages/page_mutasi_barang.dart';
 import 'package:shn_mobile/pages/page_stock_opname.dart';
 import 'package:shn_mobile/pages/page_work_order.dart';
@@ -17,7 +17,7 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = [
-    const TerimaBarangPage(),
+    const TerimaBarangMainPage(),
     const MutasiBarangPage(),
     const StockOpnamePage(),
     const WorkOrderPage(),

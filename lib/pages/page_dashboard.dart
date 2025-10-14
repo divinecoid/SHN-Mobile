@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'page_login.dart';
-import 'page_terima_barang.dart';
+import 'terima_barang_main_page.dart';
 import 'page_mutasi_barang.dart';
 import 'page_stock_opname.dart';
 import 'page_work_order.dart';
@@ -21,7 +21,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   final List<Widget> _pages = [
     const DashboardContent(),
-    const TerimaBarangPage(),
+    const TerimaBarangMainPage(),
     const MutasiBarangPage(),
     const StockOpnamePage(),
     const WorkOrderPage(),

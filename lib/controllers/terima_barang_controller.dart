@@ -8,6 +8,8 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../models/terima_barang_model.dart';
 import '../models/gudang_model.dart';
+import '../models/penerimaan_barang_model.dart';
+import '../utils/auth_helper.dart';
 
 class TerimaBarangController extends ChangeNotifier {
   // Location variables
@@ -32,6 +34,7 @@ class TerimaBarangController extends ChangeNotifier {
   List<Gudang> _warehouses = [];
   bool _isLoadingWarehouses = false;
   String? _warehouseError;
+  BuildContext? _context;
 
   // Getters
   Position? get currentPosition => _currentPosition;
@@ -50,6 +53,18 @@ class TerimaBarangController extends ChangeNotifier {
       _scannedRackQR.isNotEmpty && 
       _scannedItemQR.isNotEmpty && 
       quantityController.text.isNotEmpty;
+
+  /// Set context for session handling
+  void setContext(BuildContext context) {
+    _context = context;
+  }
+
+  /// Handle session expired
+  Future<void> _handleSessionExpired() async {
+    if (_context != null) {
+      await AuthHelper.handleSessionExpired(_context!);
+    }
+  }
 
   /// Initialize the controller and load warehouses
   Future<void> initialize() async {
@@ -109,7 +124,8 @@ class TerimaBarangController extends ChangeNotifier {
           _warehouseError = gudangResult.message;
         }
       } else if (response.statusCode == 401) {
-        _warehouseError = 'Sesi Anda telah berakhir. Silakan login kembali.';
+        await _handleSessionExpired();
+        return;
       } else {
         _warehouseError = 'Gagal mengambil data gudang: ${response.statusCode}';
       }
@@ -257,8 +273,8 @@ class TerimaBarangController extends ChangeNotifier {
     return null;
   }
 
-  /// Submit receipt data
-  Future<ReceiptResult> submitReceipt() async {
+  /// Submit receipt data using new API
+  Future<PenerimaanBarang?> submitReceipt() async {
     // Validate form first
     String? validationError = validateForm();
     if (validationError != null) {
@@ -266,8 +282,11 @@ class TerimaBarangController extends ChangeNotifier {
     }
 
     try {
-      // Simulate API call delay
-      await Future.delayed(const Duration(seconds: 2));
+      // Get authentication token
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('Token autentikasi tidak ditemukan');
+      }
 
       // Determine quantity based on unit type
       int quantity;
@@ -277,32 +296,64 @@ class TerimaBarangController extends ChangeNotifier {
         quantity = int.parse(quantityController.text); // User input for bulk
       }
 
-      // Create receipt data using model
-      ReceiptData receiptData = ReceiptData(
-        warehouse: _selectedWarehouse,
-        rackQr: _scannedRackQR,
-        itemQr: _scannedItemQR,
-        quantity: quantity,
-        unit: _selectedUnit,
-        notes: notesController.text,
-        imagePath: _selectedImage?.path,
-        timestamp: DateTime.now(),
-        location: _currentPosition != null ? {
-          'latitude': _currentPosition!.latitude,
-          'longitude': _currentPosition!.longitude,
-        } : null,
+      // Create detail input
+      final detail = PenerimaanBarangDetailInput(
+        idItemBarang: int.tryParse(_scannedItemQR) ?? 0,
+        idRak: int.tryParse(_scannedRackQR) ?? 0,
+        qty: quantity,
       );
 
-      // Here you would typically send data to your backend API
-      // For now, we'll just return the data as if it was successful
-      
-      return ReceiptResult(
-        success: true,
-        message: 'Data penerimaan barang berhasil disimpan',
-        data: receiptData,
+      // Create penerimaan barang input
+      final input = PenerimaanBarangInput(
+        origin: 'purchaseorder', // Default to purchase order
+        idPurchaseOrder: 1, // You might want to make this configurable
+        idGudang: _getSelectedGudangId(),
+        catatan: notesController.text,
+        urlFoto: _selectedImage?.path,
+        details: [detail],
       );
+
+      // Get API URL from environment
+      final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final String apiPath = dotenv.env['API_PENERIMAAN_BARANG'] ?? '/api/penerimaan-barang';
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl$apiPath'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(input.toMap()),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        final PenerimaanBarangResponse responseData = PenerimaanBarangResponse.fromMap(jsonData);
+        
+        if (responseData.success) {
+          return responseData.data;
+        } else {
+          throw Exception(responseData.message);
+        }
+      } else if (response.statusCode == 401) {
+        await _handleSessionExpired();
+        return null;
+      } else {
+        throw Exception('Gagal menyimpan data penerimaan barang: ${response.statusCode}');
+      }
     } catch (e) {
       throw Exception('Gagal menyimpan data: $e');
+    }
+  }
+
+  /// Get selected gudang ID
+  int _getSelectedGudangId() {
+    try {
+      final gudang = _warehouses.firstWhere((g) => g.namaGudang == _selectedWarehouse);
+      return gudang.id;
+    } catch (e) {
+      return 1; // Default gudang ID
     }
   }
 
