@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import '../controllers/penerimaan_barang_list_controller.dart';
-import '../models/penerimaan_barang_model.dart';
+import '../controllers/input_penerimaan_barang_controller.dart';
 import '../models/gudang_model.dart';
 import 'scan_barang_page.dart';
 import 'scan_rak_page.dart';
+import 'qr_scan_page.dart';
 
 class InputPenerimaanBarangPage extends StatefulWidget {
   const InputPenerimaanBarangPage({super.key});
@@ -16,61 +15,31 @@ class InputPenerimaanBarangPage extends StatefulWidget {
 
 class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _catatanController = TextEditingController();
-  
-  String _selectedOrigin = 'purchaseorder';
-  int? _selectedGudangId;
-  String _selectedGudangName = '';
-  File? _selectedImage;
-  List<PenerimaanBarangDetailInput> _details = [];
-  
-  List<Gudang> _gudangList = [];
-  bool _isLoadingGudang = false;
-  String? _gudangError;
+  late final InputPenerimaanBarangController _controller;
 
   @override
   void initState() {
     super.initState();
-    _loadGudangList();
+    _controller = InputPenerimaanBarangController();
+    // Load gudang list when page initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadGudangList();
+    });
+  }
+
+  Future<void> _loadGudangList() async {
+    await _controller.loadGudangList();
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
-    _catatanController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _loadGudangList() async {
-    setState(() {
-      _isLoadingGudang = true;
-      _gudangError = null;
-    });
-
-    try {
-      // Load gudang list using existing terima_barang_controller logic
-      // For now, we'll create a simple mock list
-      _gudangList = [
-        Gudang(
-          id: 1,
-          namaGudang: 'Gudang Utama',
-          kode: 'GU-001',
-          teleponHp: '08123456789',
-        ),
-        Gudang(
-          id: 2,
-          namaGudang: 'Gudang Cabang',
-          kode: 'GC-002',
-          teleponHp: '08123456790',
-        ),
-      ];
-    } catch (e) {
-      _gudangError = 'Gagal memuat data gudang: $e';
-    } finally {
-      setState(() {
-        _isLoadingGudang = false;
-      });
-    }
-  }
 
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -82,6 +51,11 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
   }
 
   void _showGudangSelector() {
+    if (_controller.gudangList.isEmpty && !_controller.isLoadingGudang) {
+      _showSnackBar('Tidak ada data gudang yang tersedia');
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -92,31 +66,82 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
         ),
         content: SizedBox(
           width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: _gudangList.length,
-            itemBuilder: (context, index) {
-              final gudang = _gudangList[index];
-              return ListTile(
-                title: Text(
-                  gudang.namaGudang,
-                  style: const TextStyle(color: Colors.white),
-                ),
-                subtitle: Text(
-                  '${gudang.kode}${gudang.teleponHp != null ? ' • ${gudang.teleponHp}' : ''}',
-                  style: TextStyle(color: Colors.grey[400]),
-                ),
-                onTap: () {
-                  setState(() {
-                    _selectedGudangId = gudang.id;
-                    _selectedGudangName = gudang.namaGudang;
-                  });
-                  Navigator.pop(context);
-                },
-              );
-            },
-          ),
+          child: _controller.isLoadingGudang
+              ? const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text(
+                        'Memuat data gudang...',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                )
+              : _controller.gudangList.isEmpty
+                  ? const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            color: Colors.grey,
+                            size: 48,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Tidak ada data gudang',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _controller.gudangList.length,
+                      itemBuilder: (context, index) {
+                        final gudang = _controller.gudangList[index];
+                        return ListTile(
+                          title: Text(
+                            gudang.namaGudang,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          subtitle: Text(
+                            '${gudang.kode}${gudang.teleponHp != null ? ' • ${gudang.teleponHp}' : ''}',
+                            style: TextStyle(color: Colors.grey[400]),
+                          ),
+                          onTap: () {
+                            setState(() {
+                              _controller.selectGudang(gudang);
+                            });
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          if (_controller.gudangError != null)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _loadGudangList();
+              },
+              child: const Text(
+                'Refresh',
+                style: TextStyle(color: Colors.blue),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -139,9 +164,14 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                 'Kamera',
                 style: TextStyle(color: Colors.white),
               ),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
-                _pickImage(ImageSource.camera);
+                try {
+                  await _controller.pickImage(ImageSource.camera);
+                  setState(() {});
+                } catch (e) {
+                  _showSnackBar('Gagal mengambil gambar: $e');
+                }
               },
             ),
             ListTile(
@@ -150,9 +180,14 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                 'Galeri',
                 style: TextStyle(color: Colors.white),
               ),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
-                _pickImage(ImageSource.gallery);
+                try {
+                  await _controller.pickImage(ImageSource.gallery);
+                  setState(() {});
+                } catch (e) {
+                  _showSnackBar('Gagal mengambil gambar: $e');
+                }
               },
             ),
           ],
@@ -161,30 +196,20 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
     );
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: source,
-        maxWidth: 1920,
-        maxHeight: 1080,
-        imageQuality: 85,
-      );
-      
-      if (image != null) {
-        setState(() {
-          _selectedImage = File(image.path);
-        });
-      }
-    } catch (e) {
-      _showSnackBar('Gagal mengambil gambar: $e');
-    }
-  }
-
-  void _removeImage() {
-    setState(() {
-      _selectedImage = null;
-    });
+  void _navigateToScanNumber() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => QRScanPage(
+          isRack: false, // Not scanning rack, scanning PO/Mutation number
+          onScanResult: (scannedData) {
+            setState(() {
+              _controller.setScannedNumber(scannedData);
+            });
+          },
+        ),
+      ),
+    );
   }
 
   void _navigateToScanBarang() {
@@ -207,27 +232,13 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
         builder: (context) => ScanRakPage(
           idItemBarang: idItemBarang,
           onRakScanned: (idRak, qty) {
-            _addDetail(idItemBarang, idRak, qty);
+            setState(() {
+              _controller.addDetail(idItemBarang, idRak, qty);
+            });
           },
         ),
       ),
     );
-  }
-
-  void _addDetail(int idItemBarang, int idRak, int qty) {
-    setState(() {
-      _details.add(PenerimaanBarangDetailInput(
-        idItemBarang: idItemBarang,
-        idRak: idRak,
-        qty: qty,
-      ));
-    });
-  }
-
-  void _removeDetail(int index) {
-    setState(() {
-      _details.removeAt(index);
-    });
   }
 
   Future<void> _submitForm() async {
@@ -235,98 +246,81 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
       return;
     }
 
-    if (_selectedGudangId == null) {
-      _showSnackBar('Pilih gudang terlebih dahulu');
-      return;
-    }
-
-    if (_details.isEmpty) {
-      _showSnackBar('Tambahkan minimal satu detail barang');
-      return;
-    }
-
     try {
-      final controller = PenerimaanBarangListController();
+      setState(() {
+        // Trigger UI update for loading state
+      });
+      final success = await _controller.submitForm();
       
-      final input = PenerimaanBarangInput(
-        origin: _selectedOrigin,
-        idPurchaseOrder: _selectedOrigin == 'purchaseorder' ? 1 : null,
-        idStockMutation: _selectedOrigin == 'stockmutation' ? 1 : null,
-        idGudang: _selectedGudangId!,
-        catatan: _catatanController.text,
-        urlFoto: _selectedImage?.path,
-        details: _details,
-      );
-
-      await controller.submitPenerimaanBarang(input);
-      
-      // Show success dialog
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: Row(
-            children: [
-              Icon(
-                Icons.check_circle,
-                color: Colors.green[400],
-                size: 28,
+      if (success) {
+        // Show success dialog
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: Colors.grey[900],
+            title: Row(
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Colors.green[400],
+                  size: 28,
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'Berhasil!',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            content: const Text(
+              'Data penerimaan barang berhasil disimpan',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
               ),
-              const SizedBox(width: 10),
-              const Text(
-                'Berhasil!',
-                style: TextStyle(
-                  color: Colors.green,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+            ),
+            actions: [
+              Container(
+                width: double.maxFinite,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green[600],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 3,
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.check, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'OK',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
-          content: const Text(
-            'Data penerimaan barang berhasil disimpan',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
-          ),
-          actions: [
-            Container(
-              width: double.maxFinite,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[600],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  elevation: 3,
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.check, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'OK',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
+        );
+      }
     } catch (e) {
       _showSnackBar('Gagal menyimpan data: $e');
     }
@@ -354,6 +348,10 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
               children: [
                 // Origin Selection
                 _buildOriginSection(),
+                const SizedBox(height: 16),
+
+                // Scan Number Section
+                _buildScanNumberSection(),
                 const SizedBox(height: 16),
 
                 // Gudang Selection
@@ -418,7 +416,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: _selectedOrigin,
+                value: _controller.selectedOrigin,
                 isExpanded: true,
                 dropdownColor: Colors.grey[850],
                 style: const TextStyle(color: Colors.white),
@@ -436,10 +434,88 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                 onChanged: (String? newValue) {
                   if (newValue != null) {
                     setState(() {
-                      _selectedOrigin = newValue;
+                      _controller.setSelectedOrigin(newValue);
                     });
                   }
                 },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScanNumberSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[800]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.qr_code_scanner, color: Colors.purple[400], size: 24),
+              const SizedBox(width: 8),
+              Text(
+                _controller.selectedOrigin == 'purchaseorder' ? 'Nomor PO' : 'Nomor Mutasi',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: _navigateToScanNumber,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[850],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[700]!),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _controller.scannedNumber.isEmpty 
+                            ? 'Tap untuk scan ${_controller.selectedOrigin == 'purchaseorder' ? 'Nomor PO' : 'Nomor Mutasi'}'
+                            : _controller.scannedNumber,
+                          style: TextStyle(
+                            color: _controller.scannedNumber.isEmpty ? Colors.grey[400] : Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (_controller.scannedNumber.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Tap untuk scan ulang',
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    _controller.scannedNumber.isEmpty ? Icons.qr_code_scanner : Icons.refresh,
+                    color: _controller.scannedNumber.isEmpty ? Colors.purple[400] : Colors.grey[400],
+                    size: 24,
+                  ),
+                ],
               ),
             ),
           ),
@@ -471,11 +547,58 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+              if (_controller.isLoadingGudang) ...[
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[400]!),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 12),
+          if (_controller.gudangError != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red[900],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red[700]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error, color: Colors.red[400], size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _controller.gudangError!,
+                      style: TextStyle(
+                        color: Colors.red[200],
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _loadGudangList,
+                    child: Text(
+                      'Coba Lagi',
+                      style: TextStyle(
+                        color: Colors.red[300],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           GestureDetector(
-            onTap: _showGudangSelector,
+            onTap: _controller.isLoadingGudang ? null : _showGudangSelector,
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -490,16 +613,18 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _selectedGudangName.isEmpty ? 'Pilih Gudang' : _selectedGudangName,
+                          _controller.selectedGudangName.isEmpty ? 'Pilih Gudang' : _controller.selectedGudangName,
                           style: TextStyle(
-                            color: _selectedGudangName.isEmpty ? Colors.grey[400] : Colors.white,
+                            color: _controller.selectedGudangName.isEmpty ? Colors.grey[400] : Colors.white,
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Tap untuk memilih gudang',
+                          _controller.isLoadingGudang 
+                            ? 'Memuat data gudang...' 
+                            : 'Tap untuk memilih gudang',
                           style: TextStyle(
                             color: Colors.grey[400],
                             fontSize: 12,
@@ -508,7 +633,11 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                       ],
                     ),
                   ),
-                  Icon(Icons.edit, color: Colors.grey[400], size: 20),
+                  Icon(
+                    _controller.isLoadingGudang ? Icons.hourglass_empty : Icons.edit, 
+                    color: Colors.grey[400], 
+                    size: 20
+                  ),
                 ],
               ),
             ),
@@ -545,7 +674,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
           ),
           const SizedBox(height: 12),
           TextFormField(
-            controller: _catatanController,
+            controller: _controller.catatanController,
             maxLines: 3,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
@@ -605,7 +734,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
               ],
             ),
             const SizedBox(height: 16),
-            if (_selectedImage == null)
+            if (_controller.selectedImage == null)
               Container(
                 width: double.infinity,
                 height: 120,
@@ -654,7 +783,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                     ClipRRect(
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
                       child: Image.file(
-                        _selectedImage!,
+                        _controller.selectedImage!,
                         width: double.infinity,
                         height: 200,
                         fit: BoxFit.cover,
@@ -682,7 +811,11 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: ElevatedButton.icon(
-                              onPressed: _removeImage,
+                              onPressed: () {
+                                setState(() {
+                                  _controller.removeImage();
+                                });
+                              },
                               icon: const Icon(Icons.delete, size: 18),
                               label: const Text('Hapus'),
                               style: ElevatedButton.styleFrom(
@@ -747,7 +880,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
             ],
           ),
           const SizedBox(height: 12),
-          if (_details.isEmpty)
+          if (_controller.details.isEmpty)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -786,9 +919,9 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: _details.length,
+              itemCount: _controller.details.length,
               itemBuilder: (context, index) {
-                final detail = _details[index];
+                final detail = _controller.details[index];
                 return Card(
                   color: Colors.grey[850],
                   margin: const EdgeInsets.only(bottom: 8),
@@ -802,7 +935,11 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                       style: TextStyle(color: Colors.grey[400]),
                     ),
                     trailing: IconButton(
-                      onPressed: () => _removeDetail(index),
+                      onPressed: () {
+                        setState(() {
+                          _controller.removeDetail(index);
+                        });
+                      },
                       icon: const Icon(Icons.delete, color: Colors.red),
                     ),
                   ),
@@ -819,21 +956,43 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
-        onPressed: _submitForm,
+        onPressed: _controller.isSubmitting ? null : _submitForm,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue[600],
+          backgroundColor: _controller.isSubmitting ? Colors.grey[600] : Colors.blue[600],
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
         ),
-        child: const Text(
-          'Simpan Penerimaan Barang',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        child: _controller.isSubmitting
+            ? const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Menyimpan...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              )
+            : const Text(
+                'Simpan Penerimaan Barang',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
       ),
     );
   }

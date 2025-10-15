@@ -1,0 +1,244 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../models/gudang_model.dart';
+import '../models/penerimaan_barang_model.dart';
+import '../controllers/penerimaan_barang_list_controller.dart';
+
+class InputPenerimaanBarangController extends ChangeNotifier {
+  // Form controllers
+  final TextEditingController catatanController = TextEditingController();
+  
+  // Form state
+  String _selectedOrigin = 'purchaseorder';
+  int? _selectedGudangId;
+  String _selectedGudangName = '';
+  File? _selectedImage;
+  List<PenerimaanBarangDetailInput> _details = [];
+  String _scannedNumber = '';
+  
+  // Gudang state
+  List<Gudang> _gudangList = [];
+  bool _isLoadingGudang = false;
+  String? _gudangError;
+  
+  // Loading state
+  bool _isSubmitting = false;
+
+  // Getters
+  String get selectedOrigin => _selectedOrigin;
+  int? get selectedGudangId => _selectedGudangId;
+  String get selectedGudangName => _selectedGudangName;
+  File? get selectedImage => _selectedImage;
+  List<PenerimaanBarangDetailInput> get details => _details;
+  String get scannedNumber => _scannedNumber;
+  List<Gudang> get gudangList => _gudangList;
+  bool get isLoadingGudang => _isLoadingGudang;
+  String? get gudangError => _gudangError;
+  bool get isSubmitting => _isSubmitting;
+
+  @override
+  void dispose() {
+    catatanController.dispose();
+    super.dispose();
+  }
+
+  // Method untuk mengambil token dari SharedPreferences
+  Future<String?> _getAuthToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('token');
+    } catch (e) {
+      debugPrint('Error getting auth token: $e');
+      return null;
+    }
+  }
+
+  // Gudang methods
+  Future<void> loadGudangList() async {
+    _isLoadingGudang = true;
+    _gudangError = null;
+    notifyListeners();
+
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('Token autentikasi tidak ditemukan. Silakan login kembali.');
+      }
+
+      // Get base URL and endpoint from environment
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final gudangEndpoint = '/api/gudang';
+      final url = Uri.parse('$baseUrl$gudangEndpoint');
+      
+      // Debug: Print URL being used
+      debugPrint('Gudang API URL: $url');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+      
+      // Debug: Print response details
+      debugPrint('Gudang Response Status Code: ${response.statusCode}');
+      debugPrint('Gudang Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        final gudangResult = GudangResult.fromMap(jsonData);
+        
+        if (gudangResult.success) {
+          _gudangList = gudangResult.data;
+          _gudangError = null;
+        } else {
+          throw Exception(gudangResult.message);
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
+      } else {
+        throw Exception('Gagal mengambil data gudang: ${response.statusCode}');
+      }
+    } catch (e) {
+      _gudangError = 'Gagal memuat data gudang: $e';
+      debugPrint('Error loading gudang list: $e');
+    } finally {
+      _isLoadingGudang = false;
+      notifyListeners();
+    }
+  }
+
+  void selectGudang(Gudang gudang) {
+    _selectedGudangId = gudang.id;
+    _selectedGudangName = gudang.namaGudang;
+    notifyListeners();
+  }
+
+  // Origin methods
+  void setSelectedOrigin(String origin) {
+    _selectedOrigin = origin;
+    _scannedNumber = ''; // Reset scanned number when origin changes
+    notifyListeners();
+  }
+
+  // Scan number methods
+  void setScannedNumber(String number) {
+    _scannedNumber = number;
+    notifyListeners();
+  }
+
+  // Image methods
+  Future<void> pickImage(ImageSource source) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        _selectedImage = File(image.path);
+        notifyListeners();
+      }
+    } catch (e) {
+      throw Exception('Gagal mengambil gambar: $e');
+    }
+  }
+
+  void removeImage() {
+    _selectedImage = null;
+    notifyListeners();
+  }
+
+  // Details methods
+  void addDetail(int idItemBarang, int idRak, int qty) {
+    _details.add(PenerimaanBarangDetailInput(
+      idItemBarang: idItemBarang,
+      idRak: idRak,
+      qty: qty,
+    ));
+    notifyListeners();
+  }
+
+  void removeDetail(int index) {
+    _details.removeAt(index);
+    notifyListeners();
+  }
+
+  // Validation methods
+  String? validateForm() {
+    if (_scannedNumber.isEmpty) {
+      return 'Scan ${_selectedOrigin == 'purchaseorder' ? 'Nomor PO' : 'Nomor Mutasi'} terlebih dahulu';
+    }
+
+    if (_selectedGudangId == null) {
+      return 'Pilih gudang terlebih dahulu';
+    }
+
+    if (_details.isEmpty) {
+      return 'Tambahkan minimal satu detail barang';
+    }
+
+    if (catatanController.text.trim().isEmpty) {
+      return 'Catatan harus diisi';
+    }
+
+    return null;
+  }
+
+  // Submit method
+  Future<bool> submitForm() async {
+    final validationError = validateForm();
+    if (validationError != null) {
+      throw Exception(validationError);
+    }
+
+    _isSubmitting = true;
+    notifyListeners();
+
+    try {
+      final controller = PenerimaanBarangListController();
+      
+      final input = PenerimaanBarangInput(
+        origin: _selectedOrigin,
+        idPurchaseOrder: _selectedOrigin == 'purchaseorder' ? 1 : null,
+        idStockMutation: _selectedOrigin == 'stockmutation' ? 1 : null,
+        idGudang: _selectedGudangId!,
+        catatan: catatanController.text,
+        urlFoto: _selectedImage?.path,
+        details: _details,
+      );
+
+      await controller.submitPenerimaanBarang(input);
+      return true;
+    } catch (e) {
+      throw Exception('Gagal menyimpan data: $e');
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  // Reset form method
+  void resetForm() {
+    _selectedOrigin = 'purchaseorder';
+    _selectedGudangId = null;
+    _selectedGudangName = '';
+    _selectedImage = null;
+    _details.clear();
+    _scannedNumber = '';
+    catatanController.clear();
+    _gudangError = null;
+    notifyListeners();
+  }
+}
