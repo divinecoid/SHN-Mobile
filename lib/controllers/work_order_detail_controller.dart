@@ -907,11 +907,35 @@ class WorkOrderDetailController extends ChangeNotifier {
       debugPrint('Work Order Actual API URL: $url');
       debugPrint('Data yang akan dikirim: $allTempData');
 
-      // Sisipkan foto_bukti ke payload jika tersedia
+      // Sisipkan foto_bukti ke payload jika tersedia dan normalisasi struktur items
       final payload = {
         ...allTempData,
         if (_fotoBuktiBase64 != null) 'foto_bukti': _fotoBuktiBase64,
       };
+      
+      // Normalisasi struktur items: flatten { itemData, timestamp } => {...itemData, timestamp}
+      if (payload['items'] is Map) {
+        final Map<String, dynamic> originalItems = Map<String, dynamic>.from(payload['items'] as Map);
+        final Map<String, dynamic> normalizedItems = {};
+        originalItems.forEach((key, value) {
+          if (value is Map<String, dynamic>) {
+            if (value.containsKey('itemData')) {
+              final Map<String, dynamic> itemData = Map<String, dynamic>.from(value['itemData'] ?? {});
+              if (!itemData.containsKey('timestamp') && value['timestamp'] != null) {
+                itemData['timestamp'] = value['timestamp'];
+              }
+              normalizedItems[key] = itemData;
+            } else {
+              normalizedItems[key] = value;
+            }
+          } else {
+            normalizedItems[key] = value;
+          }
+        });
+        payload['items'] = normalizedItems;
+      }
+      
+      debugPrint('Final payload to send: ${json.encode(payload).substring(0, payload.toString().length > 200 ? 200 : json.encode(payload).length)}...');
       
       final response = await http.post(
         url,
@@ -937,21 +961,31 @@ class WorkOrderDetailController extends ChangeNotifier {
           notifyListeners();
           return true;
         } else {
-          throw Exception(jsonData['message'] ?? 'Gagal menyimpan data actual work order');
+          _errorMessage = jsonData['message']?.toString() ?? 'Gagal menyimpan data actual work order';
+          return false;
         }
       } else if (response.statusCode == 401) {
         if (context != null) {
           await AuthHelper.handleUnauthorized(context, 'Sesi Anda telah berakhir. Silakan login kembali.');
         }
-        throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
+        _errorMessage = 'Sesi Anda telah berakhir. Silakan login kembali.';
+        return false;
       } else if (response.statusCode == 422) {
         final jsonData = json.decode(response.body);
-        throw Exception(jsonData['message'] ?? 'Data tidak valid');
+        _errorMessage = jsonData['message']?.toString() ?? 'Data tidak valid';
+        return false;
       } else {
-        throw Exception('Gagal menyimpan data actual work order: ${response.statusCode}');
+        try {
+          final jsonData = json.decode(response.body);
+          _errorMessage = jsonData['message']?.toString() ?? 'Gagal menyimpan data actual work order: ${response.statusCode}';
+        } catch (_) {
+          _errorMessage = 'Gagal menyimpan data actual work order: ${response.statusCode}';
+        }
+        return false;
       }
     } catch (e) {
       debugPrint('Error saving actual work order data: $e');
+      _errorMessage = e.toString();
       return false;
     }
   }

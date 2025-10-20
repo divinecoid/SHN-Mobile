@@ -1086,7 +1086,7 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
             // Tampilkan pesan error
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text('Gagal menyimpan work order. Silakan coba lagi.'),
+                content: Text(_controller.errorMessage ?? 'Gagal menyimpan work order. Silakan coba lagi.'),
                 backgroundColor: Colors.red[600],
                 behavior: SnackBarBehavior.floating,
                 margin: const EdgeInsets.all(16),
