@@ -371,16 +371,16 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                 _buildGudangSection(),
                 const SizedBox(height: 16),
 
+                // Details List (moved above Catatan)
+                _buildDetailsSection(),
+                const SizedBox(height: 16),
+
                 // Catatan
                 _buildCatatanSection(),
                 const SizedBox(height: 16),
 
                 // Image Upload
                 _buildImageSection(),
-                const SizedBox(height: 16),
-
-                // Details List
-                _buildDetailsSection(),
                 const SizedBox(height: 24),
 
                 // Submit Button
