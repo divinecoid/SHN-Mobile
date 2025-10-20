@@ -229,9 +229,25 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ScanBarangPage(
-          onItemScanned: (idItemBarang) {
-            _navigateToScanRak(idItemBarang);
+        builder: (context) => QRScanPage(
+          isRack: false, // Scanning barang barcode
+          onScanResult: (scannedBarcode) {
+            // Check if the scanned barcode matches any item in the list
+            bool found = false;
+            for (var item in _controller.scannedItems) {
+              if (item.kodeBarang == scannedBarcode) {
+                setState(() {
+                  _controller.addScannedBarcode(scannedBarcode);
+                });
+                found = true;
+                _showSnackBar('Barang dengan kode $scannedBarcode berhasil di-scan!');
+                break;
+              }
+            }
+            
+            if (!found) {
+              _showSnackBar('Kode barang $scannedBarcode tidak ditemukan dalam daftar');
+            }
           },
         ),
       ),
@@ -901,10 +917,28 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                 ),
               ),
               const Spacer(),
+              if (_controller.scannedItems.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[800],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${_controller.scannedBarcodes.length}/${_controller.scannedItems.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               ElevatedButton.icon(
                 onPressed: _navigateToScanBarang,
-                icon: const Icon(Icons.add),
-                label: const Text('Tambah'),
+                icon: const Icon(Icons.qr_code_scanner),
+                label: const Text('Scan Barang'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange[600],
                   foregroundColor: Colors.white,
@@ -924,13 +958,30 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
               itemCount: _controller.scannedItems.length,
               itemBuilder: (context, index) {
                 final item = _controller.scannedItems[index];
+                final isScanned = _controller.isItemScanned(item.kodeBarang);
                 return Card(
-                  color: Colors.grey[850],
+                  color: isScanned ? Colors.green[900] : Colors.grey[850],
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isScanned ? Colors.green[600] : Colors.grey[600],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Icon(
+                        isScanned ? Icons.check_circle : Icons.inventory_2,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
                     title: Text(
                       'ID: ${item.id ?? '-'} • Qty: ${item.qty ?? item.quantity ?? '-'}',
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(
+                        color: isScanned ? Colors.green[100] : Colors.white,
+                        fontWeight: isScanned ? FontWeight.w600 : FontWeight.normal,
+                      ),
                     ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -940,35 +991,73 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                           Text(
                             'Kode:',
                             style: TextStyle(
-                              color: Colors.grey[400],
+                              color: isScanned ? Colors.green[200] : Colors.grey[400],
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           Text(
                             item.kodeBarang!,
-                            style: TextStyle(color: Colors.grey[400]),
+                            style: TextStyle(
+                              color: isScanned ? Colors.green[200] : Colors.grey[400],
+                              fontWeight: isScanned ? FontWeight.w600 : FontWeight.normal,
+                            ),
                           ),
                         ],
                         Text(
                           'Ukuran:',
                           style: TextStyle(
-                            color: Colors.grey[400],
+                            color: isScanned ? Colors.green[200] : Colors.grey[400],
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         Text(
                           '${item.panjang ?? '-'} x ${item.lebar ?? '-'} x ${item.tebal ?? '-'}',
-                          style: TextStyle(color: Colors.grey[400]),
+                          style: TextStyle(
+                            color: isScanned ? Colors.green[200] : Colors.grey[400],
+                          ),
                         ),
+                        if (isScanned) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green[600],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'TERSCAN',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
-                    trailing: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _controller.scannedItems.removeAt(index);
-                        });
-                      },
-                      icon: const Icon(Icons.delete, color: Colors.red),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isScanned)
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _controller.removeScannedBarcode(item.kodeBarang!);
+                              });
+                            },
+                            icon: const Icon(Icons.undo, color: Colors.orange),
+                            tooltip: 'Batalkan scan',
+                          ),
+                        IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _controller.scannedItems.removeAt(index);
+                            });
+                          },
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -1000,7 +1089,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Tap tombol "Tambah" untuk menambahkan barang',
+                    'Input Nomor PO/Mutation untuk melihat detail barang',
                     style: TextStyle(
                       color: Colors.grey[500],
                       fontSize: 12,

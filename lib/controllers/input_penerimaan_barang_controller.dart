@@ -26,6 +26,9 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   ScannedDokumenResult? _scannedDokumen;
   List<ScannedItem> _scannedItems = [];
   
+  // Scanned barcodes for marking items
+  Set<String> _scannedBarcodes = {};
+  
   // Gudang state
   List<Gudang> _gudangList = [];
   bool _isLoadingGudang = false;
@@ -47,6 +50,7 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   bool get isSubmitting => _isSubmitting;
   ScannedDokumenResult? get scannedDokumen => _scannedDokumen;
   List<ScannedItem> get scannedItems => _scannedItems;
+  Set<String> get scannedBarcodes => _scannedBarcodes;
 
   @override
   void dispose() {
@@ -246,6 +250,27 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Barcode scanning methods
+  void addScannedBarcode(String barcode) {
+    _scannedBarcodes.add(barcode);
+    notifyListeners();
+  }
+
+  void removeScannedBarcode(String barcode) {
+    _scannedBarcodes.remove(barcode);
+    notifyListeners();
+  }
+
+  bool isItemScanned(String? kodeBarang) {
+    if (kodeBarang == null || kodeBarang.isEmpty) return false;
+    return _scannedBarcodes.contains(kodeBarang);
+  }
+
+  void clearScannedBarcodes() {
+    _scannedBarcodes.clear();
+    notifyListeners();
+  }
+
   // Validation methods
   String? validateForm() {
     if (_scannedNumber.isEmpty) {
@@ -310,6 +335,7 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     _scannedNumber = '';
     _scannedDokumen = null;
     _scannedItems = [];
+    _scannedBarcodes.clear();
     catatanController.clear();
     _gudangError = null;
     notifyListeners();
