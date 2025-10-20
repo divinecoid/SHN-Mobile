@@ -22,6 +22,10 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   List<PenerimaanBarangDetailInput> _details = [];
   String _scannedNumber = '';
   
+  // Scanned document state (from API lookup by nomor PO/Mutasi)
+  ScannedDokumenResult? _scannedDokumen;
+  List<ScannedItem> _scannedItems = [];
+  
   // Gudang state
   List<Gudang> _gudangList = [];
   bool _isLoadingGudang = false;
@@ -41,6 +45,8 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   bool get isLoadingGudang => _isLoadingGudang;
   String? get gudangError => _gudangError;
   bool get isSubmitting => _isSubmitting;
+  ScannedDokumenResult? get scannedDokumen => _scannedDokumen;
+  List<ScannedItem> get scannedItems => _scannedItems;
 
   @override
   void dispose() {
@@ -126,6 +132,8 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   void setSelectedOrigin(String origin) {
     _selectedOrigin = origin;
     _scannedNumber = ''; // Reset scanned number when origin changes
+    _scannedDokumen = null;
+    _scannedItems = [];
     notifyListeners();
   }
 
@@ -133,6 +141,69 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   void setScannedNumber(String number) {
     _scannedNumber = number;
     notifyListeners();
+  }
+
+  // Fetch scanned document by number
+  Future<void> fetchDokumenByNumber() async {
+    final nomor = _scannedNumber.trim();
+    if (nomor.isEmpty) {
+      return;
+    }
+
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('Token autentikasi tidak ditemukan. Silakan login kembali.');
+      }
+
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      late final Uri url;
+      if (_selectedOrigin == 'purchaseorder') {
+        url = Uri.parse('$baseUrl/api/purchase-order/scan-nomor-po/$nomor');
+      } else {
+        url = Uri.parse('$baseUrl/api/stock-mutation/scan-nomor-mutasi/$nomor');
+      }
+
+      debugPrint('Scan nomor URL: $url');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+
+      debugPrint('Scan nomor status: ${response.statusCode}');
+      debugPrint('Scan nomor body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body) as Map<String, dynamic>;
+        final success = jsonData['success'] == true;
+        if (!success) {
+          throw Exception(jsonData['message'] ?? 'Gagal memproses nomor');
+        }
+
+        final data = (jsonData['data'] as Map<String, dynamic>?);
+        if (data == null) {
+          throw Exception('Data tidak ditemukan');
+        }
+
+        _scannedDokumen = ScannedDokumenResult.fromMap(data);
+        _scannedItems = (_scannedDokumen?.items) ?? [];
+        notifyListeners();
+      } else if (response.statusCode == 404) {
+        throw Exception('Nomor tidak ditemukan');
+      } else if (response.statusCode == 401) {
+        throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
+      } else {
+        throw Exception('Gagal memuat data: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error fetching dokumen by number: $e');
+      rethrow;
+    }
   }
 
   // Image methods
@@ -237,8 +308,115 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     _selectedImage = null;
     _details.clear();
     _scannedNumber = '';
+    _scannedDokumen = null;
+    _scannedItems = [];
     catatanController.clear();
     _gudangError = null;
     notifyListeners();
+  }
+}
+
+// Models for scanned document
+class ScannedDokumenResult {
+  final String nomorDokumen;
+  final String tipeDokumen;
+  final String? status;
+  final String? tanggalDokumen;
+  final String? tanggalPenerimaan;
+  final String? userPenerima;
+  final String? gudangAsal;
+  final String? gudangTujuan;
+  final String? supplier;
+  final String? catatan;
+  final List<ScannedItem> items;
+
+  ScannedDokumenResult({
+    required this.nomorDokumen,
+    required this.tipeDokumen,
+    this.status,
+    this.tanggalDokumen,
+    this.tanggalPenerimaan,
+    this.userPenerima,
+    this.gudangAsal,
+    this.gudangTujuan,
+    this.supplier,
+    this.catatan,
+    required this.items,
+  });
+
+  factory ScannedDokumenResult.fromMap(Map<String, dynamic> map) {
+    final items = (map['items'] as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .map((m) => ScannedItem.fromMap(m))
+        .toList();
+    return ScannedDokumenResult(
+      nomorDokumen: map['nomor_dokumen']?.toString() ?? '',
+      tipeDokumen: map['tipe_dokumen']?.toString() ?? '',
+      status: map['status']?.toString(),
+      tanggalDokumen: map['tanggal_dokumen']?.toString(),
+      tanggalPenerimaan: map['tanggal_penerimaan']?.toString(),
+      userPenerima: map['user_penerima']?.toString(),
+      gudangAsal: map['gudang_asal']?.toString(),
+      gudangTujuan: map['gudang_tujuan']?.toString(),
+      supplier: map['supplier']?.toString(),
+      catatan: map['catatan']?.toString(),
+      items: items,
+    );
+  }
+}
+
+class ScannedItem {
+  final int? id;
+  final int? itemBarangId;
+  final String? kodeBarang;
+  final String? unit;
+  final String? status;
+  final int? quantity;
+  final String? panjang;
+  final String? lebar;
+  final String? tebal;
+  final int? qty;
+  final int? jenisBarangId;
+  final int? bentukBarangId;
+  final int? gradeBarangId;
+  final String? satuan;
+  final String? catatan;
+
+  ScannedItem({
+    this.id,
+    this.itemBarangId,
+    this.kodeBarang,
+    this.unit,
+    this.status,
+    this.quantity,
+    this.panjang,
+    this.lebar,
+    this.tebal,
+    this.qty,
+    this.jenisBarangId,
+    this.bentukBarangId,
+    this.gradeBarangId,
+    this.satuan,
+    this.catatan,
+  });
+
+  factory ScannedItem.fromMap(Map<String, dynamic> map) {
+    return ScannedItem(
+      id: map['id'] is int ? map['id'] as int : int.tryParse('${map['id']}'),
+      itemBarangId: map['item_barang_id'] is int ? map['item_barang_id'] as int : int.tryParse('${map['item_barang_id']}'),
+      kodeBarang: map['kode_barang']?.toString(),
+      unit: map['unit']?.toString(),
+      status: map['status']?.toString(),
+      quantity: map['quantity'] is int ? map['quantity'] as int : int.tryParse('${map['quantity']}'),
+      panjang: map['panjang']?.toString(),
+      lebar: map['lebar']?.toString(),
+      tebal: map['tebal']?.toString(),
+      qty: map['qty'] is int ? map['qty'] as int : int.tryParse('${map['qty']}'),
+      jenisBarangId: map['jenis_barang_id'] is int ? map['jenis_barang_id'] as int : int.tryParse('${map['jenis_barang_id']}'),
+      bentukBarangId: map['bentuk_barang_id'] is int ? map['bentuk_barang_id'] as int : int.tryParse('${map['bentuk_barang_id']}'),
+      gradeBarangId: map['grade_barang_id'] is int ? map['grade_barang_id'] as int : int.tryParse('${map['grade_barang_id']}'),
+      satuan: map['satuan']?.toString(),
+      catatan: map['catatan']?.toString(),
+    );
   }
 }

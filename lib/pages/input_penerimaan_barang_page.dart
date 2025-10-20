@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:image_picker/image_picker.dart';
 import '../controllers/input_penerimaan_barang_controller.dart';
 import '../models/gudang_model.dart';
@@ -17,6 +18,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
   final _formKey = GlobalKey<FormState>();
   late final InputPenerimaanBarangController _controller;
   late final TextEditingController _numberController;
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -38,6 +40,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _numberController.dispose();
     _controller.dispose();
     super.dispose();
@@ -209,6 +212,12 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
             setState(() {
               _controller.setScannedNumber(scannedData);
               _numberController.text = scannedData;
+            });
+            // Trigger immediate fetch after successful scan
+            _controller.fetchDokumenByNumber().then((_) {
+              if (mounted) setState(() {});
+            }).catchError((e) {
+              if (mounted) _showSnackBar('$e');
             });
           },
         ),
@@ -440,6 +449,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                     setState(() {
                       _controller.setSelectedOrigin(newValue);
                       _numberController.clear();
+                      _debounce?.cancel();
                     });
                   }
                 },
@@ -484,6 +494,17 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
               setState(() {
                 _controller.setScannedNumber(value.trim());
               });
+              _debounce?.cancel();
+              _debounce = Timer(const Duration(milliseconds: 1000), () async {
+                final text = _numberController.text.trim();
+                if (text.isEmpty) return;
+                try {
+                  await _controller.fetchDokumenByNumber();
+                  if (mounted) setState(() {});
+                } catch (e) {
+                  if (mounted) _showSnackBar('$e');
+                }
+              });
             },
             decoration: InputDecoration(
               hintText: 'Masukkan atau scan ${_controller.selectedOrigin == 'purchaseorder' ? 'Nomor PO' : "Nomor Mutasi"}',
@@ -513,6 +534,8 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                         setState(() {
                           _numberController.clear();
                           _controller.setScannedNumber('');
+                          // also clear fetched items
+                          _controller.setSelectedOrigin(_controller.selectedOrigin);
                         });
                       },
                     ),
@@ -894,7 +917,64 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
             ],
           ),
           const SizedBox(height: 12),
-          if (_controller.details.isEmpty)
+          if (_controller.scannedItems.isNotEmpty)
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _controller.scannedItems.length,
+              itemBuilder: (context, index) {
+                final item = _controller.scannedItems[index];
+                return Card(
+                  color: Colors.grey[850],
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    title: Text(
+                      'ID: ${item.id ?? '-'} • Qty: ${item.qty ?? item.quantity ?? '-'}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (item.kodeBarang != null && item.kodeBarang!.isNotEmpty) ...[
+                          Text(
+                            'Kode:',
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            item.kodeBarang!,
+                            style: TextStyle(color: Colors.grey[400]),
+                          ),
+                        ],
+                        Text(
+                          'Ukuran:',
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          '${item.panjang ?? '-'} x ${item.lebar ?? '-'} x ${item.tebal ?? '-'}',
+                          style: TextStyle(color: Colors.grey[400]),
+                        ),
+                      ],
+                    ),
+                    trailing: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _controller.scannedItems.removeAt(index);
+                        });
+                      },
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                    ),
+                  ),
+                );
+              },
+            )
+          else if (_controller.details.isEmpty)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
