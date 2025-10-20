@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:convert';
+import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart';
 import '../controllers/work_order_detail_controller.dart';
 import '../models/work_order_planning_model.dart';
 import 'page_work_order_detail_item.dart';
@@ -662,70 +664,95 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
 
 
   Widget _buildUploadPhotoSection() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[800]!),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Consumer<WorkOrderDetailController>(
+      builder: (context, controller, child) {
+        final hasPhoto = controller.fotoBuktiBase64 != null && controller.fotoBuktiBase64!.isNotEmpty;
+        Uint8List? photoBytes;
+        if (hasPhoto) {
+          try {
+            final dataUri = controller.fotoBuktiBase64!;
+            final base64Part = dataUri.contains(',') ? dataUri.split(',').last : dataUri;
+            photoBytes = base64Decode(base64Part);
+          } catch (_) {
+            photoBytes = null;
+          }
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[800]!),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.photo_camera, color: Colors.green[400], size: 24),
-                const SizedBox(width: 8),
-                const Text(
-                  'Upload Bukti Foto',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                Row(
+                  children: [
+                    Icon(Icons.photo_camera, color: Colors.green[400], size: 24),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Upload Bukti Foto',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (hasPhoto)
+                      TextButton(
+                        onPressed: () => controller.clearFotoBukti(),
+                        child: const Text('Hapus', style: TextStyle(color: Colors.redAccent)),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[850],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.grey[700]!,
+                      style: BorderStyle.solid,
+                      width: 2,
+                    ),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: _selectPhoto,
+                    borderRadius: BorderRadius.circular(8),
+                    child: hasPhoto && photoBytes != null
+                        ? Image.memory(photoBytes, fit: BoxFit.cover, width: double.infinity, height: double.infinity)
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.add_a_photo,
+                                color: Colors.grey[400],
+                                size: 32,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Tap untuk ambil foto',
+                                style: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.grey[850],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Colors.grey[700]!,
-                  style: BorderStyle.solid,
-                  width: 2,
-                ),
-              ),
-              child: InkWell(
-                onTap: _selectPhoto,
-                borderRadius: BorderRadius.circular(8),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.add_a_photo,
-                      color: Colors.grey[400],
-                      size: 32,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Tap untuk memilih foto',
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -759,19 +786,22 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
     );
   }
 
-  void _selectPhoto() {
-    // Implementasi untuk memilih foto
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Fitur upload foto akan diimplementasikan'),
-        backgroundColor: Colors.blue[600],
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+  void _selectPhoto() async {
+    try {
+      await _controller.pickAndSetFotoBukti(ImageSource.camera);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal mengambil foto: $e'),
+          backgroundColor: Colors.red[600],
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
 
@@ -979,6 +1009,22 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
 
   void _saveWorkOrder() async {
     try {
+      // Validasi wajib foto bukti
+      if (_controller.fotoBuktiBase64 == null || _controller.fotoBuktiBase64!.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Harap ambil/buat foto bukti terlebih dahulu.'),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+        return;
+      }
+
       // Tampilkan loading indicator
       showDialog(
         context: context,

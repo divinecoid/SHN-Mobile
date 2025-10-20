@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
 import 'dart:convert';
 import '../models/work_order_planning_model.dart';
 import '../models/pelaksana_model.dart';
@@ -12,6 +14,9 @@ class WorkOrderDetailController extends ChangeNotifier {
   WorkOrderPlanning? _workOrderPlanning;
   bool _isLoading = false;
   String? _errorMessage;
+  
+  // Foto bukti (base64 data URI)
+  String? _fotoBuktiBase64;
   
   // Data pelaksana
   List<Pelaksana> _availablePelaksana = [];
@@ -29,10 +34,47 @@ class WorkOrderDetailController extends ChangeNotifier {
   // Getter untuk actual work order ID
   int? get actualWorkOrderId => _actualWorkOrderId;
   
+  // Getter untuk foto bukti (base64 data URI)
+  String? get fotoBuktiBase64 => _fotoBuktiBase64;
+  
   // Method untuk set actual work order ID
   void setActualWorkOrderId(int? id) {
     _actualWorkOrderId = id;
     notifyListeners();
+  }
+  
+  // Method untuk menghapus foto bukti
+  void clearFotoBukti() {
+    _fotoBuktiBase64 = null;
+    notifyListeners();
+  }
+  
+  // Helper: buat data URI base64 dari bytes
+  String _toDataUri(Uint8List bytes, {String mimeType = 'image/jpeg'}) {
+    final base64Str = base64Encode(bytes);
+    return 'data:$mimeType;base64,$base64Str';
+  }
+  
+  // Method: ambil foto dari kamera atau galeri, lalu simpan sebagai base64 data URI
+  // Gunakan: await pickAndSetFotoBukti(ImageSource.camera) atau ImageSource.gallery
+  Future<void> pickAndSetFotoBukti(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? picked = await picker.pickImage(source: source, imageQuality: 85);
+      if (picked == null) {
+        return;
+      }
+      final bytes = await picked.readAsBytes();
+      // Deteksi sederhana MIME berdasarkan ekstensi
+      final path = picked.name.toLowerCase();
+      String mime = 'image/jpeg';
+      if (path.endsWith('.png')) mime = 'image/png';
+      else if (path.endsWith('.webp')) mime = 'image/webp';
+      _fotoBuktiBase64 = _toDataUri(bytes, mimeType: mime);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+    }
   }
   
   // Method untuk test parsing JSON response
@@ -865,6 +907,12 @@ class WorkOrderDetailController extends ChangeNotifier {
       debugPrint('Work Order Actual API URL: $url');
       debugPrint('Data yang akan dikirim: $allTempData');
 
+      // Sisipkan foto_bukti ke payload jika tersedia
+      final payload = {
+        ...allTempData,
+        if (_fotoBuktiBase64 != null) 'foto_bukti': _fotoBuktiBase64,
+      };
+      
       final response = await http.post(
         url,
         headers: {
@@ -872,7 +920,7 @@ class WorkOrderDetailController extends ChangeNotifier {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: json.encode(allTempData),
+        body: json.encode(payload),
       );
       
       // Debug: Print response details
@@ -884,6 +932,9 @@ class WorkOrderDetailController extends ChangeNotifier {
         
         if (jsonData['success'] == true) {
           debugPrint('Work order actual berhasil disimpan');
+          // Bersihkan foto setelah sukses
+          _fotoBuktiBase64 = null;
+          notifyListeners();
           return true;
         } else {
           throw Exception(jsonData['message'] ?? 'Gagal menyimpan data actual work order');
