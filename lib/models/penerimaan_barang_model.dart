@@ -299,6 +299,68 @@ class PenerimaanBarangInput {
   }
 }
 
+// New models for the updated API format
+class PenerimaanBarangSubmitRequest {
+  final String asalPenerimaan;
+  final String? nomorPo;
+  final String? nomorMutasi;
+  final int gudangId;
+  final String catatan;
+  final String? buktiFoto; // base64 string
+  final List<DetailBarangSubmit> detailBarang;
+
+  PenerimaanBarangSubmitRequest({
+    required this.asalPenerimaan,
+    this.nomorPo,
+    this.nomorMutasi,
+    required this.gudangId,
+    required this.catatan,
+    this.buktiFoto,
+    required this.detailBarang,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'asal_penerimaan': asalPenerimaan,
+      'nomor_po': nomorPo,
+      'nomor_mutasi': nomorMutasi,
+      'gudang_id': gudangId,
+      'catatan': catatan,
+      'bukti_foto': buktiFoto,
+      'detail_barang': detailBarang.map((detail) => detail.toMap()).toList(),
+    };
+  }
+}
+
+class DetailBarangSubmit {
+  final int id;
+  final String kode;
+  final String namaItem;
+  final String ukuran;
+  final int qty;
+  final String statusScan;
+
+  DetailBarangSubmit({
+    required this.id,
+    required this.kode,
+    required this.namaItem,
+    required this.ukuran,
+    required this.qty,
+    required this.statusScan,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'kode': kode,
+      'nama_item': namaItem,
+      'ukuran': ukuran,
+      'qty': qty,
+      'status_scan': statusScan,
+    };
+  }
+}
+
 class PenerimaanBarangListResponse {
   final bool success;
   final String message;

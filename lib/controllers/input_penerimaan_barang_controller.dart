@@ -281,15 +281,23 @@ class InputPenerimaanBarangController extends ChangeNotifier {
       return 'Pilih gudang terlebih dahulu';
     }
 
-    if (_details.isEmpty) {
-      return 'Tambahkan minimal satu detail barang';
-    }
-
-    if (catatanController.text.trim().isEmpty) {
-      return 'Catatan harus diisi';
+    if (_selectedImage == null) {
+      return 'Upload bukti foto terlebih dahulu';
     }
 
     return null;
+  }
+
+  // Check if all items are scanned
+  bool areAllItemsScanned() {
+    if (_scannedItems.isEmpty) return true; // No items to scan
+    return _scannedBarcodes.length == _scannedItems.length;
+  }
+
+  // Get count of scanned vs total items
+  String getScanProgress() {
+    if (_scannedItems.isEmpty) return '0/0';
+    return '${_scannedBarcodes.length}/${_scannedItems.length}';
   }
 
   // Submit method
@@ -303,21 +311,125 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final controller = PenerimaanBarangListController();
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('Token autentikasi tidak ditemukan. Silakan login kembali.');
+      }
+
+      // Convert image to base64
+      String? base64Image;
+      if (_selectedImage != null) {
+        try {
+          debugPrint('Converting image to base64...');
+          debugPrint('Image path: ${_selectedImage!.path}');
+          final bytes = await _selectedImage!.readAsBytes();
+          debugPrint('Image size: ${bytes.length} bytes');
+          base64Image = base64Encode(bytes);
+          debugPrint('Base64 length: ${base64Image.length} characters');
+        } catch (e) {
+          debugPrint('Error converting image to base64: $e');
+          throw Exception('Gagal mengkonversi gambar: $e');
+        }
+      } else {
+        debugPrint('No image selected');
+      }
+
+      // Build detail barang from scanned items
+      debugPrint('Building detail barang from ${_scannedItems.length} scanned items');
+      debugPrint('Scanned barcodes: $_scannedBarcodes');
       
-      final input = PenerimaanBarangInput(
-        origin: _selectedOrigin,
-        idPurchaseOrder: _selectedOrigin == 'purchaseorder' ? 1 : null,
-        idStockMutation: _selectedOrigin == 'stockmutation' ? 1 : null,
-        idGudang: _selectedGudangId!,
-        catatan: catatanController.text,
-        urlFoto: _selectedImage?.path,
-        details: _details,
+      final detailBarang = _scannedItems.map((item) {
+        final isScanned = _scannedBarcodes.contains(item.kodeBarang);
+        final detail = DetailBarangSubmit(
+          id: item.id ?? 0,
+          kode: item.kodeBarang ?? '',
+          namaItem: 'Item ${item.id ?? 0}', // You might want to get this from API
+          ukuran: '${item.panjang ?? '0'} x ${item.lebar ?? '0'} x ${item.tebal ?? '0'}',
+          qty: item.qty ?? item.quantity ?? 1,
+          statusScan: isScanned ? 'Terscan' : 'Belum Terscan',
+        );
+        debugPrint('Detail item: ${detail.toMap()}');
+        return detail;
+      }).toList();
+      
+      debugPrint('Total detail barang: ${detailBarang.length}');
+
+      final request = PenerimaanBarangSubmitRequest(
+        asalPenerimaan: _selectedOrigin,
+        nomorPo: _selectedOrigin == 'purchaseorder' ? _scannedNumber : null,
+        nomorMutasi: _selectedOrigin == 'stockmutation' ? _scannedNumber : null,
+        gudangId: _selectedGudangId!,
+        catatan: catatanController.text.trim(),
+        buktiFoto: base64Image,
+        detailBarang: detailBarang,
       );
 
-      await controller.submitPenerimaanBarang(input);
-      return true;
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final url = Uri.parse('$baseUrl/api/penerimaan-barang');
+
+      debugPrint('Submit URL: $url');
+      debugPrint('Request body: ${json.encode(request.toMap())}');
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode(request.toMap()),
+      );
+
+      debugPrint('Submit response status: ${response.statusCode}');
+      debugPrint('Submit response headers: ${response.headers}');
+      debugPrint('Submit response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        try {
+          final jsonData = json.decode(response.body) as Map<String, dynamic>;
+          debugPrint('Parsed response data: $jsonData');
+          
+          final success = jsonData['success'] == true;
+          if (!success) {
+            final errorMessage = jsonData['message'] ?? 'Gagal menyimpan data';
+            debugPrint('API returned success=false: $errorMessage');
+            throw Exception(errorMessage);
+          }
+          return true;
+        } catch (e) {
+          debugPrint('Error parsing response JSON: $e');
+          debugPrint('Raw response body: ${response.body}');
+          throw Exception('Gagal memproses respons dari server: $e');
+        }
+      } else if (response.statusCode == 401) {
+        debugPrint('Authentication error - status 401');
+        throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
+      } else if (response.statusCode == 422) {
+        debugPrint('Validation error - status 422');
+        try {
+          final jsonData = json.decode(response.body) as Map<String, dynamic>;
+          final errors = jsonData['errors'] ?? jsonData['message'] ?? 'Data tidak valid';
+          debugPrint('Validation errors: $errors');
+          throw Exception('Data tidak valid: $errors');
+        } catch (e) {
+          debugPrint('Error parsing validation response: $e');
+          throw Exception('Data tidak valid: ${response.body}');
+        }
+      } else if (response.statusCode == 500) {
+        debugPrint('Server error - status 500');
+        debugPrint('Server error response: ${response.body}');
+        throw Exception('Terjadi kesalahan pada server. Silakan coba lagi.');
+      } else {
+        debugPrint('Unexpected status code: ${response.statusCode}');
+        debugPrint('Response body: ${response.body}');
+        throw Exception('Gagal menyimpan data: ${response.statusCode} - ${response.body}');
+      }
     } catch (e) {
+      debugPrint('Error in submitForm: $e');
+      debugPrint('Error type: ${e.runtimeType}');
+      if (e is Exception) {
+        debugPrint('Exception details: ${e.toString()}');
+      }
       throw Exception('Gagal menyimpan data: $e');
     } finally {
       _isSubmitting = false;
