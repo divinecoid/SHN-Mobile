@@ -487,6 +487,17 @@ class WorkOrderDetailController extends ChangeNotifier {
     }
   }
 
+  // Helper status selesai
+  bool isCompletedStatus(String status) {
+    final s = status.toLowerCase();
+    return s == 'selesai' || s == 'completed' || s == 'done';
+  }
+
+  bool get isCurrentWorkOrderCompleted {
+    final status = _workOrderPlanning?.status ?? '';
+    return isCompletedStatus(status);
+  }
+
   // Method untuk mendapatkan suffix luas berdasarkan jenis barang
   String getLuasSuffix(String jenisBarang) {
     return jenisBarang == 'Aluminium' ? ' (mm²)' : '';

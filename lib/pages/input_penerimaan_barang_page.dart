@@ -16,11 +16,13 @@ class InputPenerimaanBarangPage extends StatefulWidget {
 class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
   final _formKey = GlobalKey<FormState>();
   late final InputPenerimaanBarangController _controller;
+  late final TextEditingController _numberController;
 
   @override
   void initState() {
     super.initState();
     _controller = InputPenerimaanBarangController();
+    _numberController = TextEditingController(text: _controller.scannedNumber);
     // Load gudang list when page initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadGudangList();
@@ -36,6 +38,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
 
   @override
   void dispose() {
+    _numberController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -205,6 +208,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
           onScanResult: (scannedData) {
             setState(() {
               _controller.setScannedNumber(scannedData);
+              _numberController.text = scannedData;
             });
           },
         ),
@@ -435,6 +439,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                   if (newValue != null) {
                     setState(() {
                       _controller.setSelectedOrigin(newValue);
+                      _numberController.clear();
                     });
                   }
                 },
@@ -472,52 +477,61 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
             ],
           ),
           const SizedBox(height: 12),
-          GestureDetector(
-            onTap: _navigateToScanNumber,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[850],
+          TextFormField(
+            controller: _numberController,
+            style: const TextStyle(color: Colors.white),
+            onChanged: (value) {
+              setState(() {
+                _controller.setScannedNumber(value.trim());
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Masukkan atau scan ${_controller.selectedOrigin == 'purchaseorder' ? 'Nomor PO' : "Nomor Mutasi"}',
+              hintStyle: TextStyle(color: Colors.grey[400]),
+              filled: true,
+              fillColor: Colors.grey[850],
+              border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey[700]!),
+                borderSide: BorderSide(color: Colors.grey[700]!),
               ),
-              child: Row(
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey[700]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.purple[400]!),
+              ),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _controller.scannedNumber.isEmpty 
-                            ? 'Tap untuk scan ${_controller.selectedOrigin == 'purchaseorder' ? 'Nomor PO' : 'Nomor Mutasi'}'
-                            : _controller.scannedNumber,
-                          style: TextStyle(
-                            color: _controller.scannedNumber.isEmpty ? Colors.grey[400] : Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        if (_controller.scannedNumber.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            'Tap untuk scan ulang',
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ],
+                  if (_numberController.text.isNotEmpty)
+                    IconButton(
+                      tooltip: 'Bersihkan',
+                      icon: const Icon(Icons.clear, color: Colors.grey),
+                      onPressed: () {
+                        setState(() {
+                          _numberController.clear();
+                          _controller.setScannedNumber('');
+                        });
+                      },
                     ),
-                  ),
-                  Icon(
-                    _controller.scannedNumber.isEmpty ? Icons.qr_code_scanner : Icons.refresh,
-                    color: _controller.scannedNumber.isEmpty ? Colors.purple[400] : Colors.grey[400],
-                    size: 24,
+                  IconButton(
+                    tooltip: 'Scan',
+                    icon: Icon(Icons.qr_code_scanner, color: Colors.purple[400]),
+                    onPressed: _navigateToScanNumber,
                   ),
                 ],
               ),
             ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return _controller.selectedOrigin == 'purchaseorder' 
+                  ? 'Nomor PO harus diisi'
+                  : 'Nomor Mutasi harus diisi';
+              }
+              return null;
+            },
           ),
         ],
       ),

@@ -376,35 +376,36 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
             _buildItemDetailGrid(item, index, controller),
             const SizedBox(height: 16),
             
-            // Action Button
-            Center(
-              child: Container(
-                width: double.infinity,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.grey[850],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[700]!),
-                ),
-                child: TextButton(
-                  onPressed: () => _showItemDetailDialog(item, index),
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+            // Action Button (hidden when status selesai)
+            if (!controller.isCurrentWorkOrderCompleted)
+              Center(
+                child: Container(
+                  width: double.infinity,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[850],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[700]!),
                   ),
-                  child: const Text(
-                    'Edit / Detail',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
+                  child: TextButton(
+                    onPressed: () => _showItemDetailDialog(item, index),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Edit / Detail',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -666,6 +667,9 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
   Widget _buildUploadPhotoSection() {
     return Consumer<WorkOrderDetailController>(
       builder: (context, controller, child) {
+        if (controller.isCurrentWorkOrderCompleted) {
+          return const SizedBox.shrink();
+        }
         final hasPhoto = controller.fotoBuktiBase64 != null && controller.fotoBuktiBase64!.isNotEmpty;
         Uint8List? photoBytes;
         if (hasPhoto) {
@@ -760,6 +764,9 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
   Widget _buildSaveButton() {
     return Consumer<WorkOrderDetailController>(
       builder: (context, controller, child) {
+        if (controller.isCurrentWorkOrderCompleted) {
+          return const SizedBox.shrink();
+        }
         return SizedBox(
           width: double.infinity,
           height: 50,
