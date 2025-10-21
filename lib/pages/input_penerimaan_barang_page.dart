@@ -8,7 +8,9 @@ import 'scan_rak_page.dart';
 import 'qr_scan_page.dart';
 
 class InputPenerimaanBarangPage extends StatefulWidget {
-  const InputPenerimaanBarangPage({super.key});
+  final VoidCallback? onSuccess;
+  
+  const InputPenerimaanBarangPage({super.key, this.onSuccess});
 
   @override
   State<InputPenerimaanBarangPage> createState() => _InputPenerimaanBarangPageState();
@@ -426,8 +428,15 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.pop(context);
+                    Navigator.pop(context); // Close the success dialog
+                    
+                    // Call the success callback if provided
+                    if (widget.onSuccess != null) {
+                      widget.onSuccess!();
+                    } else {
+                      // Fallback to normal navigation
+                      Navigator.pop(context, true);
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green[600],

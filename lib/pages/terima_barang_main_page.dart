@@ -12,9 +12,15 @@ class TerimaBarangMainPage extends StatefulWidget {
 class _TerimaBarangMainPageState extends State<TerimaBarangMainPage> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = [
+  List<Widget> get _pages => [
     const PenerimaanBarangListPage(),
-    const InputPenerimaanBarangPage(),
+    InputPenerimaanBarangPage(
+      onSuccess: () {
+        setState(() {
+          _currentIndex = 0; // Switch to list page
+        });
+      },
+    ),
   ];
 
   final List<String> _titles = [
