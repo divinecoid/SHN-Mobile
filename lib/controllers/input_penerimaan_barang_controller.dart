@@ -341,9 +341,9 @@ class InputPenerimaanBarangController extends ChangeNotifier {
       final detailBarang = _scannedItems.map((item) {
         final isScanned = _scannedBarcodes.contains(item.kodeBarang);
         final detail = DetailBarangSubmit(
-          id: item.id ?? 0,
+          id: item.itemBarangId ?? 0, // Use item_barang_id instead of id
           kode: item.kodeBarang ?? '',
-          namaItem: 'Item ${item.id ?? 0}', // You might want to get this from API
+          namaItem: 'Item ${item.itemBarangId ?? 0}', // Use item_barang_id for display
           ukuran: '${item.panjang ?? '0'} x ${item.lebar ?? '0'} x ${item.tebal ?? '0'}',
           qty: item.qty ?? item.quantity ?? 1,
           statusScan: isScanned ? 'Terscan' : 'Belum Terscan',

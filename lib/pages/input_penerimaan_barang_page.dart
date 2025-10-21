@@ -1106,7 +1106,8 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'ID: ${item.id ?? '-'} • Qty: ${item.qty ?? item.quantity ?? '-'}',
+                                // 'ID: ${item.itemBarangId ?? '-'} • Qty: ${item.qty ?? item.quantity ?? '-'}',
+                                'Qty: ${item.qty ?? item.quantity ?? '-'}',
                                 style: TextStyle(
                                   color: isScanned ? Colors.green[100] : Colors.white,
                                   fontWeight: isScanned ? FontWeight.w600 : FontWeight.normal,
