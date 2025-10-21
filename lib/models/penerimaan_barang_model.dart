@@ -46,19 +46,19 @@ class PenerimaanBarangDetail {
 
 class PurchaseOrder {
   final int id;
-  final String noPo;
+  final String nomorPo;
   final String tanggalPo;
 
   PurchaseOrder({
     required this.id,
-    required this.noPo,
+    required this.nomorPo,
     required this.tanggalPo,
   });
 
   factory PurchaseOrder.fromMap(Map<String, dynamic> map) {
     return PurchaseOrder(
       id: map['id'] ?? 0,
-      noPo: map['no_po'] ?? '',
+      nomorPo: map['nomor_po'] ?? '',
       tanggalPo: map['tanggal_po'] ?? '',
     );
   }
@@ -66,7 +66,7 @@ class PurchaseOrder {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'no_po': noPo,
+      'nomor_po': nomorPo,
       'tanggal_po': tanggalPo,
     };
   }
@@ -74,47 +74,47 @@ class PurchaseOrder {
 
 class StockMutation {
   final int id;
-  final String noMutation;
-  final String tanggalMutation;
+  final String nomorMutasi;
+  final String createdAt;
 
   StockMutation({
     required this.id,
-    required this.noMutation,
-    required this.tanggalMutation,
+    required this.nomorMutasi,
+    required this.createdAt,
   });
 
   factory StockMutation.fromMap(Map<String, dynamic> map) {
     return StockMutation(
       id: map['id'] ?? 0,
-      noMutation: map['no_mutation'] ?? '',
-      tanggalMutation: map['tanggal_mutation'] ?? '',
+      nomorMutasi: map['nomor_mutasi'] ?? '',
+      createdAt: map['created_at'] ?? '',
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'no_mutation': noMutation,
-      'tanggal_mutation': tanggalMutation,
+      'nomor_mutasi': nomorMutasi,
+      'created_at': createdAt,
     };
   }
 }
 
 class GudangPenerimaan {
   final int id;
-  final String nama;
+  final String namaGudang;
   final String kode;
 
   GudangPenerimaan({
     required this.id,
-    required this.nama,
+    required this.namaGudang,
     required this.kode,
   });
 
   factory GudangPenerimaan.fromMap(Map<String, dynamic> map) {
     return GudangPenerimaan(
       id: map['id'] ?? 0,
-      nama: map['nama'] ?? '',
+      namaGudang: map['nama_gudang'] ?? '',
       kode: map['kode'] ?? '',
     );
   }
@@ -122,7 +122,7 @@ class GudangPenerimaan {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'nama': nama,
+      'nama_gudang': namaGudang,
       'kode': kode,
     };
   }
@@ -136,6 +136,7 @@ class PenerimaanBarang {
   final int idGudang;
   final String catatan;
   final String? urlFoto;
+  final String createdAt;
   final PurchaseOrder? purchaseOrder;
   final StockMutation? stockMutation;
   final GudangPenerimaan gudang;
@@ -149,6 +150,7 @@ class PenerimaanBarang {
     required this.idGudang,
     required this.catatan,
     this.urlFoto,
+    required this.createdAt,
     this.purchaseOrder,
     this.stockMutation,
     required this.gudang,
@@ -164,6 +166,7 @@ class PenerimaanBarang {
       idGudang: map['id_gudang'] ?? 0,
       catatan: map['catatan'] ?? '',
       urlFoto: map['url_foto'],
+      createdAt: map['created_at'] ?? '',
       purchaseOrder: _parsePurchaseOrder(map['purchase_order']),
       stockMutation: _parseStockMutation(map['stock_mutation']),
       gudang: _parseGudang(map['gudang']),
@@ -180,6 +183,7 @@ class PenerimaanBarang {
       'id_gudang': idGudang,
       'catatan': catatan,
       'url_foto': urlFoto,
+      'created_at': createdAt,
       'purchase_order': purchaseOrder?.toMap(),
       'stock_mutation': stockMutation?.toMap(),
       'gudang': gudang.toMap(),
@@ -216,10 +220,10 @@ class PenerimaanBarang {
       if (gudang is Map<String, dynamic>) {
         return GudangPenerimaan.fromMap(gudang);
       }
-      return GudangPenerimaan(id: 0, nama: 'Unknown', kode: 'UNK');
+      return GudangPenerimaan(id: 0, namaGudang: 'Unknown', kode: 'UNK');
     } catch (e) {
       debugPrint('Error parsing gudang: $e');
-      return GudangPenerimaan(id: 0, nama: 'Unknown', kode: 'UNK');
+      return GudangPenerimaan(id: 0, namaGudang: 'Unknown', kode: 'UNK');
     }
   }
 

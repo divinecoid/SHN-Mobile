@@ -225,7 +225,7 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      po.noPo,
+                      po.nomorPo,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,
@@ -300,7 +300,7 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      sm.noMutation,
+                      sm.nomorMutasi,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,
@@ -322,7 +322,7 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      sm.tanggalMutation,
+                      sm.createdAt,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,
@@ -386,7 +386,7 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  penerimaanBarang.gudang.nama,
+                  penerimaanBarang.gudang.namaGudang,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,

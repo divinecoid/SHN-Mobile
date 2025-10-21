@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../controllers/penerimaan_barang_list_controller.dart';
 import '../models/penerimaan_barang_model.dart';
 import 'input_penerimaan_barang_page.dart';
@@ -14,7 +14,6 @@ class PenerimaanBarangListPage extends StatefulWidget {
 
 class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> {
   late PenerimaanBarangListController _controller;
-  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -26,7 +25,6 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> {
   @override
   void dispose() {
     _controller.dispose();
-    _searchController.dispose();
     super.dispose();
   }
 
@@ -70,14 +68,34 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> {
     );
   }
 
-  void _performSearch() {
-    final query = _searchController.text.trim();
-    _controller.search(query);
+
+  String _formatDate(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      return DateFormat('dd MMM yyyy, HH:mm').format(date);
+    } catch (e) {
+      return dateString;
+    }
   }
 
-  void _clearSearch() {
-    _searchController.clear();
-    _controller.clearSearch();
+  String _getNomorReference(PenerimaanBarang penerimaanBarang) {
+    if (penerimaanBarang.origin.toLowerCase() == 'purchaseorder' && 
+        penerimaanBarang.purchaseOrder != null) {
+      return penerimaanBarang.purchaseOrder!.nomorPo;
+    } else if (penerimaanBarang.origin.toLowerCase() == 'stockmutation' && 
+               penerimaanBarang.stockMutation != null) {
+      return penerimaanBarang.stockMutation!.nomorMutasi;
+    }
+    return '-';
+  }
+
+  String _getReferenceLabel(PenerimaanBarang penerimaanBarang) {
+    if (penerimaanBarang.origin.toLowerCase() == 'purchaseorder') {
+      return 'Nomor PO';
+    } else if (penerimaanBarang.origin.toLowerCase() == 'stockmutation') {
+      return 'Nomor Mutasi';
+    }
+    return 'Nomor Referensi';
   }
 
   @override
@@ -279,24 +297,77 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                penerimaanBarang.gudang.nama,
-                style: TextStyle(
-                  color: Colors.grey[300],
-                  fontSize: 14,
-                ),
+              // Tanggal Terima
+              Row(
+                children: [
+                  Icon(
+                    Icons.access_time,
+                    color: Colors.grey[400],
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Tanggal Terima: ${_formatDate(penerimaanBarang.createdAt)}',
+                    style: TextStyle(
+                      color: Colors.grey[300],
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 4),
-              Text(
-                penerimaanBarang.catatan,
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 12,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              // Gudang
+              Row(
+                children: [
+                  Icon(
+                    Icons.warehouse,
+                    color: Colors.grey[400],
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Gudang: ${penerimaanBarang.gudang.namaGudang}',
+                    style: TextStyle(
+                      color: Colors.grey[300],
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              // Nomor PO/Mutasi
+              Row(
+                children: [
+                  Icon(
+                    Icons.receipt,
+                    color: Colors.grey[400],
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${_getReferenceLabel(penerimaanBarang)}: ${_getNomorReference(penerimaanBarang)}',
+                    style: TextStyle(
+                      color: Colors.grey[300],
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
+              // Catatan
+              if (penerimaanBarang.catatan.isNotEmpty) ...[
+                Text(
+                  penerimaanBarang.catatan,
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 12,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+              ],
+              // Footer info
               Row(
                 children: [
                   Icon(
