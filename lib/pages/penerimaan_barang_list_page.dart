@@ -71,7 +71,7 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> {
 
   String _formatDate(String dateString) {
     try {
-      final date = DateTime.parse(dateString);
+      final date = DateTime.parse(dateString).toLocal();
       return DateFormat('dd MMM yyyy, HH:mm').format(date);
     } catch (e) {
       return dateString;
