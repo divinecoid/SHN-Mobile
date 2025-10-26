@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:provider/provider.dart';
 import 'package:shn_mobile/pages/page_login.dart';
 import 'package:shn_mobile/pages/page_dashboard.dart';
+import 'package:shn_mobile/controllers/stock_check_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,40 +22,45 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'SHN Mobile',
-      theme: ThemeData(
-        // Dark theme with black color scheme
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.dark(
-          primary: Colors.black,
-          secondary: Colors.grey[800]!,
-          surface: Colors.black,
-          background: Colors.black,
-          onPrimary: Colors.white,
-          onSecondary: Colors.white,
-          onSurface: Colors.white,
-          onBackground: Colors.white,
-        ),
-        scaffoldBackgroundColor: Colors.black,
-        appBarTheme: AppBarTheme(
-          backgroundColor: Colors.black,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          titleTextStyle: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => StockCheckController()),
+      ],
+      child: MaterialApp(
+        title: 'SHN Mobile',
+        theme: ThemeData(
+          // Dark theme with black color scheme
+          brightness: Brightness.dark,
+          colorScheme: ColorScheme.dark(
+            primary: Colors.black,
+            secondary: Colors.grey[800]!,
+            surface: Colors.black,
+            background: Colors.black,
+            onPrimary: Colors.white,
+            onSecondary: Colors.white,
+            onSurface: Colors.white,
+            onBackground: Colors.white,
           ),
-          iconTheme: IconThemeData(
-            color: Colors.white,
-            size: 24,
+          scaffoldBackgroundColor: Colors.black,
+          appBarTheme: AppBarTheme(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            titleTextStyle: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+            iconTheme: IconThemeData(
+              color: Colors.white,
+              size: 24,
+            ),
+            systemOverlayStyle: SystemUiOverlayStyle.light,
           ),
-          systemOverlayStyle: SystemUiOverlayStyle.light,
         ),
+        home: const AuthWrapper(),
       ),
-      home: const AuthWrapper(),
     );
   }
 }

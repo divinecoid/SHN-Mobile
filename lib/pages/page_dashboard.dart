@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import 'page_login.dart';
 import 'terima_barang_main_page.dart';
 import 'page_mutasi_barang.dart';
 import 'page_stock_opname.dart';
 import 'page_work_order.dart';
+import 'page_stock_check.dart';
 import '../utils/auth_helper.dart';
+import '../controllers/stock_check_controller.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -21,6 +24,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   final List<Widget> _pages = [
     const DashboardContent(),
+    const StockCheckPage(),
     const TerimaBarangMainPage(),
     const MutasiBarangPage(),
     const StockOpnamePage(),
@@ -29,6 +33,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   final List<String> _menuItems = [
     'Dashboard',
+    'Cek Stok',
     'Terima Barang',
     'Mutasi Barang',
     'Stock Opname',
@@ -219,12 +224,14 @@ class _DashboardPageState extends State<DashboardPage> {
       case 0:
         return Icons.dashboard;
       case 1:
-        return Icons.inventory;
+        return Icons.search;
       case 2:
-        return Icons.swap_horiz;
+        return Icons.inventory;
       case 3:
-        return Icons.assessment;
+        return Icons.swap_horiz;
       case 4:
+        return Icons.assessment;
+      case 5:
         return Icons.work;
       default:
         return Icons.home;
