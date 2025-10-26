@@ -1,3 +1,12 @@
+// Helper functions for safe type conversion
+int? _parseInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is String) return int.tryParse(value);
+  if (value is double) return value.toInt();
+  return null;
+}
+
 class Pelaksana {
   final int id;
   final String kode;
@@ -13,10 +22,10 @@ class Pelaksana {
 
   factory Pelaksana.fromMap(Map<String, dynamic> map) {
     return Pelaksana(
-      id: map['id'] as int,
-      kode: map['kode'] as String,
-      namaPelaksana: map['nama_pelaksana'] as String,
-      level: map['level'] as String,
+      id: _parseInt(map['id']) ?? 0,
+      kode: map['kode']?.toString() ?? '',
+      namaPelaksana: map['nama_pelaksana']?.toString() ?? '',
+      level: map['level']?.toString() ?? '',
     );
   }
 

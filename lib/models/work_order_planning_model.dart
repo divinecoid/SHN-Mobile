@@ -1,3 +1,22 @@
+// Helper functions for safe type conversion
+int? _parseInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is String) return int.tryParse(value);
+  if (value is double) return value.toInt();
+  return null;
+}
+
+bool? _parseBool(dynamic value) {
+  if (value == null) return null;
+  if (value is bool) return value;
+  if (value is String) {
+    return value.toLowerCase() == 'true' || value == '1';
+  }
+  if (value is int) return value == 1;
+  return null;
+}
+
 class WorkOrderPlanning {
   final int id;
   final String woUniqueId;
@@ -45,20 +64,20 @@ class WorkOrderPlanning {
 
   factory WorkOrderPlanning.fromMap(Map<String, dynamic> map) {
     return WorkOrderPlanning(
-      id: map['id'] ?? 0,
-      woUniqueId: map['wo_unique_id'] ?? '',
-      nomorWo: map['nomor_wo'] ?? '',
-      tanggalWo: DateTime.tryParse(map['tanggal_wo'] ?? '') ?? DateTime.now(),
-      idSalesOrder: map['id_sales_order'] ?? 0,
-      idPelanggan: map['id_pelanggan'] ?? 0,
-      idGudang: map['id_gudang'] ?? 0,
-      idPelaksana: map['id_pelaksana'],
-      prioritas: map['prioritas'] ?? '',
-      status: map['status'] ?? '',
-      namaPelanggan: map['nama_pelanggan'],
-      namaGudang: map['nama_gudang'],
-      nomorSo: map['nomor_so'],
-      count: map['count'] ?? 0,
+      id: _parseInt(map['id']) ?? 0,
+      woUniqueId: map['wo_unique_id']?.toString() ?? '',
+      nomorWo: map['nomor_wo']?.toString() ?? '',
+      tanggalWo: DateTime.tryParse(map['tanggal_wo']?.toString() ?? '') ?? DateTime.now(),
+      idSalesOrder: _parseInt(map['id_sales_order']) ?? 0,
+      idPelanggan: _parseInt(map['id_pelanggan']) ?? 0,
+      idGudang: _parseInt(map['id_gudang']) ?? 0,
+      idPelaksana: _parseInt(map['id_pelaksana']),
+      prioritas: map['prioritas']?.toString() ?? '',
+      status: map['status']?.toString() ?? '',
+      namaPelanggan: map['nama_pelanggan']?.toString(),
+      namaGudang: map['nama_gudang']?.toString(),
+      nomorSo: map['nomor_so']?.toString(),
+      count: _parseInt(map['count']) ?? 0,
       workOrderPlanningItems: (map['work_order_planning_items'] as List<dynamic>?)
           ?.map((item) => WorkOrderPlanningItem.fromMap(item))
           .toList() ?? [],
@@ -151,21 +170,21 @@ class WorkOrderPlanningItem {
 
   factory WorkOrderPlanningItem.fromMap(Map<String, dynamic> map) {
     return WorkOrderPlanningItem(
-      id: map['id'] ?? 0,
-      woItemUniqueId: map['wo_item_unique_id'] ?? '',
-      panjang: map['panjang'] ?? '0.00',
-      lebar: map['lebar'] ?? '0.00',
-      tebal: map['tebal'] ?? '0.00',
-      berat: map['berat'] ?? '0.00',
-      qty: map['qty'] ?? 0,
-      jenisBarangId: map['jenis_barang_id'] ?? 0,
-      bentukBarangId: map['bentuk_barang_id'] ?? 0,
-      gradeBarangId: map['grade_barang_id'] ?? 0,
-      satuan: map['satuan'] ?? '',
-      diskon: map['diskon'] ?? '0.00',
-      catatan: map['catatan'],
-      isAssigned: map['is_assigned'] ?? false,
-      workOrderPlanningId: map['work_order_planning_id'] ?? 0,
+      id: _parseInt(map['id']) ?? 0,
+      woItemUniqueId: map['wo_item_unique_id']?.toString() ?? '',
+      panjang: map['panjang']?.toString() ?? '0.00',
+      lebar: map['lebar']?.toString() ?? '0.00',
+      tebal: map['tebal']?.toString() ?? '0.00',
+      berat: map['berat']?.toString() ?? '0.00',
+      qty: _parseInt(map['qty']) ?? 0,
+      jenisBarangId: _parseInt(map['jenis_barang_id']) ?? 0,
+      bentukBarangId: _parseInt(map['bentuk_barang_id']) ?? 0,
+      gradeBarangId: _parseInt(map['grade_barang_id']) ?? 0,
+      satuan: map['satuan']?.toString() ?? '',
+      diskon: map['diskon']?.toString() ?? '0.00',
+      catatan: map['catatan']?.toString(),
+      isAssigned: _parseBool(map['is_assigned']) ?? false,
+      workOrderPlanningId: _parseInt(map['work_order_planning_id']) ?? 0,
       jenisBarang: map['jenis_barang'] != null 
           ? JenisBarang.fromMap(map['jenis_barang'])
           : null,
@@ -233,15 +252,15 @@ class PelaksanaItem {
 
   factory PelaksanaItem.fromMap(Map<String, dynamic> map) {
     return PelaksanaItem(
-      id: map['id'] ?? 0,
-      woPlanItemId: map['wo_plan_item_id'] ?? 0,
-      pelaksanaId: map['pelaksana_id'] ?? 0,
-      qty: map['qty'] ?? 0,
-      weight: map['weight'] ?? '0.00',
-      tanggal: map['tanggal'] ?? '',
-      jamMulai: map['jam_mulai'] ?? '',
-      jamSelesai: map['jam_selesai'] ?? '',
-      catatan: map['catatan'],
+      id: _parseInt(map['id']) ?? 0,
+      woPlanItemId: _parseInt(map['wo_plan_item_id']) ?? 0,
+      pelaksanaId: _parseInt(map['pelaksana_id']) ?? 0,
+      qty: _parseInt(map['qty']) ?? 0,
+      weight: map['weight']?.toString() ?? '0.00',
+      tanggal: map['tanggal']?.toString() ?? '',
+      jamMulai: map['jam_mulai']?.toString() ?? '',
+      jamSelesai: map['jam_selesai']?.toString() ?? '',
+      catatan: map['catatan']?.toString(),
       pelaksana: map['pelaksana'] != null 
           ? WorkOrderPelaksana.fromMap(map['pelaksana'])
           : null,
@@ -309,29 +328,29 @@ class SalesOrder {
 
   factory SalesOrder.fromMap(Map<String, dynamic> map) {
     return SalesOrder(
-      id: map['id'] ?? 0,
-      nomorSo: map['nomor_so'] ?? '',
-      tanggalSo: DateTime.tryParse(map['tanggal_so'] ?? '') ?? DateTime.now(),
-      tanggalPengiriman: DateTime.tryParse(map['tanggal_pengiriman'] ?? '') ?? DateTime.now(),
-      syaratPembayaran: map['syarat_pembayaran'] ?? '',
-      gudangId: map['gudang_id'] ?? 0,
-      pelangganId: map['pelanggan_id'] ?? 0,
-      subtotal: map['subtotal'] ?? '0.00',
-      totalDiskon: map['total_diskon'] ?? '0.00',
-      ppnPercent: map['ppn_percent'] ?? '0.00',
-      ppnAmount: map['ppn_amount'] ?? '0.00',
-      totalHargaSo: map['total_harga_so'] ?? '0.00',
-      status: map['status'] ?? '',
-      deleteRequestedBy: map['delete_requested_by'],
+      id: _parseInt(map['id']) ?? 0,
+      nomorSo: map['nomor_so']?.toString() ?? '',
+      tanggalSo: DateTime.tryParse(map['tanggal_so']?.toString() ?? '') ?? DateTime.now(),
+      tanggalPengiriman: DateTime.tryParse(map['tanggal_pengiriman']?.toString() ?? '') ?? DateTime.now(),
+      syaratPembayaran: map['syarat_pembayaran']?.toString() ?? '',
+      gudangId: _parseInt(map['gudang_id']) ?? 0,
+      pelangganId: _parseInt(map['pelanggan_id']) ?? 0,
+      subtotal: map['subtotal']?.toString() ?? '0.00',
+      totalDiskon: map['total_diskon']?.toString() ?? '0.00',
+      ppnPercent: map['ppn_percent']?.toString() ?? '0.00',
+      ppnAmount: map['ppn_amount']?.toString() ?? '0.00',
+      totalHargaSo: map['total_harga_so']?.toString() ?? '0.00',
+      status: map['status']?.toString() ?? '',
+      deleteRequestedBy: map['delete_requested_by']?.toString(),
       deleteRequestedAt: map['delete_requested_at'] != null 
-          ? DateTime.tryParse(map['delete_requested_at'])
+          ? DateTime.tryParse(map['delete_requested_at']?.toString() ?? '')
           : null,
-      deleteApprovedBy: map['delete_approved_by'],
+      deleteApprovedBy: map['delete_approved_by']?.toString(),
       deleteApprovedAt: map['delete_approved_at'] != null 
-          ? DateTime.tryParse(map['delete_approved_at'])
+          ? DateTime.tryParse(map['delete_approved_at']?.toString() ?? '')
           : null,
-      deleteReason: map['delete_reason'],
-      deleteRejectionReason: map['delete_rejection_reason'],
+      deleteReason: map['delete_reason']?.toString(),
+      deleteRejectionReason: map['delete_rejection_reason']?.toString(),
     );
   }
 
@@ -379,12 +398,12 @@ class Pelanggan {
 
   factory Pelanggan.fromMap(Map<String, dynamic> map) {
     return Pelanggan(
-      id: map['id'] ?? 0,
-      kode: map['kode'] ?? '',
-      namaPelanggan: map['nama_pelanggan'] ?? '',
-      kota: map['kota'] ?? '',
-      teleponHp: map['telepon_hp'] ?? '',
-      contactPerson: map['contact_person'] ?? '',
+      id: _parseInt(map['id']) ?? 0,
+      kode: map['kode']?.toString() ?? '',
+      namaPelanggan: map['nama_pelanggan']?.toString() ?? '',
+      kota: map['kota']?.toString() ?? '',
+      teleponHp: map['telepon_hp']?.toString() ?? '',
+      contactPerson: map['contact_person']?.toString() ?? '',
     );
   }
 
@@ -421,13 +440,13 @@ class Gudang {
 
   factory Gudang.fromMap(Map<String, dynamic> map) {
     return Gudang(
-      id: map['id'] ?? 0,
-      kode: map['kode'] ?? '',
-      namaGudang: map['nama_gudang'] ?? '',
-      tipeGudang: map['tipe_gudang'],
-      parentId: map['parent_id'],
-      teleponHp: map['telepon_hp'],
-      kapasitas: map['kapasitas'],
+      id: _parseInt(map['id']) ?? 0,
+      kode: map['kode']?.toString() ?? '',
+      namaGudang: map['nama_gudang']?.toString() ?? '',
+      tipeGudang: map['tipe_gudang']?.toString(),
+      parentId: _parseInt(map['parent_id']),
+      teleponHp: map['telepon_hp']?.toString(),
+      kapasitas: map['kapasitas']?.toString(),
     );
   }
 
@@ -463,12 +482,12 @@ class WorkOrderPelaksana {
 
   factory WorkOrderPelaksana.fromMap(Map<String, dynamic> map) {
     return WorkOrderPelaksana(
-      id: map['id'] ?? 0,
-      kode: map['kode'] ?? '',
-      namaPelaksana: map['nama_pelaksana'] ?? '',
-      jabatan: map['jabatan'],
-      departemen: map['departemen'],
-      level: map['level'],
+      id: _parseInt(map['id']) ?? 0,
+      kode: map['kode']?.toString() ?? '',
+      namaPelaksana: map['nama_pelaksana']?.toString() ?? '',
+      jabatan: map['jabatan']?.toString(),
+      departemen: map['departemen']?.toString(),
+      level: map['level']?.toString(),
     );
   }
 
@@ -591,9 +610,9 @@ class JenisBarang {
 
   factory JenisBarang.fromMap(Map<String, dynamic> map) {
     return JenisBarang(
-      id: map['id'] ?? 0,
-      kode: map['kode'] ?? '',
-      namaJenis: map['nama_jenis'] ?? '',
+      id: _parseInt(map['id']) ?? 0,
+      kode: map['kode']?.toString() ?? '',
+      namaJenis: map['nama_jenis']?.toString() ?? '',
     );
   }
 
@@ -621,10 +640,10 @@ class BentukBarang {
 
   factory BentukBarang.fromMap(Map<String, dynamic> map) {
     return BentukBarang(
-      id: map['id'] ?? 0,
-      kode: map['kode'] ?? '',
-      namaBentuk: map['nama_bentuk'] ?? '',
-      dimensi: map['dimensi'] ?? '',
+      id: _parseInt(map['id']) ?? 0,
+      kode: map['kode']?.toString() ?? '',
+      namaBentuk: map['nama_bentuk']?.toString() ?? '',
+      dimensi: map['dimensi']?.toString() ?? '',
     );
   }
 
@@ -651,9 +670,9 @@ class GradeBarang {
 
   factory GradeBarang.fromMap(Map<String, dynamic> map) {
     return GradeBarang(
-      id: map['id'] ?? 0,
-      kode: map['kode'] ?? '',
-      nama: map['nama'] ?? '',
+      id: _parseInt(map['id']) ?? 0,
+      kode: map['kode']?.toString() ?? '',
+      nama: map['nama']?.toString() ?? '',
     );
   }
 
@@ -683,11 +702,11 @@ class WorkOrderActual {
 
   factory WorkOrderActual.fromMap(Map<String, dynamic> map) {
     return WorkOrderActual(
-      id: map['id'] ?? 0,
-      workOrderPlanningId: map['work_order_planning_id'] ?? 0,
-      tanggalActual: DateTime.tryParse(map['tanggal_actual'] ?? '') ?? DateTime.now(),
-      status: map['status'] ?? '',
-      catatan: map['catatan'],
+      id: _parseInt(map['id']) ?? 0,
+      workOrderPlanningId: _parseInt(map['work_order_planning_id']) ?? 0,
+      tanggalActual: DateTime.tryParse(map['tanggal_actual']?.toString() ?? '') ?? DateTime.now(),
+      status: map['status']?.toString() ?? '',
+      catatan: map['catatan']?.toString(),
     );
   }
 
