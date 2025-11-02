@@ -1,31 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../models/gudang_model.dart';
+import '../models/item_barang_model.dart';
+import '../utils/auth_helper.dart';
 
 class StockOpnameController extends ChangeNotifier {
   bool _isLoadingLocation = false;
   bool _isLoadingWarehouses = false;
   bool _isFreezingStock = false;
+  bool _isStartingOpname = false;
   bool _stockFrozen = false;
+  bool _opnameStarted = false;
   String _selectedWarehouse = '';
   String _detectedLocation = '';
-  List<Map<String, dynamic>> _warehouses = [];
+  List<Gudang> _warehouses = [];
   List<Map<String, dynamic>> _stockItems = [];
+  List<ItemBarang> _itemBarangList = [];
+  bool _isLoadingItems = false;
   String _errorMessage = '';
+  BuildContext? _context;
 
   // Getters
   bool get isLoadingLocation => _isLoadingLocation;
   bool get isLoadingWarehouses => _isLoadingWarehouses;
   bool get isFreezingStock => _isFreezingStock;
+  bool get isStartingOpname => _isStartingOpname;
   bool get stockFrozen => _stockFrozen;
+  bool get opnameStarted => _opnameStarted;
   String get selectedWarehouse => _selectedWarehouse;
   String get detectedLocation => _detectedLocation;
-  List<Map<String, dynamic>> get warehouses => _warehouses;
+  List<Gudang> get warehouses => _warehouses;
   List<Map<String, dynamic>> get stockItems => _stockItems;
+  List<ItemBarang> get itemBarangList => _itemBarangList;
+  bool get isLoadingItems => _isLoadingItems;
   String get errorMessage => _errorMessage;
 
   StockOpnameController() {
     _initialize();
+  }
+
+  /// Set context for session handling
+  void setContext(BuildContext context) {
+    _context = context;
+  }
+
+  /// Handle session expired
+  Future<void> _handleSessionExpired() async {
+    if (_context != null) {
+      await AuthHelper.handleSessionExpired(_context!);
+    }
   }
 
   Future<void> _initialize() async {
@@ -75,46 +102,68 @@ class StockOpnameController extends ChangeNotifier {
     }
   }
 
+  /// Get authentication token from SharedPreferences
+  Future<String?> _getAuthToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('token');
+    } catch (e) {
+      debugPrint('Error getting auth token: $e');
+      return null;
+    }
+  }
+
   Future<void> _loadWarehouses() async {
     setState(() {
       _isLoadingWarehouses = true;
+      _errorMessage = '';
     });
 
     try {
-      // Mock warehouse data - in real app, this would come from API
-      await Future.delayed(const Duration(seconds: 1));
-      _warehouses = [
-        {
-          'id': '1',
-          'name': 'Gudang Utama Jakarta',
-          'address': 'Jl. Sudirman No. 123, Jakarta Pusat',
-          'latitude': -6.2088,
-          'longitude': 106.8456,
+      // Get authentication token
+      final token = await _getAuthToken();
+      if (token == null) {
+        // Redirect to login if no token
+        await _handleSessionExpired();
+        setState(() {
+          _isLoadingWarehouses = false;
+        });
+        return;
+      }
+
+      // Get API URL from environment
+      final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final String apiPath = dotenv.env['API_GUDANG'] ?? '/api/gudang';
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl$apiPath'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
         },
-        {
-          'id': '2',
-          'name': 'Gudang Bandung',
-          'address': 'Jl. Asia Afrika No. 100, Bandung',
-          'latitude': -6.9175,
-          'longitude': 107.6191,
-        },
-        {
-          'id': '3',
-          'name': 'Gudang Surabaya',
-          'address': 'Jl. Tunjungan No. 50, Surabaya',
-          'latitude': -7.2575,
-          'longitude': 112.7521,
-        },
-        {
-          'id': '4',
-          'name': 'Gudang Medan',
-          'address': 'Jl. Sudirman No. 200, Medan',
-          'latitude': 3.5952,
-          'longitude': 98.6722,
-        },
-      ];
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        final GudangResult gudangResult = GudangResult.fromMap(jsonData);
+        
+        if (gudangResult.success) {
+          _warehouses = gudangResult.data;
+          _errorMessage = '';
+        } else {
+          _errorMessage = gudangResult.message;
+        }
+      } else if (response.statusCode == 401) {
+        // Redirect to login when session expired
+        await _handleSessionExpired();
+        return;
+      } else {
+        _errorMessage = 'Gagal mengambil data gudang: ${response.statusCode}';
+      }
     } catch (e) {
       _errorMessage = 'Gagal memuat data gudang: $e';
+      debugPrint('Error loading warehouses: $e');
     } finally {
       setState(() {
         _isLoadingWarehouses = false;
@@ -205,26 +254,30 @@ class StockOpnameController extends ChangeNotifier {
     if (_warehouses.isEmpty) return;
 
     // Find the nearest warehouse based on distance
-    Map<String, dynamic> nearestWarehouse = _warehouses.first;
+    // Only consider warehouses with valid coordinates
+    Gudang? nearestWarehouse;
     double minDistance = double.infinity;
 
     for (var warehouse in _warehouses) {
-      double distance = Geolocator.distanceBetween(
-        lat,
-        lng,
-        warehouse['latitude'],
-        warehouse['longitude'],
-      );
+      // Check if warehouse has coordinates
+      if (warehouse.latitude != null && warehouse.longitude != null) {
+        double distance = Geolocator.distanceBetween(
+          lat,
+          lng,
+          warehouse.latitude!,
+          warehouse.longitude!,
+        );
 
-      if (distance < minDistance) {
-        minDistance = distance;
-        nearestWarehouse = warehouse;
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestWarehouse = warehouse;
+        }
       }
     }
 
-    // Auto-select if within reasonable distance (e.g., 10km)
-    if (minDistance <= 10000) {
-      _selectedWarehouse = nearestWarehouse['name'];
+    // Auto-select if within reasonable distance (e.g., 10km) and coordinates are available
+    if (nearestWarehouse != null && minDistance <= 10000) {
+      _selectedWarehouse = nearestWarehouse.namaGudang;
       notifyListeners();
     }
   }
@@ -232,6 +285,81 @@ class StockOpnameController extends ChangeNotifier {
   void updateSelectedWarehouse(String warehouseName) {
     _selectedWarehouse = warehouseName;
     notifyListeners();
+    
+    // Load items automatically when warehouse is selected
+    if (_warehouses.isNotEmpty) {
+      try {
+        final selectedGudang = _warehouses.firstWhere(
+          (g) => g.namaGudang == warehouseName,
+        );
+        if (selectedGudang.id > 0) {
+          loadItemBarang(selectedGudang.id);
+        }
+      } catch (e) {
+        debugPrint('Error finding warehouse: $e');
+      }
+    }
+  }
+
+  Future<void> loadItemBarang(int gudangId) async {
+    setState(() {
+      _isLoadingItems = true;
+      _errorMessage = '';
+    });
+
+    try {
+      // Get authentication token
+      final token = await _getAuthToken();
+      if (token == null) {
+        // Redirect to login if no token
+        await _handleSessionExpired();
+        setState(() {
+          _isLoadingItems = false;
+        });
+        return;
+      }
+
+      // Get API URL from environment
+      final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final String apiPath = dotenv.env['API_ITEM_BARANG'] ?? '/api/item-barang';
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl$apiPath?gudang_id=$gudangId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        final ItemBarangResult itemBarangResult = ItemBarangResult.fromMap(jsonData);
+        
+        if (itemBarangResult.success) {
+          _itemBarangList = itemBarangResult.data;
+          _errorMessage = '';
+        } else {
+          _errorMessage = itemBarangResult.message;
+          _itemBarangList = [];
+        }
+      } else if (response.statusCode == 401) {
+        // Redirect to login when session expired
+        await _handleSessionExpired();
+        return;
+      } else {
+        _errorMessage = 'Gagal mengambil data item barang: ${response.statusCode}';
+        _itemBarangList = [];
+      }
+    } catch (e) {
+      _errorMessage = 'Gagal memuat data item barang: $e';
+      _itemBarangList = [];
+      debugPrint('Error loading item barang: $e');
+    } finally {
+      setState(() {
+        _isLoadingItems = false;
+      });
+    }
   }
 
   Future<void> freezeStockAndStartOpname() async {
@@ -261,6 +389,7 @@ class StockOpnameController extends ChangeNotifier {
 
       setState(() {
         _stockFrozen = true;
+        _opnameStarted = true;
       });
 
     } catch (e) {
@@ -268,6 +397,42 @@ class StockOpnameController extends ChangeNotifier {
     } finally {
       setState(() {
         _isFreezingStock = false;
+      });
+    }
+  }
+
+  Future<void> startOpnameWithoutFreeze() async {
+    if (_selectedWarehouse.isEmpty) {
+      _errorMessage = 'Pilih lokasi gudang terlebih dahulu';
+      notifyListeners();
+      return;
+    }
+
+    setState(() {
+      _isStartingOpname = true;
+      _errorMessage = '';
+    });
+
+    try {
+      // Load stock items for the selected warehouse without freezing
+      await _loadStockItems();
+      
+      // Save opname session data
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('opname_warehouse', _selectedWarehouse);
+      await prefs.setString('opname_start_time', DateTime.now().toIso8601String());
+      await prefs.setBool('opname_active', true);
+      await prefs.setBool('opname_without_freeze', true);
+
+      setState(() {
+        _opnameStarted = true;
+      });
+
+    } catch (e) {
+      _errorMessage = 'Gagal memulai opname: $e';
+    } finally {
+      setState(() {
+        _isStartingOpname = false;
       });
     }
   }
@@ -300,10 +465,12 @@ class StockOpnameController extends ChangeNotifier {
 
   void resetOpname() {
     _stockFrozen = false;
+    _opnameStarted = false;
     _selectedWarehouse = '';
     _detectedLocation = '';
     _errorMessage = '';
     _stockItems.clear();
+    _itemBarangList.clear();
     notifyListeners();
   }
 

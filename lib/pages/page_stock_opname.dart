@@ -39,17 +39,29 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
             itemCount: _controller.warehouses.length,
             itemBuilder: (context, index) {
               final warehouse = _controller.warehouses[index];
+              
               return ListTile(
                 title: Text(
-                  warehouse['name'],
+                  warehouse.namaGudang,
                   style: const TextStyle(color: Colors.white),
                 ),
-                subtitle: Text(
-                  warehouse['address'],
-                  style: TextStyle(color: Colors.grey[400]),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (warehouse.alamat != null && warehouse.alamat!.isNotEmpty)
+                      Text(
+                        warehouse.alamat!,
+                        style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                      ),
+                    if (warehouse.kode.isNotEmpty)
+                      Text(
+                        'Kode: ${warehouse.kode}',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                      ),
+                  ],
                 ),
                 onTap: () {
-                  _controller.updateSelectedWarehouse(warehouse['name']);
+                  _controller.updateSelectedWarehouse(warehouse.namaGudang);
                   Navigator.pop(context);
                 },
               );
@@ -62,6 +74,9 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Set context for session handling
+    _controller.setContext(context);
+    
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -73,6 +88,10 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
               _buildLocationSection(),
               const SizedBox(height: 16),
               _buildFreezeStockSection(),
+              if (_controller.selectedWarehouse.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _buildItemBarangSection(),
+              ],
               const SizedBox(height: 24),
             ],
           ),
@@ -263,13 +282,25 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
               Row(
                 children: [
                   Icon(
-                    _controller.stockFrozen ? Icons.lock : Icons.lock_open,
-                    color: _controller.stockFrozen ? Colors.red[400] : Colors.green[400],
+                    _controller.stockFrozen 
+                        ? Icons.lock 
+                        : _controller.opnameStarted 
+                            ? Icons.play_arrow 
+                            : Icons.lock_open,
+                    color: _controller.stockFrozen 
+                        ? Colors.red[400] 
+                        : _controller.opnameStarted 
+                            ? Colors.blue[400] 
+                            : Colors.green[400],
                     size: 24,
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    _controller.stockFrozen ? 'Stok Telah Dibekukan' : 'Bekukan Stok',
+                    _controller.stockFrozen 
+                        ? 'Stok Telah Dibekukan' 
+                        : _controller.opnameStarted 
+                            ? 'Opname Telah Dimulai' 
+                            : 'Mulai Stock Opname',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -303,9 +334,32 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                     ],
                   ),
                 )
+              else if (_controller.opnameStarted)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[900],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info, color: Colors.blue[300], size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Stock opname telah dimulai tanpa membekukan stok.',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
               else
                 Text(
-                  'Klik tombol di bawah untuk membekukan stok dan memulai stock opname.',
+                  'Pilih salah satu opsi untuk memulai stock opname.',
                   style: TextStyle(
                     color: Colors.grey[300],
                     fontSize: 14,
@@ -314,64 +368,124 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
               
               const SizedBox(height: 20),
               
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _controller.selectedWarehouse.isEmpty || _controller.isFreezingStock
-                      ? null
-                      : _controller.freezeStockAndStartOpname,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _controller.stockFrozen ? Colors.grey[700] : Colors.red[600],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+              // Button 1: Bekukan Stok & Mulai Opname
+              if (!_controller.opnameStarted)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _controller.selectedWarehouse.isEmpty || _controller.isFreezingStock || _controller.isStartingOpname
+                        ? null
+                        : _controller.freezeStockAndStartOpname,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _controller.stockFrozen ? Colors.grey[700] : Colors.red[600],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 3,
                     ),
-                    elevation: 3,
+                    child: _controller.isFreezingStock
+                        ? const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                'Membekukan Stok...',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _controller.stockFrozen ? Icons.check : Icons.lock,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                _controller.stockFrozen ? 'Stok Telah Dibekukan' : 'Bekukan Stok & Mulai Opname',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
-                  child: _controller.isFreezingStock
-                      ? const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              'Membekukan Stok...',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              _controller.stockFrozen ? Icons.check : Icons.lock,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              _controller.stockFrozen ? 'Stok Telah Dibekukan' : 'Bekukan Stok & Mulai Opname',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
                 ),
-              ),
               
-              if (_controller.stockFrozen)
+              // Button 2: Mulai Opname Tanpa Bekukan Stok
+              if (!_controller.opnameStarted) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _controller.selectedWarehouse.isEmpty || _controller.isFreezingStock || _controller.isStartingOpname
+                        ? null
+                        : _controller.startOpnameWithoutFreeze,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[600],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 3,
+                    ),
+                    child: _controller.isStartingOpname
+                        ? const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                'Memulai Opname...',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          )
+                        : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.play_arrow, size: 24),
+                              SizedBox(width: 12),
+                              Text(
+                                'Mulai Opname Tanpa Bekukan Stok',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ],
+              
+              if (_controller.opnameStarted || _controller.stockFrozen)
                 Container(
                   margin: const EdgeInsets.only(top: 12),
                   width: double.infinity,
@@ -399,6 +513,236 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
           ),
         );
       }
+    );
+  }
+
+  Widget _buildItemBarangSection() {
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, child) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[800]!),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.inventory_2, color: Colors.blue[400], size: 24),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Item Barang',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              
+              if (_controller.isLoadingItems)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_controller.itemBarangList.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[850],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.grey[400], size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Tidak ada item barang di gudang ini.',
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Column(
+                  children: [
+                    Text(
+                      'Total: ${_controller.itemBarangList.length} item',
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _controller.itemBarangList.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final item = _controller.itemBarangList[index];
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[850],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[700]!),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Kode Barang (Title)
+                              Text(
+                                item.kodeBarang.isNotEmpty ? item.kodeBarang : item.namaItemBarang,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              
+                              // Jenis, Bentuk, Grade
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                children: [
+                                  if (item.jenisBarang != null)
+                                    _buildInfoChip(
+                                      'Jenis: ${item.jenisBarang!.namaJenis}',
+                                      Colors.blue[300]!,
+                                    ),
+                                  if (item.bentukBarang != null)
+                                    _buildInfoChip(
+                                      'Bentuk: ${item.bentukBarang!.namaBentuk}',
+                                      Colors.green[300]!,
+                                    ),
+                                  if (item.gradeBarang != null)
+                                    _buildInfoChip(
+                                      'Grade: ${item.gradeBarang!.nama}',
+                                      Colors.orange[300]!,
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              
+                              // Dimensi dan Quantity
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildDetailRow(
+                                      Icons.straighten,
+                                      'Panjang',
+                                      '${item.panjang.toStringAsFixed(2)}',
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: _buildDetailRow(
+                                      Icons.height,
+                                      'Lebar',
+                                      '${item.lebar.toStringAsFixed(2)}',
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: _buildDetailRow(
+                                      Icons.layers,
+                                      'Tebal',
+                                      '${item.tebal.toStringAsFixed(2)}',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              
+                              // Quantity
+                              Row(
+                                children: [
+                                  Icon(Icons.inventory, color: Colors.amber[400], size: 16),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Quantity: ${item.quantity.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      color: Colors.amber[400],
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: Colors.grey[400], size: 14),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 10,
+                ),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 } 
