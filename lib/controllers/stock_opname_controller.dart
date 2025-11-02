@@ -283,8 +283,6 @@ class StockOpnameController extends ChangeNotifier {
   }
 
   void updateSelectedWarehouse(String warehouseName) {
-    _selectedWarehouse = warehouseName;
-    
     debugPrint('Warehouse selected: $warehouseName');
     debugPrint('Available warehouses count: ${_warehouses.length}');
     
@@ -296,25 +294,32 @@ class StockOpnameController extends ChangeNotifier {
         );
         debugPrint('Found warehouse ID: ${selectedGudang.id}');
         if (selectedGudang.id > 0) {
-          // Clear previous items first
-          _itemBarangList.clear();
-          _errorMessage = '';
-          // Notify UI update for selected warehouse
-          notifyListeners();
+          // Update selected warehouse and clear previous items
+          setState(() {
+            _selectedWarehouse = warehouseName;
+            _itemBarangList.clear();
+            _errorMessage = '';
+          });
           // Load items asynchronously
           loadItemBarang(selectedGudang.id);
         } else {
           debugPrint('Invalid warehouse ID: ${selectedGudang.id}');
-          notifyListeners();
+          setState(() {
+            _selectedWarehouse = warehouseName;
+          });
         }
       } catch (e) {
         debugPrint('Error finding warehouse: $e');
         debugPrint('Available warehouses: ${_warehouses.map((w) => w.namaGudang).toList()}');
-        notifyListeners();
+        setState(() {
+          _selectedWarehouse = warehouseName;
+        });
       }
     } else {
       debugPrint('No warehouses available');
-      notifyListeners();
+      setState(() {
+        _selectedWarehouse = warehouseName;
+      });
     }
   }
 
@@ -357,17 +362,27 @@ class StockOpnameController extends ChangeNotifier {
           final ItemBarangResult itemBarangResult = ItemBarangResult.fromMap(jsonData);
           
           if (itemBarangResult.success) {
-            _itemBarangList = itemBarangResult.data;
-            _errorMessage = '';
+            setState(() {
+              _itemBarangList = itemBarangResult.data;
+              _errorMessage = '';
+              _isLoadingItems = false;
+            });
             debugPrint('Item Barang loaded: ${_itemBarangList.length} items');
+            debugPrint('Notifying listeners after loading items');
           } else {
-            _errorMessage = itemBarangResult.message;
-            _itemBarangList = [];
+            setState(() {
+              _errorMessage = itemBarangResult.message;
+              _itemBarangList = [];
+              _isLoadingItems = false;
+            });
             debugPrint('Item Barang API error: ${itemBarangResult.message}');
           }
         } catch (parseError) {
-          _errorMessage = 'Gagal memproses data item barang: $parseError';
-          _itemBarangList = [];
+          setState(() {
+            _errorMessage = 'Gagal memproses data item barang: $parseError';
+            _itemBarangList = [];
+            _isLoadingItems = false;
+          });
           debugPrint('Item Barang parse error: $parseError');
           debugPrint('JSON Data: ${jsonData.toString()}');
         }
@@ -376,17 +391,19 @@ class StockOpnameController extends ChangeNotifier {
         await _handleSessionExpired();
         return;
       } else {
-        _errorMessage = 'Gagal mengambil data item barang: ${response.statusCode}';
-        _itemBarangList = [];
+        setState(() {
+          _errorMessage = 'Gagal mengambil data item barang: ${response.statusCode}';
+          _itemBarangList = [];
+          _isLoadingItems = false;
+        });
       }
     } catch (e) {
-      _errorMessage = 'Gagal memuat data item barang: $e';
-      _itemBarangList = [];
-      debugPrint('Error loading item barang: $e');
-    } finally {
       setState(() {
+        _errorMessage = 'Gagal memuat data item barang: $e';
+        _itemBarangList = [];
         _isLoadingItems = false;
       });
+      debugPrint('Error loading item barang: $e');
     }
   }
 

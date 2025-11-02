@@ -61,11 +61,10 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                       ),
                   ],
                 ),
-                onTap: () async {
-                  Navigator.pop(context);
-                  // Wait a bit for dialog to close before updating warehouse
-                  await Future.delayed(const Duration(milliseconds: 100));
+                onTap: () {
+                  // Update warehouse first, then close dialog
                   _controller.updateSelectedWarehouse(warehouse.namaGudang);
+                  Navigator.pop(context);
                 },
               );
             },
@@ -83,21 +82,26 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildLocationSection(),
-              const SizedBox(height: 16),
-              _buildFreezeStockSection(),
-              if (_controller.selectedWarehouse.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                _buildItemBarangSection(),
-              ],
-              const SizedBox(height: 24),
-            ],
-          ),
+        child: ListenableBuilder(
+          listenable: _controller,
+          builder: (context, child) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildLocationSection(),
+                  const SizedBox(height: 16),
+                  _buildFreezeStockSection(),
+                  if (_controller.selectedWarehouse.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    _buildItemBarangSection(),
+                  ],
+                  const SizedBox(height: 24),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
@@ -523,6 +527,9 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
     return ListenableBuilder(
       listenable: _controller,
       builder: (context, child) {
+        // Debug info
+        debugPrint('Build ItemBarangSection - isLoading: ${_controller.isLoadingItems}, listLength: ${_controller.itemBarangList.length}, error: ${_controller.errorMessage}');
+        
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -556,7 +563,9 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                     child: CircularProgressIndicator(),
                   ),
                 )
-              else if (_controller.errorMessage.isNotEmpty && _controller.errorMessage.contains('item barang'))
+              else if (_controller.errorMessage.isNotEmpty && 
+                       (_controller.errorMessage.contains('item barang') || 
+                        _controller.errorMessage.contains('Item Barang')))
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -579,7 +588,7 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                     ],
                   ),
                 )
-              else if (_controller.itemBarangList.isEmpty)
+              else if (_controller.itemBarangList.isEmpty && !_controller.isLoadingItems)
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -602,7 +611,8 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                     ],
                   ),
                 )
-              else
+              else if (_controller.itemBarangList.isNotEmpty)
+                // Show items if list is not empty
                 Column(
                   children: [
                     Text(
