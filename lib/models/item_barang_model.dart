@@ -93,16 +93,16 @@ class ItemBarang {
       mergeDate: map['merge_date']?.toString(),
       frozenAt: map['frozen_at']?.toString(),
       frozenBy: _parseInt(map['frozen_by']),
-      jenisBarang: map['jenis_barang'] != null
+      jenisBarang: map['jenis_barang'] != null && map['jenis_barang'] is Map<String, dynamic>
           ? RefJenisBarang.fromJson(map['jenis_barang'] as Map<String, dynamic>)
           : null,
-      bentukBarang: map['bentuk_barang'] != null
+      bentukBarang: map['bentuk_barang'] != null && map['bentuk_barang'] is Map<String, dynamic>
           ? RefBentukBarang.fromJson(map['bentuk_barang'] as Map<String, dynamic>)
           : null,
-      gradeBarang: map['grade_barang'] != null
+      gradeBarang: map['grade_barang'] != null && map['grade_barang'] is Map<String, dynamic>
           ? RefGradeBarang.fromJson(map['grade_barang'] as Map<String, dynamic>)
           : null,
-      gudang: map['gudang'] != null
+      gudang: map['gudang'] != null && map['gudang'] is Map<String, dynamic>
           ? Gudang.fromMap(map['gudang'] as Map<String, dynamic>)
           : null,
     );

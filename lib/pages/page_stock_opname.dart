@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../controllers/stock_opname_controller.dart';
 
 class StockOpnamePage extends StatefulWidget {
@@ -553,6 +554,29 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                     child: CircularProgressIndicator(),
                   ),
                 )
+              else if (_controller.errorMessage.isNotEmpty && _controller.errorMessage.contains('item barang'))
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red[900],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error, color: Colors.red[300], size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _controller.errorMessage,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
               else if (_controller.itemBarangList.isEmpty)
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -680,21 +704,21 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                                     child: _buildDetailRow(
                                       Icons.straighten,
                                       'Panjang',
-                                      '${item.panjang.toStringAsFixed(2)}',
+                                      _formatNumber(item.panjang),
                                     ),
                                   ),
                                   Expanded(
                                     child: _buildDetailRow(
                                       Icons.height,
                                       'Lebar',
-                                      '${item.lebar.toStringAsFixed(2)}',
+                                      _formatNumber(item.lebar),
                                     ),
                                   ),
                                   Expanded(
                                     child: _buildDetailRow(
                                       Icons.layers,
                                       'Tebal',
-                                      '${item.tebal.toStringAsFixed(2)}',
+                                      _formatNumber(item.tebal),
                                     ),
                                   ),
                                 ],
@@ -707,7 +731,7 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                                   Icon(Icons.inventory, color: Colors.amber[400], size: 16),
                                   const SizedBox(width: 4),
                                   Text(
-                                    'Quantity: ${item.quantity.toStringAsFixed(2)}',
+                                    'Quantity: ${_formatNumber(item.quantity)}',
                                     style: TextStyle(
                                       color: Colors.amber[400],
                                       fontSize: 14,
@@ -746,6 +770,15 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
         ),
       ),
     );
+  }
+
+  String _formatNumber(double value) {
+    // Convert to integer (remove decimals)
+    final intValue = value.round();
+    // Format with thousand separator using Indonesian format (using dot)
+    // Use NumberFormat.decimalPattern for locale-aware formatting
+    final formatter = NumberFormat.decimalPattern('id_ID');
+    return formatter.format(intValue);
   }
 
   Widget _buildDetailRow(IconData icon, String label, String value) {

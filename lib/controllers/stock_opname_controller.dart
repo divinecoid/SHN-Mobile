@@ -286,18 +286,27 @@ class StockOpnameController extends ChangeNotifier {
     _selectedWarehouse = warehouseName;
     notifyListeners();
     
+    debugPrint('Warehouse selected: $warehouseName');
+    debugPrint('Available warehouses count: ${_warehouses.length}');
+    
     // Load items automatically when warehouse is selected
     if (_warehouses.isNotEmpty) {
       try {
         final selectedGudang = _warehouses.firstWhere(
           (g) => g.namaGudang == warehouseName,
         );
+        debugPrint('Found warehouse ID: ${selectedGudang.id}');
         if (selectedGudang.id > 0) {
           loadItemBarang(selectedGudang.id);
+        } else {
+          debugPrint('Invalid warehouse ID: ${selectedGudang.id}');
         }
       } catch (e) {
         debugPrint('Error finding warehouse: $e');
+        debugPrint('Available warehouses: ${_warehouses.map((w) => w.namaGudang).toList()}');
       }
+    } else {
+      debugPrint('No warehouses available');
     }
   }
 
@@ -334,14 +343,25 @@ class StockOpnameController extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
-        final ItemBarangResult itemBarangResult = ItemBarangResult.fromMap(jsonData);
+        debugPrint('Item Barang API Response: ${jsonData.toString()}');
         
-        if (itemBarangResult.success) {
-          _itemBarangList = itemBarangResult.data;
-          _errorMessage = '';
-        } else {
-          _errorMessage = itemBarangResult.message;
+        try {
+          final ItemBarangResult itemBarangResult = ItemBarangResult.fromMap(jsonData);
+          
+          if (itemBarangResult.success) {
+            _itemBarangList = itemBarangResult.data;
+            _errorMessage = '';
+            debugPrint('Item Barang loaded: ${_itemBarangList.length} items');
+          } else {
+            _errorMessage = itemBarangResult.message;
+            _itemBarangList = [];
+            debugPrint('Item Barang API error: ${itemBarangResult.message}');
+          }
+        } catch (parseError) {
+          _errorMessage = 'Gagal memproses data item barang: $parseError';
           _itemBarangList = [];
+          debugPrint('Item Barang parse error: $parseError');
+          debugPrint('JSON Data: ${jsonData.toString()}');
         }
       } else if (response.statusCode == 401) {
         // Redirect to login when session expired
