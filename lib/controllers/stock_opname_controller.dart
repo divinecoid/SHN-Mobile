@@ -284,7 +284,6 @@ class StockOpnameController extends ChangeNotifier {
 
   void updateSelectedWarehouse(String warehouseName) {
     _selectedWarehouse = warehouseName;
-    notifyListeners();
     
     debugPrint('Warehouse selected: $warehouseName');
     debugPrint('Available warehouses count: ${_warehouses.length}');
@@ -297,16 +296,25 @@ class StockOpnameController extends ChangeNotifier {
         );
         debugPrint('Found warehouse ID: ${selectedGudang.id}');
         if (selectedGudang.id > 0) {
+          // Clear previous items first
+          _itemBarangList.clear();
+          _errorMessage = '';
+          // Notify UI update for selected warehouse
+          notifyListeners();
+          // Load items asynchronously
           loadItemBarang(selectedGudang.id);
         } else {
           debugPrint('Invalid warehouse ID: ${selectedGudang.id}');
+          notifyListeners();
         }
       } catch (e) {
         debugPrint('Error finding warehouse: $e');
         debugPrint('Available warehouses: ${_warehouses.map((w) => w.namaGudang).toList()}');
+        notifyListeners();
       }
     } else {
       debugPrint('No warehouses available');
+      notifyListeners();
     }
   }
 

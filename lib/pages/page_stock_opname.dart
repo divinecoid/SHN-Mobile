@@ -61,9 +61,11 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                       ),
                   ],
                 ),
-                onTap: () {
-                  _controller.updateSelectedWarehouse(warehouse.namaGudang);
+                onTap: () async {
                   Navigator.pop(context);
+                  // Wait a bit for dialog to close before updating warehouse
+                  await Future.delayed(const Duration(milliseconds: 100));
+                  _controller.updateSelectedWarehouse(warehouse.namaGudang);
                 },
               );
             },
@@ -673,24 +675,24 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                               ),
                               const SizedBox(height: 8),
                               
-                              // Jenis, Bentuk, Grade
+                              // Bentuk, Jenis, Grade
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 4,
                                 children: [
-                                  if (item.jenisBarang != null)
-                                    _buildInfoChip(
-                                      'Jenis: ${item.jenisBarang!.namaJenis}',
-                                      Colors.blue[300]!,
-                                    ),
                                   if (item.bentukBarang != null)
                                     _buildInfoChip(
-                                      'Bentuk: ${item.bentukBarang!.namaBentuk}',
+                                      item.bentukBarang!.namaBentuk,
                                       Colors.green[300]!,
+                                    ),
+                                  if (item.jenisBarang != null)
+                                    _buildInfoChip(
+                                      item.jenisBarang!.namaJenis,
+                                      Colors.blue[300]!,
                                     ),
                                   if (item.gradeBarang != null)
                                     _buildInfoChip(
-                                      'Grade: ${item.gradeBarang!.nama}',
+                                      item.gradeBarang!.nama,
                                       Colors.orange[300]!,
                                     ),
                                 ],
