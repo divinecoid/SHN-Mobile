@@ -675,8 +675,10 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
               ),
               const SizedBox(height: 12),
               
-              // Scan Barang Button
-              if (!_controller.isLoadingItems && _controller.itemBarangList.isNotEmpty)
+              // Scan Barang Button - only show if opname has started
+              if ((_controller.opnameStarted || _controller.stockFrozen) && 
+                  !_controller.isLoadingItems && 
+                  _controller.itemBarangList.isNotEmpty)
                 Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   width: double.infinity,
@@ -963,14 +965,18 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
   }
 
   void _showScanBarangDialog(BuildContext context) {
+    // Save the context from StockOpnamePage
+    final stockOpnameContext = context;
+    
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => QRScanPage(
           isRack: false,
           onScanResult: (scannedCode) {
-            Navigator.pop(context); // Close scanner
-            _processScannedBarang(context, scannedCode);
+            // QRScanPage will close itself, so we just process the result
+            // Use the saved context from StockOpnamePage
+            _processScannedBarang(stockOpnameContext, scannedCode);
           },
         ),
       ),
@@ -978,25 +984,37 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
   }
 
   void _processScannedBarang(BuildContext context, String scannedCode) {
+    debugPrint('Processing scanned barcode: $scannedCode');
     final item = _controller.processScannedBarang(scannedCode);
     
     if (item != null) {
-      _showStockInputDialog(context, item);
+      debugPrint('Item found: ${item.kodeBarang}, quantity: ${item.quantity}');
+      // Use Future.microtask to ensure context is still valid
+      Future.microtask(() {
+        if (context.mounted) {
+          _showStockInputDialog(context, item);
+        }
+      });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Kode barang $scannedCode tidak ditemukan'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      debugPrint('Item not found for code: $scannedCode');
+      Future.microtask(() {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Kode barang $scannedCode tidak ditemukan'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      });
     }
   }
 
   void _showStockInputDialog(BuildContext context, ItemBarang item) {
-    // Get saved stock fisik or use system stock as default
-    final savedStockFisik = _controller.getStockFisikOrDefault(item.id, item.quantity);
+    debugPrint('Showing stock input dialog for item: ${item.kodeBarang}');
+    // Default stock fisik sama dengan stock sistem
     final stockFisikController = TextEditingController(
-      text: savedStockFisik.toStringAsFixed(0),
+      text: item.quantity.toStringAsFixed(0),
     );
 
     showDialog(
@@ -1127,7 +1145,7 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Stock fisik untuk ${item.kodeBarang} berhasil disimpan: ${stockFisik.toStringAsFixed(0)}'),
+                  content: Text('Stock fisik untuk ${item.kodeBarang} berhasil dikonfirmasi: ${stockFisik.toStringAsFixed(0)}'),
                   backgroundColor: Colors.green,
                 ),
               );
@@ -1136,7 +1154,7 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
               backgroundColor: Colors.blue[600],
               foregroundColor: Colors.white,
             ),
-            child: const Text('Simpan'),
+            child: const Text('Konfirmasi Stok'),
           ),
         ],
       ),
