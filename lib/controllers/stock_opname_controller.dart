@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/gudang_model.dart';
 import '../models/item_barang_model.dart';
@@ -23,7 +24,9 @@ class StockOpnameController extends ChangeNotifier {
   List<ItemBarang> _itemBarangList = [];
   bool _isLoadingItems = false;
   String _errorMessage = '';
+  String _itemBarangError = '';
   BuildContext? _context;
+  int? _currentStockOpnameId;
 
   // Getters
   bool get isLoadingLocation => _isLoadingLocation;
@@ -40,6 +43,8 @@ class StockOpnameController extends ChangeNotifier {
   List<ItemBarang> get itemBarangList => _itemBarangList;
   bool get isLoadingItems => _isLoadingItems;
   String get errorMessage => _errorMessage;
+  String get itemBarangError => _itemBarangError;
+  int? get currentStockOpnameId => _currentStockOpnameId;
 
   StockOpnameController() {
     _initialize();
@@ -111,6 +116,64 @@ class StockOpnameController extends ChangeNotifier {
       return prefs.getString('token');
     } catch (e) {
       debugPrint('Error getting auth token: $e');
+      return null;
+    }
+  }
+
+  /// Get user ID from SharedPreferences or decode from token
+  Future<int?> _getUserId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      // Try to get user_id if stored
+      final userId = prefs.getInt('user_id');
+      if (userId != null) {
+        return userId;
+      }
+      
+      // If not stored, try to decode from token
+      final token = prefs.getString('token');
+      if (token != null) {
+        // Decode JWT token to get user ID
+        try {
+          final parts = token.split('.');
+          if (parts.length == 3) {
+            final payload = parts[1];
+            // Add padding if needed
+            String normalizedPayload = payload;
+            switch (payload.length % 4) {
+              case 1:
+                normalizedPayload += '===';
+                break;
+              case 2:
+                normalizedPayload += '==';
+                break;
+              case 3:
+                normalizedPayload += '=';
+                break;
+            }
+            
+            final decoded = utf8.decode(base64Url.decode(normalizedPayload));
+            final Map<String, dynamic> payloadMap = json.decode(decoded);
+            
+            // Try different possible keys for user ID
+            if (payloadMap.containsKey('user_id')) {
+              return payloadMap['user_id'] as int?;
+            } else if (payloadMap.containsKey('id')) {
+              return payloadMap['id'] as int?;
+            } else if (payloadMap.containsKey('sub')) {
+              final sub = payloadMap['sub'];
+              if (sub is int) return sub;
+              if (sub is String) return int.tryParse(sub);
+            }
+          }
+        } catch (e) {
+          debugPrint('Error decoding token: $e');
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      debugPrint('Error getting user ID: $e');
       return null;
     }
   }
@@ -300,6 +363,7 @@ class StockOpnameController extends ChangeNotifier {
           setState(() {
             _selectedWarehouse = warehouseName;
             _itemBarangList.clear();
+            _itemBarangError = '';
             _errorMessage = '';
           });
           // Load items asynchronously
@@ -328,7 +392,7 @@ class StockOpnameController extends ChangeNotifier {
   Future<void> loadItemBarang(int gudangId) async {
     setState(() {
       _isLoadingItems = true;
-      _errorMessage = '';
+      _itemBarangError = '';
     });
 
     try {
@@ -366,14 +430,14 @@ class StockOpnameController extends ChangeNotifier {
           if (itemBarangResult.success) {
             setState(() {
               _itemBarangList = itemBarangResult.data;
-              _errorMessage = '';
+              _itemBarangError = '';
               _isLoadingItems = false;
             });
             debugPrint('Item Barang loaded: ${_itemBarangList.length} items');
             debugPrint('Notifying listeners after loading items');
           } else {
             setState(() {
-              _errorMessage = itemBarangResult.message;
+              _itemBarangError = itemBarangResult.message;
               _itemBarangList = [];
               _isLoadingItems = false;
             });
@@ -381,7 +445,7 @@ class StockOpnameController extends ChangeNotifier {
           }
         } catch (parseError) {
           setState(() {
-            _errorMessage = 'Gagal memproses data item barang: $parseError';
+            _itemBarangError = 'Gagal memproses data item barang: $parseError';
             _itemBarangList = [];
             _isLoadingItems = false;
           });
@@ -394,18 +458,108 @@ class StockOpnameController extends ChangeNotifier {
         return;
       } else {
         setState(() {
-          _errorMessage = 'Gagal mengambil data item barang: ${response.statusCode}';
+          _itemBarangError = 'Gagal mengambil data item barang: ${response.statusCode}';
           _itemBarangList = [];
           _isLoadingItems = false;
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Gagal memuat data item barang: $e';
+        _itemBarangError = 'Gagal memuat data item barang: $e';
         _itemBarangList = [];
         _isLoadingItems = false;
       });
       debugPrint('Error loading item barang: $e');
+    }
+  }
+
+  /// Create stock opname with freeze/unfreeze option
+  Future<Map<String, dynamic>?> _createStockOpname({
+    required int gudangId,
+    required bool shouldFreeze,
+    String? catatan,
+  }) async {
+    try {
+      // Get authentication token
+      final token = await _getAuthToken();
+      if (token == null) {
+        await _handleSessionExpired();
+        return null;
+      }
+
+      // Get user ID
+      final userId = await _getUserId();
+      if (userId == null) {
+        setState(() {
+          _errorMessage = 'User ID tidak ditemukan. Silakan login kembali.';
+        });
+        return null;
+      }
+
+      // Get API URL from environment
+      final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final String apiPath = dotenv.env['API_STOCK_OPNAME'] ?? '/api/stock-opname';
+      
+      // Prepare request body
+      final Map<String, dynamic> requestBody = {
+        'pic_user_id': userId,
+        'gudang_id': gudangId,
+      };
+      
+      if (catatan != null && catatan.isNotEmpty) {
+        requestBody['catatan'] = catatan;
+      }
+      
+      requestBody['should_freeze'] = shouldFreeze;
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl$apiPath'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(requestBody),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        
+        if (jsonData['success'] == true && jsonData['data'] != null) {
+          final data = jsonData['data'] as Map<String, dynamic>;
+          _currentStockOpnameId = data['id'] as int?;
+          
+          debugPrint('Stock opname created successfully. ID: $_currentStockOpnameId');
+          return jsonData;
+        } else {
+          setState(() {
+            _errorMessage = jsonData['message'] ?? 'Gagal membuat stock opname';
+          });
+          return null;
+        }
+      } else if (response.statusCode == 401) {
+        // Redirect to login when session expired
+        await _handleSessionExpired();
+        return null;
+      } else if (response.statusCode == 422) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        setState(() {
+          _errorMessage = jsonData['message'] ?? 'Validation failed';
+        });
+        return null;
+      } else {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        setState(() {
+          _errorMessage = jsonData['message'] ?? 'Gagal membuat stock opname: ${response.statusCode}';
+        });
+        return null;
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Gagal membuat stock opname: $e';
+      });
+      debugPrint('Error creating stock opname: $e');
+      return null;
     }
   }
 
@@ -422,91 +576,49 @@ class StockOpnameController extends ChangeNotifier {
     });
 
     try {
-      // Get authentication token
-      final token = await _getAuthToken();
-      if (token == null) {
-        await _handleSessionExpired();
-        setState(() {
-          _isFreezingStock = false;
-        });
-        return;
-      }
-
       // Get selected warehouse ID
       final selectedGudang = _warehouses.firstWhere(
         (g) => g.namaGudang == _selectedWarehouse,
       );
 
-      // Get API URL from environment
-      final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
-      final String apiPath = dotenv.env['API_FREEZE_STOCK'] ?? '/api/item-barang/freeze';
-      
-      final response = await http.post(
-        Uri.parse('$baseUrl$apiPath'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode({
-          'gudang_id': selectedGudang.id,
-        }),
+      // Create stock opname with freeze
+      final result = await _createStockOpname(
+        gudangId: selectedGudang.id,
+        shouldFreeze: true,
+        catatan: 'Stock opname dengan freeze - ${DateTime.now().toString()}',
       );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonData = json.decode(response.body);
+      if (result != null) {
+        // Reload item barang to refresh frozen status
+        await loadItemBarang(selectedGudang.id);
         
-        if (jsonData['success'] == true) {
-          // Reload item barang to refresh frozen status
-          await loadItemBarang(selectedGudang.id);
-          
-          // Save opname session data
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('opname_warehouse', _selectedWarehouse);
-          await prefs.setString('opname_start_time', DateTime.now().toIso8601String());
-          await prefs.setBool('opname_active', true);
-
-          setState(() {
-            _stockFrozen = true;
-            _opnameStarted = true;
-            _isFreezingStock = false;
-          });
-          
-          debugPrint('Stock frozen successfully. Updated count: ${jsonData['data']?['updated_count'] ?? 0}');
-        } else {
-          setState(() {
-            _errorMessage = jsonData['message'] ?? 'Gagal membekukan stok';
-            _isFreezingStock = false;
-          });
+        // Save opname session data
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('opname_warehouse', _selectedWarehouse);
+        await prefs.setString('opname_start_time', DateTime.now().toIso8601String());
+        await prefs.setBool('opname_active', true);
+        if (_currentStockOpnameId != null) {
+          await prefs.setInt('opname_id', _currentStockOpnameId!);
         }
-      } else if (response.statusCode == 401) {
-        // Redirect to login when session expired
-        await _handleSessionExpired();
-        return;
-      } else if (response.statusCode == 403) {
-        final Map<String, dynamic> jsonData = json.decode(response.body);
+
         setState(() {
-          _errorMessage = jsonData['message'] ?? 'Unauthorized. Admin access required.';
+          _stockFrozen = true;
+          _opnameStarted = true;
           _isFreezingStock = false;
         });
-      } else if (response.statusCode == 422) {
-        final Map<String, dynamic> jsonData = json.decode(response.body);
-        setState(() {
-          _errorMessage = jsonData['message'] ?? 'Validation failed';
-          _isFreezingStock = false;
-        });
+        
+        debugPrint('Stock opname created and frozen successfully. ID: $_currentStockOpnameId');
       } else {
         setState(() {
-          _errorMessage = 'Gagal membekukan stok: ${response.statusCode}';
           _isFreezingStock = false;
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Gagal membekukan stok: $e';
+        _errorMessage = 'Gagal membekukan stok dan memulai opname: $e';
         _isFreezingStock = false;
       });
-      debugPrint('Error freezing stock: $e');
+      debugPrint('Error freezing stock and starting opname: $e');
     }
   }
 
@@ -616,26 +728,49 @@ class StockOpnameController extends ChangeNotifier {
     });
 
     try {
-      // Load stock items for the selected warehouse without freezing
-      await _loadStockItems();
-      
-      // Save opname session data
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('opname_warehouse', _selectedWarehouse);
-      await prefs.setString('opname_start_time', DateTime.now().toIso8601String());
-      await prefs.setBool('opname_active', true);
-      await prefs.setBool('opname_without_freeze', true);
+      // Get selected warehouse ID
+      final selectedGudang = _warehouses.firstWhere(
+        (g) => g.namaGudang == _selectedWarehouse,
+      );
 
-      setState(() {
-        _opnameStarted = true;
-      });
+      // Create stock opname without freeze
+      final result = await _createStockOpname(
+        gudangId: selectedGudang.id,
+        shouldFreeze: false,
+        catatan: 'Stock opname tanpa freeze - ${DateTime.now().toString()}',
+      );
 
+      if (result != null) {
+        // Reload item barang
+        await loadItemBarang(selectedGudang.id);
+        
+        // Save opname session data
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('opname_warehouse', _selectedWarehouse);
+        await prefs.setString('opname_start_time', DateTime.now().toIso8601String());
+        await prefs.setBool('opname_active', true);
+        await prefs.setBool('opname_without_freeze', true);
+        if (_currentStockOpnameId != null) {
+          await prefs.setInt('opname_id', _currentStockOpnameId!);
+        }
+
+        setState(() {
+          _opnameStarted = true;
+          _isStartingOpname = false;
+        });
+        
+        debugPrint('Stock opname created without freeze. ID: $_currentStockOpnameId');
+      } else {
+        setState(() {
+          _isStartingOpname = false;
+        });
+      }
     } catch (e) {
-      _errorMessage = 'Gagal memulai opname: $e';
-    } finally {
       setState(() {
+        _errorMessage = 'Gagal memulai opname: $e';
         _isStartingOpname = false;
       });
+      debugPrint('Error starting opname without freeze: $e');
     }
   }
 
@@ -673,6 +808,17 @@ class StockOpnameController extends ChangeNotifier {
     _errorMessage = '';
     _stockItems.clear();
     _itemBarangList.clear();
+    _currentStockOpnameId = null;
+    
+    // Clear opname session data from SharedPreferences
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.remove('opname_warehouse');
+      prefs.remove('opname_start_time');
+      prefs.remove('opname_active');
+      prefs.remove('opname_without_freeze');
+      prefs.remove('opname_id');
+    });
+    
     notifyListeners();
   }
 

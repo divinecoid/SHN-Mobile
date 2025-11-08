@@ -241,7 +241,12 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                 ),
               ),
               
-              if (_controller.errorMessage.isNotEmpty)
+              // Only show location-related errors in this section
+              if (_controller.errorMessage.isNotEmpty && 
+                  (_controller.errorMessage.contains('lokasi') || 
+                   _controller.errorMessage.contains('Lokasi') ||
+                   _controller.errorMessage.contains('gudang') ||
+                   _controller.errorMessage.contains('Gudang')))
                 Container(
                   margin: const EdgeInsets.only(top: 12),
                   padding: const EdgeInsets.all(12),
@@ -370,6 +375,38 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                   style: TextStyle(
                     color: Colors.grey[300],
                     fontSize: 14,
+                  ),
+                ),
+              
+              // Show stock opname-related errors
+              if (_controller.errorMessage.isNotEmpty && 
+                  !_controller.errorMessage.contains('lokasi') && 
+                  !_controller.errorMessage.contains('Lokasi') &&
+                  !_controller.errorMessage.contains('gudang') &&
+                  !_controller.errorMessage.contains('Gudang') &&
+                  !_controller.errorMessage.contains('item barang') &&
+                  !_controller.errorMessage.contains('Item Barang'))
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red[900],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error, color: Colors.red[300], size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _controller.errorMessage,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               
@@ -586,7 +623,7 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
       listenable: _controller,
       builder: (context, child) {
         // Debug info
-        debugPrint('Build ItemBarangSection - isLoading: ${_controller.isLoadingItems}, listLength: ${_controller.itemBarangList.length}, error: ${_controller.errorMessage}');
+        debugPrint('Build ItemBarangSection - isLoading: ${_controller.isLoadingItems}, listLength: ${_controller.itemBarangList.length}, error: ${_controller.itemBarangError}');
         
         return Container(
           padding: const EdgeInsets.all(16),
@@ -621,9 +658,7 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                     child: CircularProgressIndicator(),
                   ),
                 )
-              else if (_controller.errorMessage.isNotEmpty && 
-                       (_controller.errorMessage.contains('item barang') || 
-                        _controller.errorMessage.contains('Item Barang')))
+              else if (_controller.itemBarangError.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -636,7 +671,7 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          _controller.errorMessage,
+                          _controller.itemBarangError,
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
