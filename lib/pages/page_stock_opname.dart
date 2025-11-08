@@ -195,50 +195,69 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
               const SizedBox(height: 16),
               
               GestureDetector(
-                onTap: _showWarehouseSelector,
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[850],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[700]!),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.warehouse, color: Colors.orange[400], size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Gudang Dipilih:',
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
-                              ),
-                            ),
-                            Text(
-                              _controller.selectedWarehouse.isEmpty
-                                  ? 'Pilih gudang'
-                                  : _controller.selectedWarehouse,
-                              style: TextStyle(
-                                color: _controller.selectedWarehouse.isEmpty
-                                    ? Colors.grey[400]
-                                    : Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
+                onTap: (_controller.opnameStarted || _controller.stockFrozen)
+                    ? null
+                    : _showWarehouseSelector,
+                child: Opacity(
+                  opacity: (_controller.opnameStarted || _controller.stockFrozen) ? 0.5 : 1.0,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[850],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: (_controller.opnameStarted || _controller.stockFrozen)
+                            ? Colors.grey[600]!
+                            : Colors.grey[700]!,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.warehouse,
+                          color: (_controller.opnameStarted || _controller.stockFrozen)
+                              ? Colors.grey[500]
+                              : Colors.orange[400],
+                          size: 20,
                         ),
-                      ),
-                      Icon(
-                        Icons.arrow_drop_down,
-                        color: Colors.grey[400],
-                        size: 24,
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Gudang Dipilih:',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              Text(
+                                _controller.selectedWarehouse.isEmpty
+                                    ? 'Pilih gudang'
+                                    : _controller.selectedWarehouse,
+                                style: TextStyle(
+                                  color: (_controller.opnameStarted || _controller.stockFrozen)
+                                      ? Colors.grey[500]
+                                      : (_controller.selectedWarehouse.isEmpty
+                                          ? Colors.grey[400]
+                                          : Colors.white),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_drop_down,
+                          color: (_controller.opnameStarted || _controller.stockFrozen)
+                              ? Colors.grey[500]
+                              : Colors.grey[400],
+                          size: 24,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
