@@ -438,10 +438,22 @@ class StockOpnameController extends ChangeNotifier {
 
       // Get API URL from environment
       final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
-      final String apiPath = dotenv.env['API_ITEM_BARANG'] ?? '/api/item-barang';
+      final String apiPath = dotenv.env['API_STOCK_OPNAME_ITEM_BARANG_LIST'] ?? '/api/stock-opname/item-barang-list';
+      
+      // Build query parameters
+      final queryParams = <String, String>{
+        'gudang_id': gudangId.toString(),
+      };
+      
+      // Add stock_opname_id if available
+      if (_currentStockOpnameId != null) {
+        queryParams['stock_opname_id'] = _currentStockOpnameId.toString();
+      }
+      
+      final uri = Uri.parse('$baseUrl$apiPath').replace(queryParameters: queryParams);
       
       final response = await http.get(
-        Uri.parse('$baseUrl$apiPath?gudang_id=$gudangId'),
+        uri,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',

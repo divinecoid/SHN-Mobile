@@ -788,28 +788,56 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                       separatorBuilder: (context, index) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final item = _controller.itemBarangList[index];
+                        final isChecked = item.checked;
                         return Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.grey[850],
+                            color: isChecked 
+                                ? Colors.green[900]?.withOpacity(0.3)
+                                : Colors.grey[850],
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey[700]!),
+                            border: Border.all(
+                              color: isChecked 
+                                  ? Colors.green[600]!
+                                  : Colors.grey[700]!,
+                              width: isChecked ? 2 : 1,
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Kode Barang (Title) with Frozen Badge
+                              // Kode Barang (Title) with Frozen Badge and Checked Badge
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Expanded(
-                                    child: Text(
-                                      item.kodeBarang.isNotEmpty ? item.kodeBarang : item.namaItemBarang,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                    child: Row(
+                                      children: [
+                                        if (item.checked)
+                                          Container(
+                                            margin: const EdgeInsets.only(right: 8),
+                                            padding: const EdgeInsets.all(4),
+                                            decoration: BoxDecoration(
+                                              color: Colors.green[600],
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.check,
+                                              color: Colors.white,
+                                              size: 16,
+                                            ),
+                                          ),
+                                        Expanded(
+                                          child: Text(
+                                            item.kodeBarang.isNotEmpty ? item.kodeBarang : item.namaItemBarang,
+                                            style: TextStyle(
+                                              color: item.checked ? Colors.green[200] : Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                   if (item.frozenAt != null && item.frozenAt!.isNotEmpty)

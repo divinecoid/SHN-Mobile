@@ -29,6 +29,7 @@ class ItemBarang {
   final String? mergeDate;
   final String? frozenAt;
   final int? frozenBy;
+  final bool checked; // Flag untuk menandai item sudah ada di stock opname detail
   final RefJenisBarang? jenisBarang;
   final RefBentukBarang? bentukBarang;
   final RefGradeBarang? gradeBarang;
@@ -60,6 +61,7 @@ class ItemBarang {
     this.mergeDate,
     this.frozenAt,
     this.frozenBy,
+    this.checked = false,
     this.jenisBarang,
     this.bentukBarang,
     this.gradeBarang,
@@ -79,7 +81,7 @@ class ItemBarang {
       quantity: _parseDouble(map['quantity']),
       quantityTebalSama: _parseDouble(map['quantity_tebal_sama']),
       jenisPotongan: map['jenis_potongan']?.toString() ?? '',
-      isAvailable: _parseBool(map['is_available']) ?? false,
+      isAvailable: _parseBoolWithDefault(map['is_available']),
       namaItemBarang: map['nama_item_barang']?.toString() ?? '',
       sisaLuas: _parseDouble(map['sisa_luas']),
       isOnprogressPo: _parseInt(map['is_onprogress_po']) ?? 0,
@@ -93,6 +95,7 @@ class ItemBarang {
       mergeDate: map['merge_date']?.toString(),
       frozenAt: map['frozen_at']?.toString(),
       frozenBy: _parseInt(map['frozen_by']),
+      checked: _parseBoolWithDefault(map['checked']),
       jenisBarang: map['jenis_barang'] != null && map['jenis_barang'] is Map<String, dynamic>
           ? RefJenisBarang.fromJson(map['jenis_barang'] as Map<String, dynamic>)
           : null,
@@ -135,6 +138,7 @@ class ItemBarang {
       'merge_date': mergeDate,
       'frozen_at': frozenAt,
       'frozen_by': frozenBy,
+      'checked': checked,
       'jenis_barang': jenisBarang?.toJson(),
       'bentuk_barang': bentukBarang?.toJson(),
       'grade_barang': gradeBarang?.toJson(),
@@ -167,9 +171,16 @@ class ItemBarang {
     if (value is bool) return value;
     if (value is int) return value != 0;
     if (value is String) {
-      return value.toLowerCase() == 'true' || value == '1';
+      final lowerValue = value.toLowerCase().trim();
+      return lowerValue == 'true' || lowerValue == '1';
     }
     return null;
+  }
+  
+  // Helper method to safely parse bool with default value
+  static bool _parseBoolWithDefault(dynamic value, {bool defaultValue = false}) {
+    final result = _parseBool(value);
+    return result ?? defaultValue;
   }
 }
 
