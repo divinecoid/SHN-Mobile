@@ -950,6 +950,117 @@ class StockOpnameController extends ChangeNotifier {
     }
   }
 
+  /// Add detail stock opname
+  Future<Map<String, dynamic>> addDetailStockOpname({
+    required ItemBarang item,
+    required int stokFisik,
+    String? catatan,
+  }) async {
+    try {
+      // Check if stock opname ID exists
+      if (_currentStockOpnameId == null) {
+        return {
+          'success': false,
+          'message': 'Stock opname belum dimulai',
+        };
+      }
+
+      // Get authentication token
+      final token = await _getAuthToken();
+      if (token == null) {
+        await _handleSessionExpired();
+        return {
+          'success': false,
+          'message': 'Session expired',
+        };
+      }
+
+      // Get API URL from environment
+      final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final String apiPathTemplate = dotenv.env['API_STOCK_OPNAME_ADD_DETAIL'] ?? '/api/stock-opname/{id}/detail';
+      final String apiPath = apiPathTemplate.replaceAll('{id}', _currentStockOpnameId.toString());
+
+      // Build request body
+      final Map<String, dynamic> requestBody = {
+        'kode_barang': item.kodeBarang,
+        'stok_fisik': stokFisik,
+      };
+
+      // Add catatan if provided
+      if (catatan != null && catatan.isNotEmpty) {
+        requestBody['catatan'] = catatan;
+      }
+
+      // Check if item is frozen (frozenAt != null)
+      final bool isFrozen = item.frozenAt != null && item.frozenAt!.isNotEmpty;
+
+      // If item is frozen, stok_sistem is required
+      if (isFrozen) {
+        requestBody['stok_sistem'] = item.quantity.toInt();
+      }
+      // If item is not frozen, don't send stok_sistem (will be null automatically)
+
+      final uri = Uri.parse('$baseUrl$apiPath');
+
+      debugPrint('Adding detail stock opname: ${uri.toString()}');
+      debugPrint('Request body: ${json.encode(requestBody)}');
+
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(requestBody),
+      );
+
+      debugPrint('Add detail response status: ${response.statusCode}');
+      debugPrint('Add detail response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        
+        if (jsonData['success'] == true) {
+          // Reload item barang list to update checked status
+          final gudangId = item.gudangId;
+          if (gudangId > 0) {
+            await loadItemBarang(gudangId);
+          }
+
+          return {
+            'success': true,
+            'message': jsonData['message'] ?? 'Detail stock opname berhasil ditambahkan',
+            'data': jsonData['data'],
+          };
+        } else {
+          return {
+            'success': false,
+            'message': jsonData['message'] ?? 'Gagal menambahkan detail stock opname',
+          };
+        }
+      } else if (response.statusCode == 401) {
+        await _handleSessionExpired();
+        return {
+          'success': false,
+          'message': 'Session expired',
+        };
+      } else {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return {
+          'success': false,
+          'message': jsonData['message'] ?? 'Gagal menambahkan detail stock opname',
+        };
+      }
+    } catch (e) {
+      debugPrint('Error adding detail stock opname: $e');
+      return {
+        'success': false,
+        'message': 'Error: $e',
+      };
+    }
+  }
+
   /// Process scanned barcode and find matching item
   ItemBarang? processScannedBarang(String scannedCode) {
     try {

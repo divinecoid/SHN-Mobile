@@ -1063,147 +1063,292 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
     final stockFisikController = TextEditingController(
       text: item.quantity.toStringAsFixed(0),
     );
+    final catatanController = TextEditingController();
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text(
-          'Input Stock Fisik',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Kode Barang
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[850],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[700]!),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Kode Barang',
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 12,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) {
+          bool isLoading = false;
+          String? errorMessage;
+
+          Future<void> _confirmStock() async {
+            // Validate input
+            final stockFisikStr = stockFisikController.text.trim();
+            if (stockFisikStr.isEmpty) {
+              setState(() {
+                errorMessage = 'Stock fisik harus diisi';
+              });
+              return;
+            }
+
+            final stockFisik = int.tryParse(stockFisikStr);
+            if (stockFisik == null || stockFisik < 0) {
+              setState(() {
+                errorMessage = 'Stock fisik harus berupa angka positif';
+              });
+              return;
+            }
+
+            setState(() {
+              isLoading = true;
+              errorMessage = null;
+            });
+
+            try {
+              // Call API to add detail stock opname
+              final result = await _controller.addDetailStockOpname(
+                item: item,
+                stokFisik: stockFisik,
+                catatan: catatanController.text.trim().isEmpty 
+                    ? null 
+                    : catatanController.text.trim(),
+              );
+
+              if (result['success'] == true) {
+                // Close dialog
+                Navigator.pop(dialogContext);
+                
+                // Show success message
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(result['message'] ?? 'Detail stock opname berhasil ditambahkan'),
+                      backgroundColor: Colors.green,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } else {
+                // Show error message
+                setState(() {
+                  isLoading = false;
+                  errorMessage = result['message'] ?? 'Gagal menambahkan detail stock opname';
+                });
+              }
+            } catch (e) {
+              setState(() {
+                isLoading = false;
+                errorMessage = 'Error: $e';
+              });
+            }
+          }
+
+          return AlertDialog(
+            backgroundColor: Colors.grey[900],
+            title: const Text(
+              'Input Stock Fisik',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Error message
+                  if (errorMessage != null)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.red[900]?.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red[700]!),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red[300], size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              errorMessage!,
+                              style: TextStyle(
+                                color: Colors.red[200],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.kodeBarang.isNotEmpty ? item.kodeBarang : item.namaItemBarang,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+
+                  // Kode Barang
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[850],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[700]!),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              // Stock Sistem
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue[900]?.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue[700]!),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.inventory, color: Colors.blue[300], size: 16),
-                        const SizedBox(width: 8),
                         Text(
-                          'Stock Sistem',
+                          'Kode Barang',
                           style: TextStyle(
-                            color: Colors.blue[300],
+                            color: Colors.grey[400],
                             fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          item.kodeBarang.isNotEmpty ? item.kodeBarang : item.namaItemBarang,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatNumber(item.quantity),
-                      style: TextStyle(
-                        color: Colors.blue[200],
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Stock Sistem
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[900]?.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue[700]!),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.inventory, color: Colors.blue[300], size: 16),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Stock Sistem',
+                              style: TextStyle(
+                                color: Colors.blue[300],
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            if (item.frozenAt != null && item.frozenAt!.isNotEmpty)
+                              Container(
+                                margin: const EdgeInsets.only(left: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[900]?.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'FROZEN',
+                                  style: TextStyle(
+                                    color: Colors.orange[200],
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _formatNumber(item.quantity),
+                          style: TextStyle(
+                            color: Colors.blue[200],
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Stock Fisik Input
+                  TextField(
+                    controller: stockFisikController,
+                    keyboardType: TextInputType.number,
+                    enabled: !isLoading,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Stock Fisik *',
+                      labelStyle: TextStyle(color: Colors.grey[400]),
+                      hintText: 'Masukkan stock fisik',
+                      hintStyle: TextStyle(color: Colors.grey[600]),
+                      filled: true,
+                      fillColor: Colors.grey[850],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey[700]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey[700]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.blue[400]!),
                       ),
                     ),
-                  ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Catatan (optional)
+                  TextField(
+                    controller: catatanController,
+                    enabled: !isLoading,
+                    maxLines: 3,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Catatan (opsional)',
+                      labelStyle: TextStyle(color: Colors.grey[400]),
+                      hintText: 'Masukkan catatan tambahan',
+                      hintStyle: TextStyle(color: Colors.grey[600]),
+                      filled: true,
+                      fillColor: Colors.grey[850],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey[700]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.grey[700]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.blue[400]!),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
+                child: Text(
+                  'Batal',
+                  style: TextStyle(color: Colors.grey[400]),
                 ),
               ),
-              const SizedBox(height: 16),
-              
-              // Stock Fisik Input
-              TextField(
-                controller: stockFisikController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: 'Stock Fisik',
-                  labelStyle: TextStyle(color: Colors.grey[400]),
-                  hintText: 'Masukkan stock fisik',
-                  hintStyle: TextStyle(color: Colors.grey[600]),
-                  filled: true,
-                  fillColor: Colors.grey[850],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Colors.grey[700]!),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Colors.grey[700]!),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Colors.blue[400]!),
-                  ),
+              ElevatedButton(
+                onPressed: isLoading ? null : _confirmStock,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue[600],
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey[700],
                 ),
+                child: isLoading
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text('Konfirmasi Stok'),
               ),
             ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Batal',
-              style: TextStyle(color: Colors.grey[400]),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final stockFisik = double.tryParse(stockFisikController.text) ?? item.quantity;
-              _controller.saveStockFisik(item.id, stockFisik);
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Stock fisik untuk ${item.kodeBarang} berhasil dikonfirmasi: ${stockFisik.toStringAsFixed(0)}'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue[600],
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Konfirmasi Stok'),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
