@@ -591,7 +591,7 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                   margin: const EdgeInsets.only(top: 12),
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _controller.resetOpname,
+                    onPressed: _controller.isCancellingOpname ? null : _controller.resetOpname,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey[700],
                       foregroundColor: Colors.white,
@@ -600,14 +600,36 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.refresh, size: 20),
-                        SizedBox(width: 8),
-                        Text('Reset Opname'),
-                      ],
-                    ),
+                    child: _controller.isCancellingOpname
+                        ? const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                'Membatalkan Opname...',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          )
+                        : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.refresh, size: 20),
+                              SizedBox(width: 8),
+                              Text('Reset Opname'),
+                            ],
+                          ),
                   ),
                 ),
               ],

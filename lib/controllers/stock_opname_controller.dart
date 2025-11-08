@@ -15,6 +15,7 @@ class StockOpnameController extends ChangeNotifier {
   bool _isFreezingStock = false;
   bool _isUnfreezingStock = false;
   bool _isStartingOpname = false;
+  bool _isCancellingOpname = false;
   bool _stockFrozen = false;
   bool _opnameStarted = false;
   String _selectedWarehouse = '';
@@ -34,6 +35,7 @@ class StockOpnameController extends ChangeNotifier {
   bool get isFreezingStock => _isFreezingStock;
   bool get isUnfreezingStock => _isUnfreezingStock;
   bool get isStartingOpname => _isStartingOpname;
+  bool get isCancellingOpname => _isCancellingOpname;
   bool get stockFrozen => _stockFrozen;
   bool get opnameStarted => _opnameStarted;
   String get selectedWarehouse => _selectedWarehouse;
@@ -65,6 +67,31 @@ class StockOpnameController extends ChangeNotifier {
   Future<void> _initialize() async {
     await _detectLocation();
     await _loadWarehouses();
+    await _loadOpnameSession();
+  }
+
+  /// Load stock opname session from SharedPreferences
+  Future<void> _loadOpnameSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final opnameId = prefs.getInt('opname_id');
+      final opnameActive = prefs.getBool('opname_active') ?? false;
+      final opnameWarehouse = prefs.getString('opname_warehouse') ?? '';
+      
+      if (opnameId != null && opnameActive && opnameWarehouse.isNotEmpty) {
+        _currentStockOpnameId = opnameId;
+        _selectedWarehouse = opnameWarehouse;
+        _opnameStarted = true;
+        
+        // Check if stock was frozen
+        final stockFrozen = prefs.getBool('opname_stock_frozen') ?? false;
+        _stockFrozen = stockFrozen;
+        
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error loading opname session: $e');
+    }
   }
 
   Future<void> _detectLocation() async {
@@ -597,6 +624,7 @@ class StockOpnameController extends ChangeNotifier {
         await prefs.setString('opname_warehouse', _selectedWarehouse);
         await prefs.setString('opname_start_time', DateTime.now().toIso8601String());
         await prefs.setBool('opname_active', true);
+        await prefs.setBool('opname_stock_frozen', true);
         if (_currentStockOpnameId != null) {
           await prefs.setInt('opname_id', _currentStockOpnameId!);
         }
@@ -750,6 +778,7 @@ class StockOpnameController extends ChangeNotifier {
         await prefs.setString('opname_start_time', DateTime.now().toIso8601String());
         await prefs.setBool('opname_active', true);
         await prefs.setBool('opname_without_freeze', true);
+        await prefs.setBool('opname_stock_frozen', false);
         if (_currentStockOpnameId != null) {
           await prefs.setInt('opname_id', _currentStockOpnameId!);
         }
@@ -800,7 +829,13 @@ class StockOpnameController extends ChangeNotifier {
     return _stockItems.length;
   }
 
-  void resetOpname() {
+  Future<void> resetOpname() async {
+    // If there's an active stock opname ID, cancel it first
+    if (_currentStockOpnameId != null) {
+      await _cancelStockOpname(_currentStockOpnameId!);
+    }
+    
+    // Reset local state
     _stockFrozen = false;
     _opnameStarted = false;
     _selectedWarehouse = '';
@@ -811,15 +846,93 @@ class StockOpnameController extends ChangeNotifier {
     _currentStockOpnameId = null;
     
     // Clear opname session data from SharedPreferences
-    SharedPreferences.getInstance().then((prefs) {
-      prefs.remove('opname_warehouse');
-      prefs.remove('opname_start_time');
-      prefs.remove('opname_active');
-      prefs.remove('opname_without_freeze');
-      prefs.remove('opname_id');
-    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('opname_warehouse');
+    await prefs.remove('opname_start_time');
+    await prefs.remove('opname_active');
+    await prefs.remove('opname_without_freeze');
+    await prefs.remove('opname_stock_frozen');
+    await prefs.remove('opname_id');
     
     notifyListeners();
+  }
+
+  /// Cancel stock opname via API
+  Future<void> _cancelStockOpname(int stockOpnameId) async {
+    setState(() {
+      _isCancellingOpname = true;
+      _errorMessage = '';
+    });
+
+    try {
+      // Get authentication token
+      final token = await _getAuthToken();
+      if (token == null) {
+        await _handleSessionExpired();
+        setState(() {
+          _isCancellingOpname = false;
+        });
+        return;
+      }
+
+      // Get API URL from environment
+      final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final String apiPath = dotenv.env['API_STOCK_OPNAME'] ?? '/api/stock-opname';
+      final String cancelPath = '$apiPath/$stockOpnameId/cancel';
+      
+      final response = await http.patch(
+        Uri.parse('$baseUrl$cancelPath'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        
+        if (jsonData['success'] == true) {
+          debugPrint('Stock opname cancelled successfully. ID: $stockOpnameId');
+          setState(() {
+            _isCancellingOpname = false;
+          });
+        } else {
+          setState(() {
+            _errorMessage = jsonData['message'] ?? 'Gagal membatalkan stock opname';
+            _isCancellingOpname = false;
+          });
+        }
+      } else if (response.statusCode == 401) {
+        // Redirect to login when session expired
+        await _handleSessionExpired();
+        return;
+      } else if (response.statusCode == 404) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        setState(() {
+          _errorMessage = jsonData['message'] ?? 'Data tidak ditemukan';
+          _isCancellingOpname = false;
+        });
+      } else if (response.statusCode == 422) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        setState(() {
+          _errorMessage = jsonData['message'] ?? 'Stock opname tidak dapat dibatalkan';
+          _isCancellingOpname = false;
+        });
+      } else {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        setState(() {
+          _errorMessage = jsonData['message'] ?? 'Gagal membatalkan stock opname: ${response.statusCode}';
+          _isCancellingOpname = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Gagal membatalkan stock opname: $e';
+        _isCancellingOpname = false;
+      });
+      debugPrint('Error cancelling stock opname: $e');
+    }
   }
 
   void setState(VoidCallback fn) {
