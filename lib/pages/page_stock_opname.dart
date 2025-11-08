@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../controllers/stock_opname_controller.dart';
+import '../models/item_barang_model.dart';
+import 'qr_scan_page.dart';
 
 class StockOpnamePage extends StatefulWidget {
   const StockOpnamePage({super.key});
@@ -673,6 +675,26 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
               ),
               const SizedBox(height: 12),
               
+              // Scan Barang Button
+              if (!_controller.isLoadingItems && _controller.itemBarangList.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showScanBarangDialog(context),
+                    icon: const Icon(Icons.qr_code_scanner, size: 20),
+                    label: const Text('Scan Barang'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[600],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              
               if (_controller.isLoadingItems)
                 const Center(
                   child: Padding(
@@ -937,6 +959,187 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showScanBarangDialog(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => QRScanPage(
+          isRack: false,
+          onScanResult: (scannedCode) {
+            Navigator.pop(context); // Close scanner
+            _processScannedBarang(context, scannedCode);
+          },
+        ),
+      ),
+    );
+  }
+
+  void _processScannedBarang(BuildContext context, String scannedCode) {
+    final item = _controller.processScannedBarang(scannedCode);
+    
+    if (item != null) {
+      _showStockInputDialog(context, item);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Kode barang $scannedCode tidak ditemukan'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showStockInputDialog(BuildContext context, ItemBarang item) {
+    // Get saved stock fisik or use system stock as default
+    final savedStockFisik = _controller.getStockFisikOrDefault(item.id, item.quantity);
+    final stockFisikController = TextEditingController(
+      text: savedStockFisik.toStringAsFixed(0),
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          'Input Stock Fisik',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Kode Barang
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[850],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[700]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Kode Barang',
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.kodeBarang.isNotEmpty ? item.kodeBarang : item.namaItemBarang,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Stock Sistem
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue[900]?.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue[700]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.inventory, color: Colors.blue[300], size: 16),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Stock Sistem',
+                          style: TextStyle(
+                            color: Colors.blue[300],
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatNumber(item.quantity),
+                      style: TextStyle(
+                        color: Colors.blue[200],
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Stock Fisik Input
+              TextField(
+                controller: stockFisikController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Stock Fisik',
+                  labelStyle: TextStyle(color: Colors.grey[400]),
+                  hintText: 'Masukkan stock fisik',
+                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  filled: true,
+                  fillColor: Colors.grey[850],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[700]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey[700]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.blue[400]!),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Batal',
+              style: TextStyle(color: Colors.grey[400]),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final stockFisik = double.tryParse(stockFisikController.text) ?? item.quantity;
+              _controller.saveStockFisik(item.id, stockFisik);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Stock fisik untuk ${item.kodeBarang} berhasil disimpan: ${stockFisik.toStringAsFixed(0)}'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue[600],
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
     );
   }
 } 

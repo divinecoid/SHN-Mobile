@@ -28,6 +28,7 @@ class StockOpnameController extends ChangeNotifier {
   String _itemBarangError = '';
   BuildContext? _context;
   int? _currentStockOpnameId;
+  Map<int, double> _stockFisikMap = {}; // itemId -> stockFisik
 
   // Getters
   bool get isLoadingLocation => _isLoadingLocation;
@@ -47,6 +48,7 @@ class StockOpnameController extends ChangeNotifier {
   String get errorMessage => _errorMessage;
   String get itemBarangError => _itemBarangError;
   int? get currentStockOpnameId => _currentStockOpnameId;
+  Map<int, double> get stockFisikMap => _stockFisikMap;
 
   StockOpnameController() {
     _initialize();
@@ -844,6 +846,7 @@ class StockOpnameController extends ChangeNotifier {
     _stockItems.clear();
     _itemBarangList.clear();
     _currentStockOpnameId = null;
+    _stockFisikMap.clear();
     
     // Clear opname session data from SharedPreferences
     final prefs = await SharedPreferences.getInstance();
@@ -933,6 +936,64 @@ class StockOpnameController extends ChangeNotifier {
       });
       debugPrint('Error cancelling stock opname: $e');
     }
+  }
+
+  /// Process scanned barcode and find matching item
+  ItemBarang? processScannedBarang(String scannedCode) {
+    try {
+      // Find item by kode barang (exact match)
+      try {
+        return _itemBarangList.firstWhere(
+          (item) => item.kodeBarang == scannedCode,
+        );
+      } catch (e) {
+        // Try partial match
+        return _itemBarangList.firstWhere(
+          (item) => item.kodeBarang.toLowerCase().contains(scannedCode.toLowerCase()) ||
+                    scannedCode.toLowerCase().contains(item.kodeBarang.toLowerCase()),
+        );
+      }
+    } catch (e) {
+      debugPrint('Item tidak ditemukan untuk kode: $scannedCode');
+      return null;
+    }
+  }
+
+  /// Save stock fisik for an item
+  void saveStockFisik(int itemId, double stockFisik) {
+    setState(() {
+      _stockFisikMap[itemId] = stockFisik;
+    });
+    debugPrint('Stock fisik disimpan untuk item ID $itemId: $stockFisik');
+  }
+
+  /// Get stock fisik for an item, return null if not set
+  double? getStockFisik(int itemId) {
+    return _stockFisikMap[itemId];
+  }
+
+  /// Get stock fisik for an item, return system stock if not set
+  double getStockFisikOrDefault(int itemId, double defaultStock) {
+    return _stockFisikMap[itemId] ?? defaultStock;
+  }
+
+  /// Check if item has stock fisik input
+  bool hasStockFisik(int itemId) {
+    return _stockFisikMap.containsKey(itemId);
+  }
+
+  /// Clear stock fisik for an item
+  void clearStockFisik(int itemId) {
+    setState(() {
+      _stockFisikMap.remove(itemId);
+    });
+  }
+
+  /// Clear all stock fisik
+  void clearAllStockFisik() {
+    setState(() {
+      _stockFisikMap.clear();
+    });
   }
 
   void setState(VoidCallback fn) {
