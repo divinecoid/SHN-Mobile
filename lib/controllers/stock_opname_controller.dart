@@ -12,6 +12,7 @@ class StockOpnameController extends ChangeNotifier {
   bool _isLoadingLocation = false;
   bool _isLoadingWarehouses = false;
   bool _isFreezingStock = false;
+  bool _isUnfreezingStock = false;
   bool _isStartingOpname = false;
   bool _stockFrozen = false;
   bool _opnameStarted = false;
@@ -28,6 +29,7 @@ class StockOpnameController extends ChangeNotifier {
   bool get isLoadingLocation => _isLoadingLocation;
   bool get isLoadingWarehouses => _isLoadingWarehouses;
   bool get isFreezingStock => _isFreezingStock;
+  bool get isUnfreezingStock => _isUnfreezingStock;
   bool get isStartingOpname => _isStartingOpname;
   bool get stockFrozen => _stockFrozen;
   bool get opnameStarted => _opnameStarted;
@@ -443,6 +445,84 @@ class StockOpnameController extends ChangeNotifier {
       setState(() {
         _isFreezingStock = false;
       });
+    }
+  }
+
+  Future<void> unfreezeStock() async {
+    if (_selectedWarehouse.isEmpty) {
+      _errorMessage = 'Pilih lokasi gudang terlebih dahulu';
+      notifyListeners();
+      return;
+    }
+
+    setState(() {
+      _isUnfreezingStock = true;
+      _errorMessage = '';
+    });
+
+    try {
+      // Get authentication token
+      final token = await _getAuthToken();
+      if (token == null) {
+        await _handleSessionExpired();
+        setState(() {
+          _isUnfreezingStock = false;
+        });
+        return;
+      }
+
+      // Get selected warehouse ID
+      final selectedGudang = _warehouses.firstWhere(
+        (g) => g.namaGudang == _selectedWarehouse,
+      );
+
+      // Get API URL from environment
+      final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final String apiPath = dotenv.env['API_UNFREEZE_STOCK'] ?? '/api/stock/unfreeze';
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl$apiPath'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          'gudang_id': selectedGudang.id,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        
+        if (jsonData['success'] == true) {
+          setState(() {
+            _stockFrozen = false;
+            _isUnfreezingStock = false;
+          });
+          // Reload item barang to refresh frozen status
+          loadItemBarang(selectedGudang.id);
+        } else {
+          setState(() {
+            _errorMessage = jsonData['message'] ?? 'Gagal membuka stok';
+            _isUnfreezingStock = false;
+          });
+        }
+      } else if (response.statusCode == 401) {
+        await _handleSessionExpired();
+        return;
+      } else {
+        setState(() {
+          _errorMessage = 'Gagal membuka stok: ${response.statusCode}';
+          _isUnfreezingStock = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Gagal membuka stok: $e';
+        _isUnfreezingStock = false;
+      });
+      debugPrint('Error unfreezing stock: $e');
     }
   }
 
