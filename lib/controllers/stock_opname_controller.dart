@@ -422,29 +422,91 @@ class StockOpnameController extends ChangeNotifier {
     });
 
     try {
-      // Simulate API call to freeze stock
-      await Future.delayed(const Duration(seconds: 2));
-      
-      // Load stock items for the selected warehouse
-      await _loadStockItems();
-      
-      // Save opname session data
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('opname_warehouse', _selectedWarehouse);
-      await prefs.setString('opname_start_time', DateTime.now().toIso8601String());
-      await prefs.setBool('opname_active', true);
+      // Get authentication token
+      final token = await _getAuthToken();
+      if (token == null) {
+        await _handleSessionExpired();
+        setState(() {
+          _isFreezingStock = false;
+        });
+        return;
+      }
 
-      setState(() {
-        _stockFrozen = true;
-        _opnameStarted = true;
-      });
+      // Get selected warehouse ID
+      final selectedGudang = _warehouses.firstWhere(
+        (g) => g.namaGudang == _selectedWarehouse,
+      );
 
+      // Get API URL from environment
+      final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final String apiPath = dotenv.env['API_FREEZE_STOCK'] ?? '/api/item-barang/freeze';
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl$apiPath'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          'gudang_id': selectedGudang.id,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        
+        if (jsonData['success'] == true) {
+          // Reload item barang to refresh frozen status
+          await loadItemBarang(selectedGudang.id);
+          
+          // Save opname session data
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('opname_warehouse', _selectedWarehouse);
+          await prefs.setString('opname_start_time', DateTime.now().toIso8601String());
+          await prefs.setBool('opname_active', true);
+
+          setState(() {
+            _stockFrozen = true;
+            _opnameStarted = true;
+            _isFreezingStock = false;
+          });
+          
+          debugPrint('Stock frozen successfully. Updated count: ${jsonData['data']?['updated_count'] ?? 0}');
+        } else {
+          setState(() {
+            _errorMessage = jsonData['message'] ?? 'Gagal membekukan stok';
+            _isFreezingStock = false;
+          });
+        }
+      } else if (response.statusCode == 401) {
+        // Redirect to login when session expired
+        await _handleSessionExpired();
+        return;
+      } else if (response.statusCode == 403) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        setState(() {
+          _errorMessage = jsonData['message'] ?? 'Unauthorized. Admin access required.';
+          _isFreezingStock = false;
+        });
+      } else if (response.statusCode == 422) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        setState(() {
+          _errorMessage = jsonData['message'] ?? 'Validation failed';
+          _isFreezingStock = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Gagal membekukan stok: ${response.statusCode}';
+          _isFreezingStock = false;
+        });
+      }
     } catch (e) {
-      _errorMessage = 'Gagal membekukan stok: $e';
-    } finally {
       setState(() {
+        _errorMessage = 'Gagal membekukan stok: $e';
         _isFreezingStock = false;
       });
+      debugPrint('Error freezing stock: $e');
     }
   }
 
@@ -478,7 +540,7 @@ class StockOpnameController extends ChangeNotifier {
 
       // Get API URL from environment
       final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
-      final String apiPath = dotenv.env['API_UNFREEZE_STOCK'] ?? '/api/stock/unfreeze';
+      final String apiPath = dotenv.env['API_UNFREEZE_STOCK'] ?? '/api/item-barang/unfreeze';
       
       final response = await http.post(
         Uri.parse('$baseUrl$apiPath'),
@@ -501,7 +563,9 @@ class StockOpnameController extends ChangeNotifier {
             _isUnfreezingStock = false;
           });
           // Reload item barang to refresh frozen status
-          loadItemBarang(selectedGudang.id);
+          await loadItemBarang(selectedGudang.id);
+          
+          debugPrint('Stock unfrozen successfully. Updated count: ${jsonData['data']?['updated_count'] ?? 0}');
         } else {
           setState(() {
             _errorMessage = jsonData['message'] ?? 'Gagal membuka stok';
@@ -509,8 +573,21 @@ class StockOpnameController extends ChangeNotifier {
           });
         }
       } else if (response.statusCode == 401) {
+        // Redirect to login when session expired
         await _handleSessionExpired();
         return;
+      } else if (response.statusCode == 403) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        setState(() {
+          _errorMessage = jsonData['message'] ?? 'Unauthorized. Admin access required.';
+          _isUnfreezingStock = false;
+        });
+      } else if (response.statusCode == 422) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        setState(() {
+          _errorMessage = jsonData['message'] ?? 'Validation failed';
+          _isUnfreezingStock = false;
+        });
       } else {
         setState(() {
           _errorMessage = 'Gagal membuka stok: ${response.statusCode}';
