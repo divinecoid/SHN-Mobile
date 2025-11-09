@@ -30,6 +30,7 @@ class StockOpnameController extends ChangeNotifier {
   BuildContext? _context;
   int? _currentStockOpnameId;
   Map<int, double> _stockFisikMap = {}; // itemId -> stockFisik
+  bool _isDisposed = false;
 
   // Getters
   bool get isLoadingLocation => _isLoadingLocation;
@@ -91,7 +92,9 @@ class StockOpnameController extends ChangeNotifier {
         final stockFrozen = prefs.getBool('opname_stock_frozen') ?? false;
         _stockFrozen = stockFrozen;
         
-        notifyListeners();
+        if (!_isDisposed) {
+          notifyListeners();
+        }
       }
     } catch (e) {
       debugPrint('Error loading opname session: $e');
@@ -99,6 +102,8 @@ class StockOpnameController extends ChangeNotifier {
   }
 
   Future<void> _detectLocation() async {
+    if (_isDisposed) return;
+    
     setState(() {
       _isLoadingLocation = true;
       _errorMessage = '';
@@ -107,8 +112,12 @@ class StockOpnameController extends ChangeNotifier {
     try {
       // Check location permissions
       LocationPermission permission = await Geolocator.checkPermission();
+      if (_isDisposed) return;
+      
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
+        if (_isDisposed) return;
+        
         if (permission == LocationPermission.denied) {
           throw Exception('Location permission denied');
         }
@@ -122,6 +131,8 @@ class StockOpnameController extends ChangeNotifier {
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
+      
+      if (_isDisposed) return;
 
       // For demo purposes, we'll use mock warehouse detection
       // In a real app, you would call an API to find the nearest warehouse
@@ -131,12 +142,15 @@ class StockOpnameController extends ChangeNotifier {
       await _selectNearestWarehouse(position.latitude, position.longitude);
 
     } catch (e) {
+      if (_isDisposed) return;
       _errorMessage = 'Gagal mendeteksi lokasi: $e';
       _detectedLocation = 'Lokasi tidak dapat dideteksi';
     } finally {
-      setState(() {
-        _isLoadingLocation = false;
-      });
+      if (!_isDisposed) {
+        setState(() {
+          _isLoadingLocation = false;
+        });
+      }
     }
   }
 
@@ -210,6 +224,8 @@ class StockOpnameController extends ChangeNotifier {
   }
 
   Future<void> _loadWarehouses() async {
+    if (_isDisposed) return;
+    
     setState(() {
       _isLoadingWarehouses = true;
       _errorMessage = '';
@@ -218,12 +234,16 @@ class StockOpnameController extends ChangeNotifier {
     try {
       // Get authentication token
       final token = await _getAuthToken();
+      if (_isDisposed) return;
+      
       if (token == null) {
         // Redirect to login if no token
         await _handleSessionExpired();
-        setState(() {
-          _isLoadingWarehouses = false;
-        });
+        if (!_isDisposed) {
+          setState(() {
+            _isLoadingWarehouses = false;
+          });
+        }
         return;
       }
 
@@ -258,12 +278,15 @@ class StockOpnameController extends ChangeNotifier {
         _errorMessage = 'Gagal mengambil data gudang: ${response.statusCode}';
       }
     } catch (e) {
+      if (_isDisposed) return;
       _errorMessage = 'Gagal memuat data gudang: $e';
       debugPrint('Error loading warehouses: $e');
     } finally {
-      setState(() {
-        _isLoadingWarehouses = false;
-      });
+      if (!_isDisposed) {
+        setState(() {
+          _isLoadingWarehouses = false;
+        });
+      }
     }
   }
 
@@ -374,7 +397,9 @@ class StockOpnameController extends ChangeNotifier {
     // Auto-select if within reasonable distance (e.g., 10km) and coordinates are available
     if (nearestWarehouse != null && minDistance <= 10000) {
       _selectedWarehouse = nearestWarehouse.namaGudang;
-      notifyListeners();
+      if (!_isDisposed) {
+        notifyListeners();
+      }
     }
   }
 
@@ -421,6 +446,8 @@ class StockOpnameController extends ChangeNotifier {
   }
 
   Future<void> loadItemBarang(int gudangId) async {
+    if (_isDisposed) return;
+    
     setState(() {
       _isLoadingItems = true;
       _itemBarangError = '';
@@ -429,12 +456,16 @@ class StockOpnameController extends ChangeNotifier {
     try {
       // Get authentication token
       final token = await _getAuthToken();
+      if (_isDisposed) return;
+      
       if (token == null) {
         // Redirect to login if no token
         await _handleSessionExpired();
-        setState(() {
-          _isLoadingItems = false;
-        });
+        if (!_isDisposed) {
+          setState(() {
+            _isLoadingItems = false;
+          });
+        }
         return;
       }
 
@@ -462,6 +493,8 @@ class StockOpnameController extends ChangeNotifier {
           'Authorization': 'Bearer $token',
         },
       );
+      
+      if (_isDisposed) return;
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
@@ -471,27 +504,33 @@ class StockOpnameController extends ChangeNotifier {
           final ItemBarangResult itemBarangResult = ItemBarangResult.fromMap(jsonData);
           
           if (itemBarangResult.success) {
-            setState(() {
-              _itemBarangList = itemBarangResult.data;
-              _itemBarangError = '';
-              _isLoadingItems = false;
-            });
+            if (!_isDisposed) {
+              setState(() {
+                _itemBarangList = itemBarangResult.data;
+                _itemBarangError = '';
+                _isLoadingItems = false;
+              });
+            }
             debugPrint('Item Barang loaded: ${_itemBarangList.length} items');
             debugPrint('Notifying listeners after loading items');
           } else {
-            setState(() {
-              _itemBarangError = itemBarangResult.message;
-              _itemBarangList = [];
-              _isLoadingItems = false;
-            });
+            if (!_isDisposed) {
+              setState(() {
+                _itemBarangError = itemBarangResult.message;
+                _itemBarangList = [];
+                _isLoadingItems = false;
+              });
+            }
             debugPrint('Item Barang API error: ${itemBarangResult.message}');
           }
         } catch (parseError) {
-          setState(() {
-            _itemBarangError = 'Gagal memproses data item barang: $parseError';
-            _itemBarangList = [];
-            _isLoadingItems = false;
-          });
+          if (!_isDisposed) {
+            setState(() {
+              _itemBarangError = 'Gagal memproses data item barang: $parseError';
+              _itemBarangList = [];
+              _isLoadingItems = false;
+            });
+          }
           debugPrint('Item Barang parse error: $parseError');
           debugPrint('JSON Data: ${jsonData.toString()}');
         }
@@ -500,18 +539,22 @@ class StockOpnameController extends ChangeNotifier {
         await _handleSessionExpired();
         return;
       } else {
+        if (!_isDisposed) {
+          setState(() {
+            _itemBarangError = 'Gagal mengambil data item barang: ${response.statusCode}';
+            _itemBarangList = [];
+            _isLoadingItems = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (!_isDisposed) {
         setState(() {
-          _itemBarangError = 'Gagal mengambil data item barang: ${response.statusCode}';
+          _itemBarangError = 'Gagal memuat data item barang: $e';
           _itemBarangList = [];
           _isLoadingItems = false;
         });
       }
-    } catch (e) {
-      setState(() {
-        _itemBarangError = 'Gagal memuat data item barang: $e';
-        _itemBarangList = [];
-        _isLoadingItems = false;
-      });
       debugPrint('Error loading item barang: $e');
     }
   }
@@ -609,7 +652,9 @@ class StockOpnameController extends ChangeNotifier {
   Future<void> freezeStockAndStartOpname() async {
     if (_selectedWarehouse.isEmpty) {
       _errorMessage = 'Pilih lokasi gudang terlebih dahulu';
-      notifyListeners();
+      if (!_isDisposed) {
+        notifyListeners();
+      }
       return;
     }
 
@@ -669,7 +714,9 @@ class StockOpnameController extends ChangeNotifier {
   Future<void> unfreezeStock() async {
     if (_selectedWarehouse.isEmpty) {
       _errorMessage = 'Pilih lokasi gudang terlebih dahulu';
-      notifyListeners();
+      if (!_isDisposed) {
+        notifyListeners();
+      }
       return;
     }
 
@@ -762,7 +809,9 @@ class StockOpnameController extends ChangeNotifier {
   Future<void> startOpnameWithoutFreeze() async {
     if (_selectedWarehouse.isEmpty) {
       _errorMessage = 'Pilih lokasi gudang terlebih dahulu';
-      notifyListeners();
+      if (!_isDisposed) {
+        notifyListeners();
+      }
       return;
     }
 
@@ -824,7 +873,9 @@ class StockOpnameController extends ChangeNotifier {
     if (itemIndex != -1) {
       _stockItems[itemIndex]['realStock'] = _stockItems[itemIndex]['bookStock'];
       _stockItems[itemIndex]['status'] = 'accurate';
-      notifyListeners();
+      if (!_isDisposed) {
+        notifyListeners();
+      }
     }
   }
 
@@ -833,7 +884,9 @@ class StockOpnameController extends ChangeNotifier {
     if (itemIndex != -1) {
       _stockItems[itemIndex]['realStock'] = realStock;
       _stockItems[itemIndex]['status'] = 'different';
-      notifyListeners();
+      if (!_isDisposed) {
+        notifyListeners();
+      }
     }
   }
 
@@ -871,7 +924,9 @@ class StockOpnameController extends ChangeNotifier {
     await prefs.remove('opname_stock_frozen');
     await prefs.remove('opname_id');
     
-    notifyListeners();
+    if (!_isDisposed) {
+      notifyListeners();
+    }
   }
 
   /// Cancel stock opname via API
@@ -1268,12 +1323,16 @@ class StockOpnameController extends ChangeNotifier {
   }
 
   void setState(VoidCallback fn) {
+    if (_isDisposed) return;
     fn();
-    notifyListeners();
+    if (!_isDisposed) {
+      notifyListeners();
+    }
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     super.dispose();
   }
 } 

@@ -96,7 +96,21 @@ class _StockOpnameListPageState extends State<StockOpnameListPage> {
     // Set context for session handling
     _controller.setContext(context);
     
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        
+        // Navigate to dashboard/home instead of closing app
+        // Pop all routes until we reach the root (DashboardPage or HomePage)
+        Navigator.of(context).popUntil((route) {
+          // Stop when we reach a route that is the root or contains DashboardPage/HomePage
+          // Since StockOpnameListPage is used inside DashboardPage/HomePage via bottom nav,
+          // we need to pop until we can't pop anymore, which will bring us back to the parent
+          return route.isFirst;
+        });
+      },
+      child: Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.grey[900],
@@ -104,13 +118,12 @@ class _StockOpnameListPageState extends State<StockOpnameListPage> {
           'Stock Opname',
           style: TextStyle(color: Colors.white),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add, color: Colors.white),
-            onPressed: () => _navigateToStockOpnameForm(),
-            tooltip: 'Buat Stock Opname Baru',
-          ),
-        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _navigateToStockOpnameForm(),
+        backgroundColor: Colors.blue[600],
+        child: const Icon(Icons.add, color: Colors.white),
+        tooltip: 'Buat Stock Opname Baru',
       ),
       body: Column(
         children: [
@@ -141,6 +154,7 @@ class _StockOpnameListPageState extends State<StockOpnameListPage> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
