@@ -1227,17 +1227,34 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                   );
                 }
               } else {
-                // Show error message
-                setState(() {
-                  isLoading = false;
-                  errorMessage = result['message'] ?? 'Gagal menambahkan detail stock opname';
-                });
+                // Close dialog first
+                Navigator.pop(dialogContext);
+                
+                // Show error message in snackbar
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(result['message'] ?? 'Gagal menambahkan detail stock opname'),
+                      backgroundColor: Colors.red,
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                }
               }
             } catch (e) {
-              setState(() {
-                isLoading = false;
-                errorMessage = 'Error: $e';
-              });
+              // Close dialog first
+              Navigator.pop(dialogContext);
+              
+              // Show error message in snackbar
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error: $e'),
+                    backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
             }
           }
 

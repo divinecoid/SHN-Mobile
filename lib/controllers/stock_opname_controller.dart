@@ -1175,6 +1175,24 @@ class StockOpnameController extends ChangeNotifier {
           'success': false,
           'message': 'Session expired',
         };
+      } else if (response.statusCode == 404) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        return {
+          'success': false,
+          'message': jsonData['message'] ?? 'Kode barang tidak ditemukan',
+        };
+      } else if (response.statusCode == 422) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        // Handle validation errors including:
+        // - Item barang sudah ada di detail stock opname ini
+        // - Barang tidak berada di gudang stock opname
+        // - Barang tidak memiliki gudang yang ditetapkan
+        // - Stok sistem wajib diisi karena item barang dalam status beku
+        // - Other validation errors
+        return {
+          'success': false,
+          'message': jsonData['message'] ?? 'Validasi gagal. Pastikan barang berada di gudang yang sama dengan stock opname.',
+        };
       } else {
         final Map<String, dynamic> jsonData = json.decode(response.body);
         return {
