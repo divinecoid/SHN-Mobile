@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/gudang_model.dart';
 import '../models/item_barang_model.dart';
+import '../models/stock_opname_model.dart';
 import '../utils/auth_helper.dart';
 
 class StockOpnameController extends ChangeNotifier {
@@ -17,6 +18,7 @@ class StockOpnameController extends ChangeNotifier {
   bool _isStartingOpname = false;
   bool _isCancellingOpname = false;
   bool _isCompletingOpname = false;
+  bool _isReconcilingOpname = false;
   bool _stockFrozen = false;
   bool _opnameStarted = false;
   String _selectedWarehouse = '';
@@ -31,6 +33,8 @@ class StockOpnameController extends ChangeNotifier {
   int? _currentStockOpnameId;
   Map<int, double> _stockFisikMap = {}; // itemId -> stockFisik
   bool _isDisposed = false;
+  StockOpname? _currentStockOpname;
+  bool _isLoadingStockOpname = false;
 
   // Getters
   bool get isLoadingLocation => _isLoadingLocation;
@@ -40,6 +44,7 @@ class StockOpnameController extends ChangeNotifier {
   bool get isStartingOpname => _isStartingOpname;
   bool get isCancellingOpname => _isCancellingOpname;
   bool get isCompletingOpname => _isCompletingOpname;
+  bool get isReconcilingOpname => _isReconcilingOpname;
   bool get stockFrozen => _stockFrozen;
   bool get opnameStarted => _opnameStarted;
   String get selectedWarehouse => _selectedWarehouse;
@@ -52,6 +57,8 @@ class StockOpnameController extends ChangeNotifier {
   String get itemBarangError => _itemBarangError;
   int? get currentStockOpnameId => _currentStockOpnameId;
   Map<int, double> get stockFisikMap => _stockFisikMap;
+  StockOpname? get currentStockOpname => _currentStockOpname;
+  bool get isLoadingStockOpname => _isLoadingStockOpname;
 
   StockOpnameController() {
     _initialize();
@@ -1132,6 +1139,212 @@ class StockOpnameController extends ChangeNotifier {
       debugPrint('Stock opname session cleared');
     } catch (e) {
       debugPrint('Error clearing opname session: $e');
+    }
+  }
+
+  /// Load stock opname by ID
+  Future<void> loadStockOpnameById(int stockOpnameId) async {
+    if (_isDisposed) return;
+
+    setState(() {
+      _isLoadingStockOpname = true;
+      _errorMessage = '';
+    });
+
+    try {
+      // Get authentication token
+      final token = await _getAuthToken();
+      if (token == null) {
+        await _handleSessionExpired();
+        setState(() {
+          _isLoadingStockOpname = false;
+        });
+        return;
+      }
+
+      // Get API URL from environment
+      final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final String apiPath = dotenv.env['API_STOCK_OPNAME'] ?? '/api/stock-opname';
+      final String apiUrl = '$apiPath/$stockOpnameId';
+
+      final uri = Uri.parse('$baseUrl$apiUrl');
+
+      debugPrint('Loading stock opname: ${uri.toString()}');
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      debugPrint('Load stock opname response status: ${response.statusCode}');
+      debugPrint('Load stock opname response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        
+        if (jsonData['success'] == true && jsonData['data'] != null) {
+          final StockOpname stockOpname = StockOpname.fromMap(jsonData['data'] as Map<String, dynamic>);
+          
+          setState(() {
+            _currentStockOpname = stockOpname;
+            _currentStockOpnameId = stockOpname.id;
+            _isLoadingStockOpname = false;
+          });
+
+          // If stock opname has a warehouse, set it
+          if (stockOpname.gudang != null) {
+            _selectedWarehouse = stockOpname.gudang!.namaGudang;
+          }
+        } else {
+          setState(() {
+            _isLoadingStockOpname = false;
+            _errorMessage = jsonData['message'] ?? 'Gagal memuat data stock opname';
+          });
+        }
+      } else if (response.statusCode == 401) {
+        await _handleSessionExpired();
+        setState(() {
+          _isLoadingStockOpname = false;
+        });
+      } else if (response.statusCode == 404) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        setState(() {
+          _isLoadingStockOpname = false;
+          _errorMessage = jsonData['message'] ?? 'Stock opname tidak ditemukan';
+        });
+      } else {
+        setState(() {
+          _isLoadingStockOpname = false;
+          _errorMessage = 'Gagal memuat data stock opname: ${response.statusCode}';
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading stock opname: $e');
+      setState(() {
+        _isLoadingStockOpname = false;
+        _errorMessage = 'Gagal memuat data stock opname: $e';
+      });
+    }
+  }
+
+  /// Reconcile stock opname
+  Future<Map<String, dynamic>> reconcileStockOpname(int stockOpnameId) async {
+    try {
+      setState(() {
+        _isReconcilingOpname = true;
+        _errorMessage = '';
+      });
+
+      // Get authentication token
+      final token = await _getAuthToken();
+      if (token == null) {
+        await _handleSessionExpired();
+        setState(() {
+          _isReconcilingOpname = false;
+        });
+        return {
+          'success': false,
+          'message': 'Session expired',
+        };
+      }
+
+      // Get API URL from environment
+      final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final String apiPath = '/api/stock-opname/$stockOpnameId/reconcile';
+
+      final uri = Uri.parse('$baseUrl$apiPath');
+
+      debugPrint('Reconciling stock opname: ${uri.toString()}');
+
+      final response = await http.patch(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      debugPrint('Reconcile stock opname response status: ${response.statusCode}');
+      debugPrint('Reconcile stock opname response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        
+        if (jsonData['success'] == true) {
+          setState(() {
+            _isReconcilingOpname = false;
+          });
+
+          return {
+            'success': true,
+            'message': jsonData['message'] ?? 'Stock opname berhasil di-reconcile',
+            'data': jsonData['data'],
+          };
+        } else {
+          setState(() {
+            _isReconcilingOpname = false;
+            _errorMessage = jsonData['message'] ?? 'Gagal melakukan reconcile stock opname';
+          });
+          return {
+            'success': false,
+            'message': jsonData['message'] ?? 'Gagal melakukan reconcile stock opname',
+          };
+        }
+      } else if (response.statusCode == 401) {
+        await _handleSessionExpired();
+        setState(() {
+          _isReconcilingOpname = false;
+        });
+        return {
+          'success': false,
+          'message': 'Session expired',
+        };
+      } else if (response.statusCode == 404) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        setState(() {
+          _isReconcilingOpname = false;
+          _errorMessage = jsonData['message'] ?? 'Stock opname tidak ditemukan';
+        });
+        return {
+          'success': false,
+          'message': jsonData['message'] ?? 'Stock opname tidak ditemukan',
+        };
+      } else if (response.statusCode == 422) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        setState(() {
+          _isReconcilingOpname = false;
+          _errorMessage = jsonData['message'] ?? 'Stock opname tidak dapat di-reconcile';
+        });
+        return {
+          'success': false,
+          'message': jsonData['message'] ?? 'Stock opname tidak dapat di-reconcile',
+        };
+      } else {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        setState(() {
+          _isReconcilingOpname = false;
+          _errorMessage = jsonData['message'] ?? 'Gagal melakukan reconcile stock opname';
+        });
+        return {
+          'success': false,
+          'message': jsonData['message'] ?? 'Gagal melakukan reconcile stock opname',
+        };
+      }
+    } catch (e) {
+      debugPrint('Error reconciling stock opname: $e');
+      setState(() {
+        _isReconcilingOpname = false;
+        _errorMessage = 'Error: $e';
+      });
+      return {
+        'success': false,
+        'message': 'Error: $e',
+      };
     }
   }
 

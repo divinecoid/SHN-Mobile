@@ -70,6 +70,8 @@ class _StockOpnameListPageState extends State<StockOpnameListPage> {
       case 'active':
         return Colors.blue;
       case 'completed':
+        return Colors.yellow;
+      case 'reconciled':
         return Colors.green;
       case 'cancelled':
         return Colors.red;
@@ -84,6 +86,8 @@ class _StockOpnameListPageState extends State<StockOpnameListPage> {
         return 'Aktif';
       case 'completed':
         return 'Selesai';
+      case 'reconciled':
+        return 'Reconciled';
       case 'cancelled':
         return 'Dibatalkan';
       default:
@@ -112,13 +116,6 @@ class _StockOpnameListPageState extends State<StockOpnameListPage> {
       },
       child: Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.grey[900],
-        title: const Text(
-          'Stock Opname',
-          style: TextStyle(color: Colors.white),
-        ),
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _navigateToStockOpnameForm(),
         backgroundColor: Colors.blue[600],

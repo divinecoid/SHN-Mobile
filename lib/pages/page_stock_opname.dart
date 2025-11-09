@@ -20,6 +20,10 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
   void initState() {
     super.initState();
     _controller = StockOpnameController();
+    // Load stock opname data if stockOpnameId is provided
+    if (widget.stockOpnameId != null) {
+      _controller.loadStockOpnameById(widget.stockOpnameId!);
+    }
   }
 
   @override
@@ -101,46 +105,87 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                     const SizedBox(height: 16),
                     _buildItemBarangSection(),
                   ],
-                  // Tombol Selesai Stock Opname - hanya tampil jika opname sudah dimulai
-                  if ((_controller.opnameStarted || _controller.stockFrozen) && 
-                      _controller.selectedWarehouse.isNotEmpty) ...[
+                  // Tombol Selesai Stock Opname atau Reconcile
+                  // Tampil jika opname sudah dimulai ATAU jika stock opname sudah completed (tapi belum reconciled)
+                  if (((_controller.opnameStarted || _controller.stockFrozen) && 
+                      _controller.selectedWarehouse.isNotEmpty) ||
+                      (_controller.currentStockOpname != null && 
+                       _controller.currentStockOpname!.status.toLowerCase() == 'completed' &&
+                       _controller.currentStockOpname!.status.toLowerCase() != 'reconciled')) ...[
                     const SizedBox(height: 24),
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: ElevatedButton.icon(
-                        onPressed: _controller.isCompletingOpname 
-                            ? null 
-                            : () => _handleCompleteStockOpname(context),
-                        icon: _controller.isCompletingOpname
-                            ? SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      child: _controller.currentStockOpname != null && 
+                            _controller.currentStockOpname!.status.toLowerCase() == 'completed'
+                          ? ElevatedButton.icon(
+                              // Reconcile button for completed stock opname
+                              onPressed: _controller.isReconcilingOpname 
+                                  ? null 
+                                  : () => _handleReconcileStockOpname(context),
+                              icon: _controller.isReconcilingOpname
+                                  ? SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    )
+                                  : const Icon(Icons.sync, size: 20),
+                              label: Text(
+                                _controller.isReconcilingOpname 
+                                    ? 'Mereconcile...' 
+                                    : 'Reconcile',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                              )
-                            : const Icon(Icons.check_circle, size: 20),
-                        label: Text(
-                          _controller.isCompletingOpname 
-                              ? 'Menyelesaikan...' 
-                              : 'Selesai Stock Opname',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[600],
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: Colors.grey[700],
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green[600],
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: Colors.grey[700],
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            )
+                          : ElevatedButton.icon(
+                              // Complete button for active stock opname
+                              onPressed: _controller.isCompletingOpname 
+                                  ? null 
+                                  : () => _handleCompleteStockOpname(context),
+                              icon: _controller.isCompletingOpname
+                                  ? SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    )
+                                  : const Icon(Icons.check_circle, size: 20),
+                              label: Text(
+                                _controller.isCompletingOpname 
+                                    ? 'Menyelesaikan...' 
+                                    : 'Selesai Stock Opname',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.yellow[600],
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: Colors.grey[700],
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
                     ),
                   ],
                   const SizedBox(height: 24),
@@ -1047,11 +1092,98 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
             duration: const Duration(seconds: 3),
           ),
         );
+        // Reload stock opname data to update status
+        if (widget.stockOpnameId != null) {
+          _controller.loadStockOpnameById(widget.stockOpnameId!);
+        }
       } else {
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Gagal menyelesaikan stock opname'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleReconcileStockOpname(BuildContext context) async {
+    // Check if stock opname ID exists
+    final stockOpnameId = _controller.currentStockOpnameId ?? widget.stockOpnameId;
+    if (stockOpnameId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Stock opname ID tidak ditemukan'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          'Reconcile Stock Opname',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Apakah Anda yakin ingin melakukan reconcile stock opname ini? Setelah di-reconcile, stok item barang akan disesuaikan dengan stok fisik dan status stock opname akan berubah menjadi reconciled.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(
+              'Batal',
+              style: TextStyle(color: Colors.grey[400]),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green[600],
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Ya, Reconcile'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    // Call API to reconcile stock opname
+    final result = await _controller.reconcileStockOpname(stockOpnameId);
+
+    if (context.mounted) {
+      if (result['success'] == true) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Stock opname berhasil di-reconcile'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        // Reload stock opname data to update status
+        if (widget.stockOpnameId != null) {
+          _controller.loadStockOpnameById(widget.stockOpnameId!);
+        }
+        // Refresh the list page if we're coming from there
+        Navigator.pop(context, true);
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Gagal melakukan reconcile stock opname'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
