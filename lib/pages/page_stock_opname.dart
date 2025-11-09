@@ -5,7 +5,9 @@ import '../models/item_barang_model.dart';
 import 'qr_scan_page.dart';
 
 class StockOpnamePage extends StatefulWidget {
-  const StockOpnamePage({super.key});
+  final int? stockOpnameId;
+  
+  const StockOpnamePage({super.key, this.stockOpnameId});
 
   @override
   State<StockOpnamePage> createState() => _StockOpnamePageState();

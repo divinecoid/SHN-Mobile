@@ -3,6 +3,7 @@ import 'package:shn_mobile/controllers/home_controller.dart';
 import 'package:shn_mobile/pages/terima_barang_main_page.dart';
 import 'package:shn_mobile/pages/page_mutasi_barang.dart';
 import 'package:shn_mobile/pages/page_stock_opname.dart';
+import 'package:shn_mobile/pages/stock_opname_list_page.dart';
 import 'package:shn_mobile/pages/page_work_order.dart';
 
 class HomePage extends StatefulWidget {
@@ -19,7 +20,7 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = [
     const TerimaBarangMainPage(),
     const MutasiBarangPage(),
-    const StockOpnamePage(),
+    const StockOpnameListPage(),
     const WorkOrderPage(),
   ];
 

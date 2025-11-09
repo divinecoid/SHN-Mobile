@@ -6,6 +6,7 @@ import 'page_login.dart';
 import 'terima_barang_main_page.dart';
 import 'page_mutasi_barang.dart';
 import 'page_stock_opname.dart';
+import 'stock_opname_list_page.dart';
 import 'page_work_order.dart';
 import 'page_stock_check.dart';
 import '../utils/auth_helper.dart';
@@ -27,7 +28,7 @@ class _DashboardPageState extends State<DashboardPage> {
     const StockCheckPage(),
     const TerimaBarangMainPage(),
     const MutasiBarangPage(),
-    const StockOpnamePage(),
+    const StockOpnameListPage(),
     const WorkOrderPage(),
   ];
 
