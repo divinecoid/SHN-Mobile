@@ -99,6 +99,48 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                     const SizedBox(height: 16),
                     _buildItemBarangSection(),
                   ],
+                  // Tombol Selesai Stock Opname - hanya tampil jika opname sudah dimulai
+                  if ((_controller.opnameStarted || _controller.stockFrozen) && 
+                      _controller.selectedWarehouse.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: ElevatedButton.icon(
+                        onPressed: _controller.isCompletingOpname 
+                            ? null 
+                            : () => _handleCompleteStockOpname(context),
+                        icon: _controller.isCompletingOpname
+                            ? SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Icon(Icons.check_circle, size: 20),
+                        label: Text(
+                          _controller.isCompletingOpname 
+                              ? 'Menyelesaikan...' 
+                              : 'Selesai Stock Opname',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green[600],
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey[700],
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                 ],
               ),
@@ -950,6 +992,70 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
         );
       },
     );
+  }
+
+  Future<void> _handleCompleteStockOpname(BuildContext context) async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          'Selesai Stock Opname',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Apakah Anda yakin ingin menyelesaikan stock opname ini? Setelah diselesaikan, stock opname tidak dapat diubah lagi dan semua item akan di-unfreeze.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(
+              'Batal',
+              style: TextStyle(color: Colors.grey[400]),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green[600],
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Ya, Selesai'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    // Call API to complete stock opname
+    final result = await _controller.completeStockOpname();
+
+    if (context.mounted) {
+      if (result['success'] == true) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Stock opname berhasil diselesaikan'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Gagal menyelesaikan stock opname'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildInfoChip(String label, Color color) {

@@ -16,6 +16,7 @@ class StockOpnameController extends ChangeNotifier {
   bool _isUnfreezingStock = false;
   bool _isStartingOpname = false;
   bool _isCancellingOpname = false;
+  bool _isCompletingOpname = false;
   bool _stockFrozen = false;
   bool _opnameStarted = false;
   String _selectedWarehouse = '';
@@ -37,6 +38,7 @@ class StockOpnameController extends ChangeNotifier {
   bool get isUnfreezingStock => _isUnfreezingStock;
   bool get isStartingOpname => _isStartingOpname;
   bool get isCancellingOpname => _isCancellingOpname;
+  bool get isCompletingOpname => _isCompletingOpname;
   bool get stockFrozen => _stockFrozen;
   bool get opnameStarted => _opnameStarted;
   String get selectedWarehouse => _selectedWarehouse;
@@ -947,6 +949,134 @@ class StockOpnameController extends ChangeNotifier {
         _isCancellingOpname = false;
       });
       debugPrint('Error cancelling stock opname: $e');
+    }
+  }
+
+  /// Complete stock opname
+  Future<Map<String, dynamic>> completeStockOpname() async {
+    try {
+      // Check if stock opname ID exists
+      if (_currentStockOpnameId == null) {
+        return {
+          'success': false,
+          'message': 'Stock opname belum dimulai',
+        };
+      }
+
+      setState(() {
+        _isCompletingOpname = true;
+        _errorMessage = '';
+      });
+
+      // Get authentication token
+      final token = await _getAuthToken();
+      if (token == null) {
+        await _handleSessionExpired();
+        setState(() {
+          _isCompletingOpname = false;
+        });
+        return {
+          'success': false,
+          'message': 'Session expired',
+        };
+      }
+
+      // Get API URL from environment
+      final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final String apiPathTemplate = dotenv.env['API_STOCK_OPNAME_COMPLETE'] ?? '/api/stock-opname/{id}/complete';
+      final String apiPath = apiPathTemplate.replaceAll('{id}', _currentStockOpnameId.toString());
+
+      final uri = Uri.parse('$baseUrl$apiPath');
+
+      debugPrint('Completing stock opname: ${uri.toString()}');
+
+      final response = await http.patch(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      debugPrint('Complete stock opname response status: ${response.statusCode}');
+      debugPrint('Complete stock opname response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        
+        if (jsonData['success'] == true) {
+          // Clear session
+          await _clearOpnameSession();
+          
+          setState(() {
+            _isCompletingOpname = false;
+            _opnameStarted = false;
+            _stockFrozen = false;
+            _currentStockOpnameId = null;
+            _selectedWarehouse = '';
+            _itemBarangList = [];
+          });
+
+          return {
+            'success': true,
+            'message': jsonData['message'] ?? 'Stock opname berhasil diselesaikan',
+            'data': jsonData['data'],
+          };
+        } else {
+          setState(() {
+            _isCompletingOpname = false;
+            _errorMessage = jsonData['message'] ?? 'Gagal menyelesaikan stock opname';
+          });
+          return {
+            'success': false,
+            'message': jsonData['message'] ?? 'Gagal menyelesaikan stock opname',
+          };
+        }
+      } else if (response.statusCode == 401) {
+        await _handleSessionExpired();
+        setState(() {
+          _isCompletingOpname = false;
+        });
+        return {
+          'success': false,
+          'message': 'Session expired',
+        };
+      } else {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        setState(() {
+          _isCompletingOpname = false;
+          _errorMessage = jsonData['message'] ?? 'Gagal menyelesaikan stock opname';
+        });
+        return {
+          'success': false,
+          'message': jsonData['message'] ?? 'Gagal menyelesaikan stock opname',
+        };
+      }
+    } catch (e) {
+      debugPrint('Error completing stock opname: $e');
+      setState(() {
+        _isCompletingOpname = false;
+        _errorMessage = 'Error: $e';
+      });
+      return {
+        'success': false,
+        'message': 'Error: $e',
+      };
+    }
+  }
+
+  /// Clear stock opname session
+  Future<void> _clearOpnameSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('opname_id');
+      await prefs.remove('opname_active');
+      await prefs.remove('opname_warehouse');
+      await prefs.remove('opname_stock_frozen');
+      debugPrint('Stock opname session cleared');
+    } catch (e) {
+      debugPrint('Error clearing opname session: $e');
     }
   }
 
