@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'page_login.dart';
 import 'terima_barang_main_page.dart';
-import 'page_mutasi_barang.dart';
 import 'page_stock_opname.dart';
 import 'stock_opname_list_page.dart';
 import 'page_work_order.dart';
@@ -27,7 +26,6 @@ class _DashboardPageState extends State<DashboardPage> {
     const DashboardContent(),
     const StockCheckPage(),
     const TerimaBarangMainPage(),
-    const MutasiBarangPage(),
     const StockOpnameListPage(),
     const WorkOrderPage(),
   ];
@@ -36,7 +34,6 @@ class _DashboardPageState extends State<DashboardPage> {
     'Dashboard',
     'Cek Stok',
     'Terima Barang',
-    'Mutasi Barang',
     'Stock Opname',
     'Work Order',
   ];
@@ -229,10 +226,8 @@ class _DashboardPageState extends State<DashboardPage> {
       case 2:
         return Icons.inventory;
       case 3:
-        return Icons.swap_horiz;
-      case 4:
         return Icons.assessment;
-      case 5:
+      case 4:
         return Icons.work;
       default:
         return Icons.home;

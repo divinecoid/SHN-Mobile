@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shn_mobile/controllers/home_controller.dart';
 import 'package:shn_mobile/pages/terima_barang_main_page.dart';
-import 'package:shn_mobile/pages/page_mutasi_barang.dart';
 import 'package:shn_mobile/pages/page_stock_opname.dart';
 import 'package:shn_mobile/pages/stock_opname_list_page.dart';
 import 'package:shn_mobile/pages/page_work_order.dart';
@@ -19,14 +18,12 @@ class _HomePageState extends State<HomePage> {
 
   final List<Widget> _pages = [
     const TerimaBarangMainPage(),
-    const MutasiBarangPage(),
     const StockOpnameListPage(),
     const WorkOrderPage(),
   ];
 
   final List<String> _menuItems = [
     'Terima Barang',
-    'Mutasi Barang',
     'Stock Opname',
     'Work Order',
   ];
@@ -134,10 +131,8 @@ class _HomePageState extends State<HomePage> {
       case 0:
         return Icons.inventory;
       case 1:
-        return Icons.swap_horiz;
-      case 2:
         return Icons.assessment;
-      case 3:
+      case 2:
         return Icons.work;
       default:
         return Icons.home;
