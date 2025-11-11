@@ -35,12 +35,6 @@ class _StockCheckPageState extends State<StockCheckPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      appBar: AppBar(
-        title: const Text('Cek Stok'),
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
       body: Consumer<StockCheckController>(
         builder: (context, controller, child) {
           return SingleChildScrollView(

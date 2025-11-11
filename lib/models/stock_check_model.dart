@@ -97,7 +97,12 @@ class StockCheckItem {
     if (value is int) return value;
     if (value is double) return value.toInt();
     if (value is String) {
-      return int.tryParse(value) ?? 0;
+      // Try parse as int first
+      final intValue = int.tryParse(value);
+      if (intValue != null) return intValue;
+      // If failed, try parse as double (for cases like "1.00") then convert to int
+      final doubleValue = double.tryParse(value);
+      return doubleValue?.toInt() ?? 0;
     }
     return 0;
   }
