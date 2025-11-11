@@ -523,7 +523,7 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
               const SizedBox(height: 20),
               
               // Button 1: Bekukan Stok & Mulai Opname
-              if (!_controller.opnameStarted)
+              if (!_controller.opnameStarted && _controller.currentStockOpname == null)
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -582,7 +582,7 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                 ),
               
               // Button 2: Mulai Opname Tanpa Bekukan Stok
-              if (!_controller.opnameStarted) ...[
+              if (!_controller.opnameStarted && _controller.currentStockOpname == null) ...[
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,

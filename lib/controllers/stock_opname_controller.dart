@@ -1199,6 +1199,24 @@ class StockOpnameController extends ChangeNotifier {
           if (stockOpname.gudang != null) {
             _selectedWarehouse = stockOpname.gudang!.namaGudang;
           }
+
+          // Set opname status based on stock opname status
+          final status = stockOpname.status.toLowerCase();
+          if (status == 'active' || status == 'completed') {
+            setState(() {
+              _opnameStarted = true;
+            });
+          }
+
+          // Load item barang if warehouse ID is available
+          if (stockOpname.gudangId > 0) {
+            // Load warehouses first if not loaded, then load items
+            if (_warehouses.isEmpty) {
+              await _loadWarehouses();
+            }
+            // Load item barang for this stock opname
+            await loadItemBarang(stockOpname.gudangId);
+          }
         } else {
           setState(() {
             _isLoadingStockOpname = false;
