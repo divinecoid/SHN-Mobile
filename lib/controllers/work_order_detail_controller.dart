@@ -934,20 +934,35 @@ class WorkOrderDetailController extends ChangeNotifier {
       };
       
       // Normalisasi struktur items: flatten { itemData, timestamp } => {...itemData, timestamp}
+      // Juga normalisasi field names: beratActual => berat
       if (payload['items'] is Map) {
         final Map<String, dynamic> originalItems = Map<String, dynamic>.from(payload['items'] as Map);
         final Map<String, dynamic> normalizedItems = {};
         originalItems.forEach((key, value) {
           if (value is Map<String, dynamic>) {
+            Map<String, dynamic> itemData;
             if (value.containsKey('itemData')) {
-              final Map<String, dynamic> itemData = Map<String, dynamic>.from(value['itemData'] ?? {});
+              itemData = Map<String, dynamic>.from(value['itemData'] ?? {});
               if (!itemData.containsKey('timestamp') && value['timestamp'] != null) {
                 itemData['timestamp'] = value['timestamp'];
               }
-              normalizedItems[key] = itemData;
             } else {
-              normalizedItems[key] = value;
+              itemData = Map<String, dynamic>.from(value);
             }
+            
+            // Normalisasi field names: beratActual => berat (sesuai API requirement)
+            // API membutuhkan field 'berat', bukan 'beratActual'
+            if (itemData.containsKey('beratActual')) {
+              if (!itemData.containsKey('berat')) {
+                // Jika berat belum ada, copy dari beratActual
+                itemData['berat'] = itemData['beratActual'];
+              }
+              // Hapus beratActual karena API tidak menerima field ini
+              itemData.remove('beratActual');
+              debugPrint('Normalized beratActual to berat for item $key');
+            }
+            
+            normalizedItems[key] = itemData;
           } else {
             normalizedItems[key] = value;
           }
