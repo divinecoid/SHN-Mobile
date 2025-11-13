@@ -78,7 +78,7 @@ class WorkOrderPlanning {
       namaGudang: map['nama_gudang']?.toString(),
       nomorSo: map['nomor_so']?.toString(),
       count: _parseInt(map['count']) ?? 0,
-      workOrderPlanningItems: (map['work_order_planning_items'] as List<dynamic>?)
+      workOrderPlanningItems: ((map['workOrderPlanningItems'] ?? map['work_order_planning_items']) as List<dynamic>?)
           ?.map((item) => WorkOrderPlanningItem.fromMap(item))
           .toList() ?? [],
       salesOrder: map['sales_order'] != null 
@@ -194,7 +194,7 @@ class WorkOrderPlanningItem {
       gradeBarang: map['grade_barang'] != null 
           ? GradeBarang.fromMap(map['grade_barang'])
           : null,
-      pelaksana: (map['has_many_pelaksana'] as List<dynamic>?)
+      pelaksana: ((map['hasManyPelaksana'] ?? map['has_many_pelaksana']) as List<dynamic>?)
           ?.map((item) => PelaksanaItem.fromMap(item))
           .toList() ?? [],
     );
@@ -261,8 +261,8 @@ class PelaksanaItem {
       jamMulai: map['jam_mulai']?.toString() ?? '',
       jamSelesai: map['jam_selesai']?.toString() ?? '',
       catatan: map['catatan']?.toString(),
-      pelaksana: map['pelaksana'] != null 
-          ? WorkOrderPelaksana.fromMap(map['pelaksana'])
+      pelaksana: (map['pelaksana'] ?? map['pelaksana_info']) != null 
+          ? WorkOrderPelaksana.fromMap(map['pelaksana'] ?? map['pelaksana_info'])
           : null,
     );
   }
@@ -612,7 +612,7 @@ class JenisBarang {
     return JenisBarang(
       id: _parseInt(map['id']) ?? 0,
       kode: map['kode']?.toString() ?? '',
-      namaJenis: map['nama_jenis']?.toString() ?? '',
+      namaJenis: (map['nama_jenis_barang'] ?? map['nama_jenis'])?.toString() ?? '',
     );
   }
 
@@ -642,7 +642,7 @@ class BentukBarang {
     return BentukBarang(
       id: _parseInt(map['id']) ?? 0,
       kode: map['kode']?.toString() ?? '',
-      namaBentuk: map['nama_bentuk']?.toString() ?? '',
+      namaBentuk: (map['nama_bentuk_barang'] ?? map['nama_bentuk'])?.toString() ?? '',
       dimensi: map['dimensi']?.toString() ?? '',
     );
   }
@@ -672,7 +672,7 @@ class GradeBarang {
     return GradeBarang(
       id: _parseInt(map['id']) ?? 0,
       kode: map['kode']?.toString() ?? '',
-      nama: map['nama']?.toString() ?? '',
+      nama: (map['nama_grade_barang'] ?? map['nama'])?.toString() ?? '',
     );
   }
 

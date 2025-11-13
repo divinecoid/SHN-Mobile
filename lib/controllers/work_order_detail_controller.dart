@@ -303,6 +303,15 @@ class WorkOrderDetailController extends ChangeNotifier {
           _workOrderPlanning = workOrderResponse.data;
           _workOrderItems = workOrderResponse.data.workOrderPlanningItems;
           
+          // Debug: Log jumlah items yang berhasil di-parse
+          debugPrint('Work Order Items Count: ${_workOrderItems.length}');
+          if (_workOrderItems.isEmpty) {
+            debugPrint('WARNING: No work order items found in response');
+            debugPrint('Response data keys: ${jsonData['data']?.keys}');
+            debugPrint('Response data workOrderPlanningItems: ${jsonData['data']?['workOrderPlanningItems']}');
+            debugPrint('Response data work_order_planning_items: ${jsonData['data']?['work_order_planning_items']}');
+          }
+          
           // Set actual work order ID jika ada
           if (_workOrderPlanning?.workOrderActual != null) {
             _actualWorkOrderId = _workOrderPlanning!.workOrderActual!.id;
