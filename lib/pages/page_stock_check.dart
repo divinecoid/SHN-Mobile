@@ -10,15 +10,26 @@ class StockCheckPage extends StatefulWidget {
   State<StockCheckPage> createState() => _StockCheckPageState();
 }
 
-class _StockCheckPageState extends State<StockCheckPage> {
+class _StockCheckPageState extends State<StockCheckPage> 
+    with SingleTickerProviderStateMixin {
   final _panjangController = TextEditingController();
   final _lebarController = TextEditingController();
   final _tebalController = TextEditingController();
   bool _isFilterExpanded = false; // Default collapsed
+  late AnimationController _animationController;
+  late Animation<double> _sizeAnimation;
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _sizeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<StockCheckController>().loadReferenceData();
     });
@@ -29,6 +40,7 @@ class _StockCheckPageState extends State<StockCheckPage> {
     _panjangController.dispose();
     _lebarController.dispose();
     _tebalController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -58,6 +70,11 @@ class _StockCheckPageState extends State<StockCheckPage> {
                         onTap: () {
                           setState(() {
                             _isFilterExpanded = !_isFilterExpanded;
+                            if (_isFilterExpanded) {
+                              _animationController.forward();
+                            } else {
+                              _animationController.reverse();
+                            }
                           });
                         },
                         child: Container(
@@ -84,10 +101,11 @@ class _StockCheckPageState extends State<StockCheckPage> {
                           ),
                         ),
                       ),
-                      // Collapsible content dengan animasi
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
+                      // Collapsible content dengan animasi expand/collapse (atas ke bawah)
+                      SizeTransition(
+                        sizeFactor: _sizeAnimation,
+                        axis: Axis.vertical,
+                        axisAlignment: -1.0,
                         child: _isFilterExpanded
                             ? Container(
                                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),

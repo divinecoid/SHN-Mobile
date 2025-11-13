@@ -12,7 +12,8 @@ class PenerimaanBarangListPage extends StatefulWidget {
   State<PenerimaanBarangListPage> createState() => _PenerimaanBarangListPageState();
 }
 
-class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> {
+class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> 
+    with SingleTickerProviderStateMixin {
   late PenerimaanBarangListController _controller;
   bool _isFilterExpanded = false;
   final TextEditingController _nomorPoController = TextEditingController();
@@ -21,11 +22,21 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> {
   final FocusNode _nomorPoFocusNode = FocusNode();
   final FocusNode _nomorMutasiFocusNode = FocusNode();
   final FocusNode _catatanFocusNode = FocusNode();
+  late AnimationController _animationController;
+  late Animation<double> _sizeAnimation;
 
   @override
   void initState() {
     super.initState();
     _controller = PenerimaanBarangListController();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _sizeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
     _initializeController();
   }
 
@@ -37,6 +48,7 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> {
     _nomorPoFocusNode.dispose();
     _nomorMutasiFocusNode.dispose();
     _catatanFocusNode.dispose();
+    _animationController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -267,7 +279,7 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> {
                   child: Text(
                     value != null
                         ? DateFormat('dd MMM yyyy').format(DateTime.parse(value))
-                        : 'Pilih $label',
+                        : '$label',
                     style: TextStyle(
                       color: value != null ? Colors.white : Colors.grey,
                       fontSize: 14,
@@ -427,156 +439,171 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> {
     
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Column(
-        children: [
-          // Filter Section
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.grey[900],
-              border: Border(
-                bottom: BorderSide(color: Colors.grey[800]!),
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // Filter Section
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey[800]!),
+                ),
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header dengan toggle button
-                InkWell(
-                  onTap: () {
-                    setState(() {
-                      _isFilterExpanded = !_isFilterExpanded;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        const Text(
-                          'Filter Pencarian',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header dengan toggle button
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _isFilterExpanded = !_isFilterExpanded;
+                        if (_isFilterExpanded) {
+                          _animationController.forward();
+                        } else {
+                          _animationController.reverse();
+                        }
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          const Text(
+                            'Filter Pencarian',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
-                        const Spacer(),
-                        Icon(
-                          _isFilterExpanded
-                              ? Icons.keyboard_arrow_up
-                              : Icons.keyboard_arrow_down,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ],
+                          const Spacer(),
+                          Icon(
+                            _isFilterExpanded
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                // Collapsible content dengan animasi
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  child: _isFilterExpanded
-                      ? Container(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          child: ListenableBuilder(
-                            listenable: _controller,
-                            builder: (context, child) {
-                              // Sync text controllers when controller notifies (only if not focused)
-                              if (!_nomorPoFocusNode.hasFocus && 
-                                  !_nomorMutasiFocusNode.hasFocus && 
-                                  !_catatanFocusNode.hasFocus) {
-                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  // Collapsible content dengan animasi expand/collapse (atas ke bawah)
+                  SizeTransition(
+                    sizeFactor: _sizeAnimation,
+                    axis: Axis.vertical,
+                    axisAlignment: -1.0,
+                    child: _isFilterExpanded
+                        ? SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: Container(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              child: ListenableBuilder(
+                                listenable: _controller,
+                                builder: (context, child) {
+                                  // Sync text controllers when controller notifies (only if not focused)
                                   if (!_nomorPoFocusNode.hasFocus && 
                                       !_nomorMutasiFocusNode.hasFocus && 
                                       !_catatanFocusNode.hasFocus) {
-                                    _syncTextControllers();
+                                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                                      if (!_nomorPoFocusNode.hasFocus && 
+                                          !_nomorMutasiFocusNode.hasFocus && 
+                                          !_catatanFocusNode.hasFocus) {
+                                        _syncTextControllers();
+                                      }
+                                    });
                                   }
-                                });
-                              }
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildFilterSection(),
-                                  const SizedBox(height: 16),
-                                  Row(
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Expanded(
-                                        child: ElevatedButton(
-                                          onPressed: _controller.isLoading
-                                              ? null
-                                              : () => _controller.loadPenerimaanBarangList(refresh: true),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.blue,
-                                            foregroundColor: Colors.white,
-                                            padding: const EdgeInsets.symmetric(vertical: 12),
+                                      _buildFilterSection(),
+                                      const SizedBox(height: 16),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: ElevatedButton(
+                                              onPressed: _controller.isLoading
+                                                  ? null
+                                                  : () => _controller.loadPenerimaanBarangList(refresh: true),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.blue,
+                                                foregroundColor: Colors.white,
+                                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                              ),
+                                              child: _controller.isLoading
+                                                  ? const SizedBox(
+                                                      height: 20,
+                                                      width: 20,
+                                                      child: CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                      ),
+                                                    )
+                                                  : const Text('Cari'),
+                                            ),
                                           ),
-                                          child: _controller.isLoading
-                                              ? const SizedBox(
-                                                  height: 20,
-                                                  width: 20,
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                                  ),
-                                                )
-                                              : const Text('Cari'),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      ElevatedButton(
-                                        onPressed: () {
-                                          _controller.clearFilters();
-                                          _nomorPoController.clear();
-                                          _nomorMutasiController.clear();
-                                          _catatanController.clear();
-                                          _controller.loadPenerimaanBarangList(refresh: true);
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.grey[700],
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
-                                        ),
-                                        child: const Text('Reset'),
+                                          const SizedBox(width: 12),
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              _controller.clearFilters();
+                                              _nomorPoController.clear();
+                                              _nomorMutasiController.clear();
+                                              _catatanController.clear();
+                                              _controller.loadPenerimaanBarangList(refresh: true);
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.grey[700],
+                                              foregroundColor: Colors.white,
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                            ),
+                                            child: const Text('Reset'),
+                                          ),
+                                        ],
                                       ),
                                     ],
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ],
-            ),
-          ),
-          // Content
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _controller.refresh,
-              child: ListenableBuilder(
-                listenable: _controller,
-                builder: (context, child) {
-                  if (_controller.isLoading && _controller.penerimaanBarangList.isEmpty) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  }
-
-                  if (_controller.error != null && _controller.penerimaanBarangList.isEmpty) {
-                    return _buildErrorWidget();
-                  }
-
-                  if (_controller.penerimaanBarangList.isEmpty) {
-                    return _buildEmptyWidget();
-                  }
-
-                  return _buildListWidget();
-                },
+                                  );
+                                },
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            // Content
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _controller.refresh,
+                child: ListenableBuilder(
+                  listenable: _controller,
+                  builder: (context, child) {
+                    if (_controller.isLoading && _controller.penerimaanBarangList.isEmpty) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+
+                    if (_controller.error != null && _controller.penerimaanBarangList.isEmpty) {
+                      return _buildErrorWidget();
+                    }
+
+                    if (_controller.penerimaanBarangList.isEmpty) {
+                      return _buildEmptyWidget();
+                    }
+
+                    return _buildListWidget();
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

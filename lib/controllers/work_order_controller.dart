@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/work_order_planning_model.dart';
+import '../models/gudang_model.dart' as gudang_model;
 import '../utils/auth_helper.dart';
 
 class WorkOrderController extends ChangeNotifier {
@@ -13,11 +14,35 @@ class WorkOrderController extends ChangeNotifier {
   List<WorkOrderPlanning> _workOrders = [];
   Pagination? _pagination;
 
+  // Filter variables
+  List<gudang_model.Gudang> _gudangList = [];
+  String? _tanggalWoFrom;
+  String? _tanggalWoTo;
+  String _nomorWo = '';
+  String _nomorSo = '';
+  String _namaCustomer = '';
+  int? _selectedGudangId;
+  String? _selectedStatus;
+  int? _jumlahItem;
+  int? _jumlahItemMin;
+  int? _jumlahItemMax;
+
   // Getters
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   List<WorkOrderPlanning> get workOrders => _workOrders;
   Pagination? get pagination => _pagination;
+  List<gudang_model.Gudang> get gudangList => _gudangList;
+  String? get tanggalWoFrom => _tanggalWoFrom;
+  String? get tanggalWoTo => _tanggalWoTo;
+  String get nomorWo => _nomorWo;
+  String get nomorSo => _nomorSo;
+  String get namaCustomer => _namaCustomer;
+  int? get selectedGudangId => _selectedGudangId;
+  String? get selectedStatus => _selectedStatus;
+  int? get jumlahItem => _jumlahItem;
+  int? get jumlahItemMin => _jumlahItemMin;
+  int? get jumlahItemMax => _jumlahItemMax;
   
   // Legacy getter untuk kompatibilitas dengan UI yang lama
   List<Map<String, String>> get getWorkOrders {
@@ -62,10 +87,44 @@ class WorkOrderController extends ChangeNotifier {
       final workOrderEndpoint = dotenv.env['API_LIST_WO'] ?? '/api/work-order-planning';
       final url = Uri.parse('$baseUrl$workOrderEndpoint');
       
-      final queryParams = {
+      final queryParams = <String, String>{
         'page': page.toString(),
         'per_page': perPage.toString(),
       };
+
+      // Add filter parameters
+      if (_tanggalWoFrom != null && _tanggalWoFrom!.isNotEmpty) {
+        queryParams['tanggal_wo_from'] = _tanggalWoFrom!;
+      }
+      if (_tanggalWoTo != null && _tanggalWoTo!.isNotEmpty) {
+        queryParams['tanggal_wo_to'] = _tanggalWoTo!;
+      }
+      if (_nomorWo.isNotEmpty) {
+        queryParams['nomor_wo'] = _nomorWo;
+      }
+      if (_nomorSo.isNotEmpty) {
+        queryParams['nomor_so'] = _nomorSo;
+      }
+      if (_namaCustomer.isNotEmpty) {
+        queryParams['nama_customer'] = _namaCustomer;
+      }
+      if (_selectedGudangId != null) {
+        queryParams['gudang'] = _selectedGudangId.toString();
+      }
+      if (_selectedStatus != null && _selectedStatus!.isNotEmpty) {
+        queryParams['status'] = _selectedStatus!;
+      }
+      if (_jumlahItem != null) {
+        queryParams['jumlah_item'] = _jumlahItem.toString();
+      } else {
+        if (_jumlahItemMin != null) {
+          queryParams['jumlah_item_min'] = _jumlahItemMin.toString();
+        }
+        if (_jumlahItemMax != null) {
+          queryParams['jumlah_item_max'] = _jumlahItemMax.toString();
+        }
+      }
+
       final finalUrl = url.replace(queryParameters: queryParams);
       
       // Debug: Print URL being used
@@ -166,6 +225,71 @@ class WorkOrderController extends ChangeNotifier {
     return status.toLowerCase() == 'actual' || status.toLowerCase() == 'in_progress';
   }
 
+  // Filter setters
+  void setTanggalWoFrom(String? value) {
+    _tanggalWoFrom = value;
+    notifyListeners();
+  }
+
+  void setTanggalWoTo(String? value) {
+    _tanggalWoTo = value;
+    notifyListeners();
+  }
+
+  void setNomorWo(String value) {
+    _nomorWo = value;
+    notifyListeners();
+  }
+
+  void setNomorSo(String value) {
+    _nomorSo = value;
+    notifyListeners();
+  }
+
+  void setNamaCustomer(String value) {
+    _namaCustomer = value;
+    notifyListeners();
+  }
+
+  void setSelectedGudangId(int? value) {
+    _selectedGudangId = value;
+    notifyListeners();
+  }
+
+  void setSelectedStatus(String? value) {
+    _selectedStatus = value;
+    notifyListeners();
+  }
+
+  void setJumlahItem(int? value) {
+    _jumlahItem = value;
+    notifyListeners();
+  }
+
+  void setJumlahItemMin(int? value) {
+    _jumlahItemMin = value;
+    notifyListeners();
+  }
+
+  void setJumlahItemMax(int? value) {
+    _jumlahItemMax = value;
+    notifyListeners();
+  }
+
+  void clearFilters() {
+    _tanggalWoFrom = null;
+    _tanggalWoTo = null;
+    _nomorWo = '';
+    _nomorSo = '';
+    _namaCustomer = '';
+    _selectedGudangId = null;
+    _selectedStatus = null;
+    _jumlahItem = null;
+    _jumlahItemMin = null;
+    _jumlahItemMax = null;
+    notifyListeners();
+  }
+
   // Method untuk clear error message
   void clearError() {
     _errorMessage = null;
@@ -249,6 +373,42 @@ class WorkOrderController extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Load gudang list for filter
+  Future<void> loadGudangList() async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        return;
+      }
+
+      final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final String apiPath = dotenv.env['API_GUDANG'] ?? '/api/gudang';
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl$apiPath'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        final gudang_model.GudangResult gudangResult = gudang_model.GudangResult.fromMap(jsonData);
+        
+        if (gudangResult.success) {
+          _gudangList = gudangResult.data;
+          notifyListeners();
+        }
+      } else if (response.statusCode == 401) {
+        debugPrint('Unauthorized when loading gudang list');
+      }
+    } catch (e) {
+      debugPrint('Error loading gudang list: $e');
     }
   }
 }

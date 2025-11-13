@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/stock_opname_model.dart';
+import '../models/gudang_model.dart';
 import '../utils/auth_helper.dart';
 
 class StockOpnameListController extends ChangeNotifier {
@@ -17,6 +18,13 @@ class StockOpnameListController extends ChangeNotifier {
   bool _hasMoreData = true;
   BuildContext? _context;
 
+  // Filter variables
+  List<Gudang> _gudangList = [];
+  int? _selectedGudangId;
+  String? _dateFrom;
+  String? _dateTo;
+  String? _selectedStatus;
+
   // Getters
   List<StockOpname> get stockOpnameList => _stockOpnameList;
   bool get isLoading => _isLoading;
@@ -26,10 +34,44 @@ class StockOpnameListController extends ChangeNotifier {
   int get totalItems => _totalItems;
   String get searchQuery => _searchQuery;
   bool get hasMoreData => _hasMoreData;
+  List<Gudang> get gudangList => _gudangList;
+  int? get selectedGudangId => _selectedGudangId;
+  String? get dateFrom => _dateFrom;
+  String? get dateTo => _dateTo;
+  String? get selectedStatus => _selectedStatus;
 
   /// Set context for session handling
   void setContext(BuildContext context) {
     _context = context;
+  }
+
+  // Filter setters
+  void setSelectedGudangId(int? value) {
+    _selectedGudangId = value;
+    notifyListeners();
+  }
+
+  void setDateFrom(String? value) {
+    _dateFrom = value;
+    notifyListeners();
+  }
+
+  void setDateTo(String? value) {
+    _dateTo = value;
+    notifyListeners();
+  }
+
+  void setSelectedStatus(String? value) {
+    _selectedStatus = value;
+    notifyListeners();
+  }
+
+  void clearFilters() {
+    _selectedGudangId = null;
+    _dateFrom = null;
+    _dateTo = null;
+    _selectedStatus = null;
+    notifyListeners();
   }
 
   /// Handle session expired
@@ -86,6 +128,20 @@ class StockOpnameListController extends ChangeNotifier {
 
       if (_searchQuery.isNotEmpty) {
         queryParams['search'] = _searchQuery;
+      }
+
+      // Add filter parameters
+      if (_dateFrom != null && _dateFrom!.isNotEmpty) {
+        queryParams['date_from'] = _dateFrom!;
+      }
+      if (_dateTo != null && _dateTo!.isNotEmpty) {
+        queryParams['date_to'] = _dateTo!;
+      }
+      if (_selectedGudangId != null) {
+        queryParams['gudang'] = _selectedGudangId.toString();
+      }
+      if (_selectedStatus != null && _selectedStatus!.isNotEmpty) {
+        queryParams['status'] = _selectedStatus!;
       }
 
       final uri = Uri.parse('$baseUrl$apiPath').replace(
@@ -168,6 +224,42 @@ class StockOpnameListController extends ChangeNotifier {
   /// Search stock opname
   Future<void> search() async {
     await loadStockOpnameList(refresh: true);
+  }
+
+  /// Load gudang list for filter
+  Future<void> loadGudangList() async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        return;
+      }
+
+      final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final String apiPath = dotenv.env['API_GUDANG'] ?? '/api/gudang';
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl$apiPath'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        final GudangResult gudangResult = GudangResult.fromMap(jsonData);
+        
+        if (gudangResult.success) {
+          _gudangList = gudangResult.data;
+          notifyListeners();
+        }
+      } else if (response.statusCode == 401) {
+        await _handleSessionExpired();
+      }
+    } catch (e) {
+      debugPrint('Error loading gudang list: $e');
+    }
   }
 
   @override

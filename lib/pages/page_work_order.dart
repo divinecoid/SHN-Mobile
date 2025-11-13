@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../controllers/work_order_controller.dart';
 import '../models/work_order_planning_model.dart';
+import '../models/gudang_model.dart' as gudang_model;
 import 'page_work_order_detail.dart';
 
 class WorkOrderPage extends StatefulWidget {
@@ -11,21 +13,59 @@ class WorkOrderPage extends StatefulWidget {
   State<WorkOrderPage> createState() => _WorkOrderPageState();
 }
 
-class _WorkOrderPageState extends State<WorkOrderPage> {
+class _WorkOrderPageState extends State<WorkOrderPage> 
+    with SingleTickerProviderStateMixin {
   late WorkOrderController _controller;
+  bool _isFilterExpanded = false;
+  late AnimationController _animationController;
+  late Animation<double> _sizeAnimation;
+  final TextEditingController _nomorWoController = TextEditingController();
+  final TextEditingController _nomorSoController = TextEditingController();
+  final TextEditingController _namaCustomerController = TextEditingController();
+  final TextEditingController _jumlahItemController = TextEditingController();
+  final TextEditingController _jumlahItemMinController = TextEditingController();
+  final TextEditingController _jumlahItemMaxController = TextEditingController();
+  final FocusNode _nomorWoFocusNode = FocusNode();
+  final FocusNode _nomorSoFocusNode = FocusNode();
+  final FocusNode _namaCustomerFocusNode = FocusNode();
+  final FocusNode _jumlahItemFocusNode = FocusNode();
+  final FocusNode _jumlahItemMinFocusNode = FocusNode();
+  final FocusNode _jumlahItemMaxFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     _controller = WorkOrderController();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _sizeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
     // Fetch data saat halaman dimuat
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.loadGudangList();
       _controller.fetchWorkOrderPlanning(context: context);
     });
   }
 
   @override
   void dispose() {
+    _animationController.dispose();
+    _nomorWoController.dispose();
+    _nomorSoController.dispose();
+    _namaCustomerController.dispose();
+    _jumlahItemController.dispose();
+    _jumlahItemMinController.dispose();
+    _jumlahItemMaxController.dispose();
+    _nomorWoFocusNode.dispose();
+    _nomorSoFocusNode.dispose();
+    _namaCustomerFocusNode.dispose();
+    _jumlahItemFocusNode.dispose();
+    _jumlahItemMinFocusNode.dispose();
+    _jumlahItemMaxFocusNode.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -36,10 +76,134 @@ class _WorkOrderPageState extends State<WorkOrderPage> {
       value: _controller,
       child: Scaffold(
         backgroundColor: Colors.black,
+        resizeToAvoidBottomInset: true,
         body: SafeArea(
+          bottom: false,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Filter Section
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[900],
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey[800]!),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header dengan toggle button
+                    InkWell(
+                      onTap: () {
+                        setState(() {
+                          _isFilterExpanded = !_isFilterExpanded;
+                          if (_isFilterExpanded) {
+                            _animationController.forward();
+                          } else {
+                            _animationController.reverse();
+                          }
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            const Text(
+                              'Filter Pencarian',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const Spacer(),
+                            Icon(
+                              _isFilterExpanded
+                                  ? Icons.keyboard_arrow_up
+                                  : Icons.keyboard_arrow_down,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Collapsible content dengan animasi expand/collapse (atas ke bawah)
+                    SizeTransition(
+                      sizeFactor: _sizeAnimation,
+                      axis: Axis.vertical,
+                      axisAlignment: -1.0,
+                      child: _isFilterExpanded
+                          ? SingleChildScrollView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              child: Container(
+                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                child: Consumer<WorkOrderController>(
+                                  builder: (context, controller, child) {
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        _buildFilterSection(controller),
+                                        const SizedBox(height: 16),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: ElevatedButton(
+                                                onPressed: controller.isLoading
+                                                    ? null
+                                                    : () => controller.fetchWorkOrderPlanning(context: context),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: Colors.blue,
+                                                  foregroundColor: Colors.white,
+                                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                                ),
+                                                child: controller.isLoading
+                                                    ? const SizedBox(
+                                                        height: 20,
+                                                        width: 20,
+                                                        child: CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                        ),
+                                                      )
+                                                    : const Text('Cari'),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            ElevatedButton(
+                                              onPressed: () {
+                                                controller.clearFilters();
+                                                _nomorWoController.clear();
+                                                _nomorSoController.clear();
+                                                _namaCustomerController.clear();
+                                                _jumlahItemController.clear();
+                                                _jumlahItemMinController.clear();
+                                                _jumlahItemMaxController.clear();
+                                                controller.fetchWorkOrderPlanning(context: context);
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.grey[700],
+                                                foregroundColor: Colors.white,
+                                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                              ),
+                                              child: const Text('Reset'),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
+              ),
               // Work Order List with RefreshIndicator
               Expanded(
                 child: _buildWorkOrderContent(),
@@ -429,6 +593,440 @@ class _WorkOrderPageState extends State<WorkOrderPage> {
   // Helper method untuk format tanggal
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  Widget _buildFilterSection(WorkOrderController controller) {
+    // Sync text controllers when controller notifies (only if not focused)
+    if (!_nomorWoFocusNode.hasFocus && 
+        !_nomorSoFocusNode.hasFocus && 
+        !_namaCustomerFocusNode.hasFocus &&
+        !_jumlahItemFocusNode.hasFocus &&
+        !_jumlahItemMinFocusNode.hasFocus &&
+        !_jumlahItemMaxFocusNode.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_nomorWoFocusNode.hasFocus && 
+            !_nomorSoFocusNode.hasFocus && 
+            !_namaCustomerFocusNode.hasFocus &&
+            !_jumlahItemFocusNode.hasFocus &&
+            !_jumlahItemMinFocusNode.hasFocus &&
+            !_jumlahItemMaxFocusNode.hasFocus) {
+          _nomorWoController.text = controller.nomorWo;
+          _nomorSoController.text = controller.nomorSo;
+          _namaCustomerController.text = controller.namaCustomer;
+          _jumlahItemController.text = controller.jumlahItem?.toString() ?? '';
+          _jumlahItemMinController.text = controller.jumlahItemMin?.toString() ?? '';
+          _jumlahItemMaxController.text = controller.jumlahItemMax?.toString() ?? '';
+        }
+      });
+    }
+    
+    return Column(
+      children: [
+        // Date Range Filter
+        Row(
+          children: [
+            Expanded(
+              child: _buildDatePicker(
+                label: 'Tanggal WO Dari',
+                value: controller.tanggalWoFrom,
+                onDateSelected: (date) {
+                  if (date != null) {
+                    controller.setTanggalWoFrom(DateFormat('yyyy-MM-dd').format(date));
+                  } else {
+                    controller.setTanggalWoFrom(null);
+                  }
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildDatePicker(
+                label: 'Tanggal WO Sampai',
+                value: controller.tanggalWoTo,
+                onDateSelected: (date) {
+                  if (date != null) {
+                    controller.setTanggalWoTo(DateFormat('yyyy-MM-dd').format(date));
+                  } else {
+                    controller.setTanggalWoTo(null);
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Nomor WO Filter
+        _buildTextInputFilter(
+          label: 'Nomor WO',
+          controller: _nomorWoController,
+          value: controller.nomorWo,
+          focusNode: _nomorWoFocusNode,
+          onChanged: (value) => controller.setNomorWo(value),
+        ),
+        const SizedBox(height: 12),
+        // Nomor SO Filter
+        _buildTextInputFilter(
+          label: 'Nomor SO',
+          controller: _nomorSoController,
+          value: controller.nomorSo,
+          focusNode: _nomorSoFocusNode,
+          onChanged: (value) => controller.setNomorSo(value),
+        ),
+        const SizedBox(height: 12),
+        // Nama Customer Filter
+        _buildTextInputFilter(
+          label: 'Nama Customer',
+          controller: _namaCustomerController,
+          value: controller.namaCustomer,
+          focusNode: _namaCustomerFocusNode,
+          onChanged: (value) => controller.setNamaCustomer(value),
+        ),
+        const SizedBox(height: 12),
+        // Gudang Filter
+        _buildDropdownFilter<gudang_model.Gudang>(
+          label: 'Gudang',
+          value: controller.selectedGudangId,
+          items: controller.gudangList,
+          onChanged: (value) => controller.setSelectedGudangId(value),
+          itemBuilder: (item) => '${item.kode} - ${item.namaGudang}',
+        ),
+        const SizedBox(height: 12),
+        // Status Filter
+        _buildStatusDropdownFilter(controller),
+        const SizedBox(height: 12),
+        // Jumlah Item Filter
+        Row(
+          children: [
+            Expanded(
+              child: _buildTextInputFilter(
+                label: 'Jumlah Item',
+                controller: _jumlahItemController,
+                value: controller.jumlahItem?.toString() ?? '',
+                focusNode: _jumlahItemFocusNode,
+                keyboardType: TextInputType.number,
+                onChanged: (value) {
+                  if (value.isEmpty) {
+                    controller.setJumlahItem(null);
+                  } else {
+                    final intValue = int.tryParse(value);
+                    controller.setJumlahItem(intValue);
+                  }
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildTextInputFilter(
+                label: 'Jumlah Item Min',
+                controller: _jumlahItemMinController,
+                value: controller.jumlahItemMin?.toString() ?? '',
+                focusNode: _jumlahItemMinFocusNode,
+                keyboardType: TextInputType.number,
+                onChanged: (value) {
+                  if (value.isEmpty) {
+                    controller.setJumlahItemMin(null);
+                  } else {
+                    final intValue = int.tryParse(value);
+                    controller.setJumlahItemMin(intValue);
+                  }
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildTextInputFilter(
+                label: 'Jumlah Item Max',
+                controller: _jumlahItemMaxController,
+                value: controller.jumlahItemMax?.toString() ?? '',
+                focusNode: _jumlahItemMaxFocusNode,
+                keyboardType: TextInputType.number,
+                onChanged: (value) {
+                  if (value.isEmpty) {
+                    controller.setJumlahItemMax(null);
+                  } else {
+                    final intValue = int.tryParse(value);
+                    controller.setJumlahItemMax(intValue);
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDatePicker({
+    required String label,
+    required String? value,
+    required Function(DateTime?) onDateSelected,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: () async {
+            final DateTime? picked = await showDatePicker(
+              context: context,
+              initialDate: value != null ? DateTime.parse(value) : DateTime.now(),
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2100),
+              builder: (context, child) {
+                return Theme(
+                  data: Theme.of(context).copyWith(
+                    colorScheme: ColorScheme.dark(
+                      primary: Colors.blue,
+                      onPrimary: Colors.white,
+                      surface: Colors.grey[900]!,
+                      onSurface: Colors.white,
+                    ),
+                    dialogBackgroundColor: Colors.grey[900],
+                  ),
+                  child: child!,
+                );
+              },
+            );
+            onDateSelected(picked);
+          },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[600]!),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    value != null
+                        ? DateFormat('dd MMM yyyy').format(DateTime.parse(value))
+                        : label,
+                    style: TextStyle(
+                      color: value != null ? Colors.white : Colors.grey,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.calendar_today,
+                  color: Colors.grey[400],
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdownFilter<T>({
+    required String label,
+    required dynamic value,
+    required List<T> items,
+    required Function(dynamic) onChanged,
+    required String Function(T) itemBuilder,
+  }) {
+    // Find selected item
+    T? selectedItem;
+    if (value != null && items.isNotEmpty) {
+      try {
+        selectedItem = items.firstWhere(
+          (item) => (item as dynamic).id == value,
+          orElse: () => items.first,
+        );
+        // Verify the found item actually matches
+        if ((selectedItem as dynamic).id != value) {
+          selectedItem = null;
+        }
+      } catch (e) {
+        selectedItem = null;
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.grey[800],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[600]!),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<T>(
+              value: selectedItem,
+              isExpanded: true,
+              hint: Text(
+                'Pilih $label',
+                style: const TextStyle(color: Colors.grey),
+              ),
+              style: const TextStyle(color: Colors.white),
+              dropdownColor: Colors.grey[800],
+              items: [
+                DropdownMenuItem<T>(
+                  value: null,
+                  child: Text(
+                    'Semua $label',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ...items.map((item) => DropdownMenuItem<T>(
+                  value: item,
+                  child: Text(
+                    itemBuilder(item),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                )),
+              ],
+              onChanged: (T? newValue) {
+                onChanged(newValue != null ? (newValue as dynamic).id : null);
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusDropdownFilter(WorkOrderController controller) {
+    const List<String> statusList = ['draft', 'On Progress', 'completed', 'cancelled'];
+    
+    return Consumer<WorkOrderController>(
+      builder: (context, ctrl, child) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Status',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey[800],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[600]!),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: ctrl.selectedStatus,
+                  isExpanded: true,
+                  hint: const Text(
+                    'Pilih Status',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  style: const TextStyle(color: Colors.white),
+                  dropdownColor: Colors.grey[800],
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text(
+                        'Semua Status',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                    ...statusList.map((status) => DropdownMenuItem<String>(
+                      value: status,
+                      child: Text(
+                        status,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    )),
+                  ],
+                  onChanged: (String? newValue) {
+                    ctrl.setSelectedStatus(newValue);
+                  },
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTextInputFilter({
+    required String label,
+    required TextEditingController controller,
+    required String value,
+    required FocusNode focusNode,
+    required Function(String) onChanged,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    // Sync controller text with value if different (only when not focused)
+    if (controller.text != value && !focusNode.hasFocus) {
+      controller.text = value;
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        TextField(
+          controller: controller,
+          focusNode: focusNode,
+          keyboardType: keyboardType,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Masukkan $label',
+            hintStyle: const TextStyle(color: Colors.grey),
+            filled: true,
+            fillColor: Colors.grey[800],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[600]!),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[600]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.blue),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          onChanged: onChanged,
+        ),
+      ],
+    );
   }
 
   void _handleButtonActionFromModel(WorkOrderPlanning workOrder, WorkOrderController controller) {
