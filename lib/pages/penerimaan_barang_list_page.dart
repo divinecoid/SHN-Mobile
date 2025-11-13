@@ -78,6 +78,18 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> {
     }
   }
 
+  String _formatDateTimeHeader(String dateString) {
+    try {
+      final date = DateTime.parse(dateString).toLocal();
+      final dayNames = ['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+      final dayName = dayNames[date.weekday];
+      final formattedDate = DateFormat('dd MMM yyyy HH:mm').format(date);
+      return '$dayName, $formattedDate';
+    } catch (e) {
+      return dateString;
+    }
+  }
+
   String _getNomorReference(PenerimaanBarang penerimaanBarang) {
     if (penerimaanBarang.origin.toLowerCase() == 'purchaseorder' && 
         penerimaanBarang.purchaseOrder != null) {
@@ -271,7 +283,7 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      'ID: ${penerimaanBarang.id}',
+                      _formatDateTimeHeader(penerimaanBarang.createdAt),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,

@@ -65,6 +65,18 @@ class _StockOpnameListPageState extends State<StockOpnameListPage> {
     }
   }
 
+  String _formatDateTimeHeader(String dateString) {
+    try {
+      final date = DateTime.parse(dateString).toLocal();
+      final dayNames = ['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+      final dayName = dayNames[date.weekday];
+      final formattedDate = DateFormat('dd MMM yyyy HH:mm').format(date);
+      return '$dayName, $formattedDate';
+    } catch (e) {
+      return dateString;
+    }
+  }
+
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'active':
@@ -287,7 +299,7 @@ class _StockOpnameListPageState extends State<StockOpnameListPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      _formatDate(stockOpname.createdAt),
+                      _formatDateTimeHeader(stockOpname.createdAt),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,

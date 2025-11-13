@@ -344,7 +344,7 @@ class DashboardContent extends StatelessWidget {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'Sistem Manajemen Inventori Aluminium',
+                  'Sistem Manajemen Inventori SHN',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey,
