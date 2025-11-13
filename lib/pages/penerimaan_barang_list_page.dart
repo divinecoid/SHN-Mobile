@@ -14,6 +14,13 @@ class PenerimaanBarangListPage extends StatefulWidget {
 
 class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> {
   late PenerimaanBarangListController _controller;
+  bool _isFilterExpanded = false;
+  final TextEditingController _nomorPoController = TextEditingController();
+  final TextEditingController _nomorMutasiController = TextEditingController();
+  final TextEditingController _catatanController = TextEditingController();
+  final FocusNode _nomorPoFocusNode = FocusNode();
+  final FocusNode _nomorMutasiFocusNode = FocusNode();
+  final FocusNode _catatanFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -24,16 +31,31 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> {
 
   @override
   void dispose() {
+    _nomorPoController.dispose();
+    _nomorMutasiController.dispose();
+    _catatanController.dispose();
+    _nomorPoFocusNode.dispose();
+    _nomorMutasiFocusNode.dispose();
+    _catatanFocusNode.dispose();
     _controller.dispose();
     super.dispose();
   }
 
   Future<void> _initializeController() async {
     try {
+      await _controller.loadGudangList();
       await _controller.loadPenerimaanBarangList(refresh: true);
+      // Sync text controllers with filter values
+      _syncTextControllers();
     } catch (e) {
       _showSnackBar('Gagal memuat data: $e');
     }
+  }
+
+  void _syncTextControllers() {
+    _nomorPoController.text = _controller.nomorPo;
+    _nomorMutasiController.text = _controller.nomorMutasi;
+    _catatanController.text = _controller.catatan;
   }
 
   void _showSnackBar(String message) {
@@ -110,6 +132,294 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> {
     return 'Nomor Referensi';
   }
 
+  Widget _buildFilterSection() {
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, child) {
+        return Column(
+          children: [
+            // Date Range Filter
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDatePicker(
+                    label: 'Dari Tanggal',
+                    value: _controller.dateFrom,
+                    onDateSelected: (date) {
+                      if (date != null) {
+                        _controller.setDateFrom(DateFormat('yyyy-MM-dd').format(date));
+                      } else {
+                        _controller.setDateFrom(null);
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildDatePicker(
+                    label: 'Sampai Tanggal',
+                    value: _controller.dateTo,
+                    onDateSelected: (date) {
+                      if (date != null) {
+                        _controller.setDateTo(DateFormat('yyyy-MM-dd').format(date));
+                      } else {
+                        _controller.setDateTo(null);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Gudang Filter
+            _buildDropdownFilter(
+              label: 'Gudang',
+              value: _controller.selectedGudangId,
+              items: _controller.gudangList,
+              onChanged: (value) => _controller.setSelectedGudangId(value),
+              itemBuilder: (item) => '${item.kode} - ${item.namaGudang}',
+            ),
+            const SizedBox(height: 12),
+            // Nomor PO Filter
+            _buildTextInputFilter(
+              label: 'Nomor PO',
+              controller: _nomorPoController,
+              value: _controller.nomorPo,
+              focusNode: _nomorPoFocusNode,
+              onChanged: (value) => _controller.setNomorPo(value),
+            ),
+            const SizedBox(height: 12),
+            // Nomor Mutasi Filter
+            _buildTextInputFilter(
+              label: 'Nomor Mutasi',
+              controller: _nomorMutasiController,
+              value: _controller.nomorMutasi,
+              focusNode: _nomorMutasiFocusNode,
+              onChanged: (value) => _controller.setNomorMutasi(value),
+            ),
+            const SizedBox(height: 12),
+            // Catatan Filter
+            _buildTextInputFilter(
+              label: 'Catatan',
+              controller: _catatanController,
+              value: _controller.catatan,
+              focusNode: _catatanFocusNode,
+              onChanged: (value) => _controller.setCatatan(value),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDatePicker({
+    required String label,
+    required String? value,
+    required Function(DateTime?) onDateSelected,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: () async {
+            final DateTime? picked = await showDatePicker(
+              context: context,
+              initialDate: value != null ? DateTime.parse(value) : DateTime.now(),
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2100),
+              builder: (context, child) {
+                return Theme(
+                  data: Theme.of(context).copyWith(
+                    colorScheme: ColorScheme.dark(
+                      primary: Colors.blue,
+                      onPrimary: Colors.white,
+                      surface: Colors.grey[900]!,
+                      onSurface: Colors.white,
+                    ),
+                    dialogBackgroundColor: Colors.grey[900],
+                  ),
+                  child: child!,
+                );
+              },
+            );
+            onDateSelected(picked);
+          },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[600]!),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    value != null
+                        ? DateFormat('dd MMM yyyy').format(DateTime.parse(value))
+                        : 'Pilih $label',
+                    style: TextStyle(
+                      color: value != null ? Colors.white : Colors.grey,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.calendar_today,
+                  color: Colors.grey[400],
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdownFilter<T>({
+    required String label,
+    required dynamic value,
+    required List<T> items,
+    required Function(dynamic) onChanged,
+    required String Function(T) itemBuilder,
+  }) {
+    // Find selected item
+    T? selectedItem;
+    if (value != null && items.isNotEmpty) {
+      try {
+        selectedItem = items.firstWhere(
+          (item) => (item as dynamic).id == value,
+          orElse: () => items.first,
+        );
+        // Verify the found item actually matches
+        if ((selectedItem as dynamic).id != value) {
+          selectedItem = null;
+        }
+      } catch (e) {
+        selectedItem = null;
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.grey[800],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[600]!),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<T>(
+              value: selectedItem,
+              isExpanded: true,
+              hint: Text(
+                'Pilih $label',
+                style: const TextStyle(color: Colors.grey),
+              ),
+              style: const TextStyle(color: Colors.white),
+              dropdownColor: Colors.grey[800],
+              items: [
+                DropdownMenuItem<T>(
+                  value: null,
+                  child: Text(
+                    'Semua $label',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ...items.map((item) => DropdownMenuItem<T>(
+                  value: item,
+                  child: Text(
+                    itemBuilder(item),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                )),
+              ],
+              onChanged: (T? newValue) {
+                onChanged(newValue != null ? (newValue as dynamic).id : null);
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextInputFilter({
+    required String label,
+    required TextEditingController controller,
+    required String value,
+    required FocusNode focusNode,
+    required Function(String) onChanged,
+  }) {
+    // Sync controller text with value if different (only when not focused)
+    if (controller.text != value && !focusNode.hasFocus) {
+      controller.text = value;
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        TextField(
+          controller: controller,
+          focusNode: focusNode,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Masukkan $label',
+            hintStyle: const TextStyle(color: Colors.grey),
+            filled: true,
+            fillColor: Colors.grey[800],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[600]!),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[600]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.blue),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Set context for session handling
@@ -119,6 +429,127 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage> {
       backgroundColor: Colors.black,
       body: Column(
         children: [
+          // Filter Section
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              border: Border(
+                bottom: BorderSide(color: Colors.grey[800]!),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header dengan toggle button
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _isFilterExpanded = !_isFilterExpanded;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        const Text(
+                          'Filter Pencarian',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const Spacer(),
+                        Icon(
+                          _isFilterExpanded
+                              ? Icons.keyboard_arrow_up
+                              : Icons.keyboard_arrow_down,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Collapsible content dengan animasi
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  child: _isFilterExpanded
+                      ? Container(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          child: ListenableBuilder(
+                            listenable: _controller,
+                            builder: (context, child) {
+                              // Sync text controllers when controller notifies (only if not focused)
+                              if (!_nomorPoFocusNode.hasFocus && 
+                                  !_nomorMutasiFocusNode.hasFocus && 
+                                  !_catatanFocusNode.hasFocus) {
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  if (!_nomorPoFocusNode.hasFocus && 
+                                      !_nomorMutasiFocusNode.hasFocus && 
+                                      !_catatanFocusNode.hasFocus) {
+                                    _syncTextControllers();
+                                  }
+                                });
+                              }
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildFilterSection(),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: ElevatedButton(
+                                          onPressed: _controller.isLoading
+                                              ? null
+                                              : () => _controller.loadPenerimaanBarangList(refresh: true),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.blue,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(vertical: 12),
+                                          ),
+                                          child: _controller.isLoading
+                                              ? const SizedBox(
+                                                  height: 20,
+                                                  width: 20,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                  ),
+                                                )
+                                              : const Text('Cari'),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          _controller.clearFilters();
+                                          _nomorPoController.clear();
+                                          _nomorMutasiController.clear();
+                                          _catatanController.clear();
+                                          _controller.loadPenerimaanBarangList(refresh: true);
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.grey[700],
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                        ),
+                                        child: const Text('Reset'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ),
+          ),
           // Content
           Expanded(
             child: RefreshIndicator(

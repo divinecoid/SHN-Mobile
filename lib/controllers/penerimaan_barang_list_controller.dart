@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/penerimaan_barang_model.dart';
+import '../models/gudang_model.dart';
 import '../utils/auth_helper.dart';
 
 class PenerimaanBarangListController extends ChangeNotifier {
@@ -17,6 +18,15 @@ class PenerimaanBarangListController extends ChangeNotifier {
   bool _hasMoreData = true;
   BuildContext? _context;
 
+  // Filter variables
+  List<Gudang> _gudangList = [];
+  int? _selectedGudangId;
+  String? _dateFrom;
+  String? _dateTo;
+  String _nomorPo = '';
+  String _nomorMutasi = '';
+  String _catatan = '';
+
   // Getters
   List<PenerimaanBarang> get penerimaanBarangList => _penerimaanBarangList;
   bool get isLoading => _isLoading;
@@ -26,10 +36,58 @@ class PenerimaanBarangListController extends ChangeNotifier {
   int get totalItems => _totalItems;
   String get searchQuery => _searchQuery;
   bool get hasMoreData => _hasMoreData;
+  List<Gudang> get gudangList => _gudangList;
+  int? get selectedGudangId => _selectedGudangId;
+  String? get dateFrom => _dateFrom;
+  String? get dateTo => _dateTo;
+  String get nomorPo => _nomorPo;
+  String get nomorMutasi => _nomorMutasi;
+  String get catatan => _catatan;
 
   /// Set context for session handling
   void setContext(BuildContext context) {
     _context = context;
+  }
+
+  // Filter setters
+  void setSelectedGudangId(int? value) {
+    _selectedGudangId = value;
+    notifyListeners();
+  }
+
+  void setDateFrom(String? value) {
+    _dateFrom = value;
+    notifyListeners();
+  }
+
+  void setDateTo(String? value) {
+    _dateTo = value;
+    notifyListeners();
+  }
+
+  void setNomorPo(String value) {
+    _nomorPo = value;
+    notifyListeners();
+  }
+
+  void setNomorMutasi(String value) {
+    _nomorMutasi = value;
+    notifyListeners();
+  }
+
+  void setCatatan(String value) {
+    _catatan = value;
+    notifyListeners();
+  }
+
+  void clearFilters() {
+    _selectedGudangId = null;
+    _dateFrom = null;
+    _dateTo = null;
+    _nomorPo = '';
+    _nomorMutasi = '';
+    _catatan = '';
+    notifyListeners();
   }
 
   /// Handle session expired
@@ -86,6 +144,26 @@ class PenerimaanBarangListController extends ChangeNotifier {
 
       if (_searchQuery.isNotEmpty) {
         queryParams['search'] = _searchQuery;
+      }
+
+      // Add filter parameters
+      if (_dateFrom != null && _dateFrom!.isNotEmpty) {
+        queryParams['date_from'] = _dateFrom!;
+      }
+      if (_dateTo != null && _dateTo!.isNotEmpty) {
+        queryParams['date_to'] = _dateTo!;
+      }
+      if (_selectedGudangId != null) {
+        queryParams['gudang'] = _selectedGudangId.toString();
+      }
+      if (_nomorPo.isNotEmpty) {
+        queryParams['nomor_po'] = _nomorPo;
+      }
+      if (_nomorMutasi.isNotEmpty) {
+        queryParams['nomor_mutasi'] = _nomorMutasi;
+      }
+      if (_catatan.isNotEmpty) {
+        queryParams['catatan'] = _catatan;
       }
 
       final uri = Uri.parse('$baseUrl$apiPath').replace(
@@ -316,6 +394,42 @@ class PenerimaanBarangListController extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error submitting penerimaan barang: $e');
       rethrow;
+    }
+  }
+
+  /// Load gudang list for filter
+  Future<void> loadGudangList() async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        return;
+      }
+
+      final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final String apiPath = dotenv.env['API_GUDANG'] ?? '/api/gudang';
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl$apiPath'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        final GudangResult gudangResult = GudangResult.fromMap(jsonData);
+        
+        if (gudangResult.success) {
+          _gudangList = gudangResult.data;
+          notifyListeners();
+        }
+      } else if (response.statusCode == 401) {
+        await _handleSessionExpired();
+      }
+    } catch (e) {
+      debugPrint('Error loading gudang list: $e');
     }
   }
 
