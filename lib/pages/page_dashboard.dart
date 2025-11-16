@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'page_login.dart';
 import 'terima_barang_main_page.dart';
 import 'page_stock_opname.dart';
@@ -238,84 +242,263 @@ class _DashboardPageState extends State<DashboardPage> {
 }
 
 // Dashboard Content Widget
-class DashboardContent extends StatelessWidget {
+class DashboardContent extends StatefulWidget {
   const DashboardContent({super.key});
 
   @override
+  State<DashboardContent> createState() => _DashboardContentState();
+}
+
+class _DashboardContentState extends State<DashboardContent> {
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  // General stats
+  int _totalJumlahPo = 0;
+  double _totalRupiahPo = 0.0;
+  double _totalAr = 0.0;
+  double _totalAp = 0.0;
+
+  // Daily data
+  List<Map<String, dynamic>> _salesOrderData = [];
+  List<Map<String, dynamic>> _workOrderPlanningData = [];
+  List<Map<String, dynamic>> _workOrderActualData = [];
+  List<Map<String, dynamic>> _purchaseOrderData = [];
+
+  // Date range
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
+
+  @override
+  void initState() {
+    super.initState();
+    // Set default date range to current month
+    final now = DateTime.now();
+    _dateFrom = DateTime(now.year, now.month, 1);
+    _dateTo = now;
+    _loadDashboardData();
+  }
+
+  Future<String?> _getAuthToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('token');
+    } catch (e) {
+      debugPrint('Error getting auth token: $e');
+      return null;
+    }
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '';
+    return DateFormat('yyyy-MM-dd').format(date);
+  }
+
+  Future<void> _loadDashboardData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('Token autentikasi tidak ditemukan. Silakan login kembali.');
+      }
+
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      
+      // Build query parameters
+      final queryParams = <String, String>{};
+      if (_dateFrom != null) {
+        queryParams['date_from'] = _formatDate(_dateFrom);
+      }
+      if (_dateTo != null) {
+        queryParams['date_to'] = _formatDate(_dateTo);
+      }
+
+      // Fetch all dashboard data in parallel
+      await Future.wait([
+        _fetchGeneralStats(baseUrl, token, queryParams),
+        _fetchSalesOrder(baseUrl, token, queryParams),
+        _fetchWorkOrderPlanning(baseUrl, token, queryParams),
+        _fetchWorkOrderActual(baseUrl, token, queryParams),
+        _fetchPurchaseOrder(baseUrl, token, queryParams),
+      ]);
+    } catch (e) {
+      debugPrint('Error loading dashboard data: $e');
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      });
+      
+      if (mounted && _errorMessage?.contains('401') == true) {
+        await AuthHelper.handleUnauthorized(context, null);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchGeneralStats(String baseUrl, String token, Map<String, String> queryParams) async {
+    final uri = Uri.parse('$baseUrl/api/dashboard/general').replace(queryParameters: queryParams);
+    
+    final response = await http.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final jsonData = json.decode(response.body) as Map<String, dynamic>;
+      if (jsonData['success'] == true && jsonData['data'] != null) {
+        final data = jsonData['data'] as Map<String, dynamic>;
+        setState(() {
+          _totalJumlahPo = (data['total_jumlah_po'] as num?)?.toInt() ?? 0;
+          _totalRupiahPo = (data['total_rupiah_po'] as num?)?.toDouble() ?? 0.0;
+          _totalAr = (data['total_ar'] as num?)?.toDouble() ?? 0.0;
+          _totalAp = (data['total_ap'] as num?)?.toDouble() ?? 0.0;
+        });
+      }
+    } else if (response.statusCode == 401) {
+      throw Exception('401');
+    }
+  }
+
+  Future<void> _fetchSalesOrder(String baseUrl, String token, Map<String, String> queryParams) async {
+    final uri = Uri.parse('$baseUrl/api/dashboard/sales-order').replace(queryParameters: queryParams);
+    
+    final response = await http.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final jsonData = json.decode(response.body) as List;
+      setState(() {
+        _salesOrderData = jsonData.map((item) => item as Map<String, dynamic>).toList();
+      });
+    } else if (response.statusCode == 401) {
+      throw Exception('401');
+    }
+  }
+
+  Future<void> _fetchWorkOrderPlanning(String baseUrl, String token, Map<String, String> queryParams) async {
+    final uri = Uri.parse('$baseUrl/api/dashboard/work-order-planning').replace(queryParameters: queryParams);
+    
+    final response = await http.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final jsonData = json.decode(response.body) as List;
+      setState(() {
+        _workOrderPlanningData = jsonData.map((item) => item as Map<String, dynamic>).toList();
+      });
+    } else if (response.statusCode == 401) {
+      throw Exception('401');
+    }
+  }
+
+  Future<void> _fetchWorkOrderActual(String baseUrl, String token, Map<String, String> queryParams) async {
+    final uri = Uri.parse('$baseUrl/api/dashboard/work-order-actual').replace(queryParameters: queryParams);
+    
+    final response = await http.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final jsonData = json.decode(response.body) as List;
+      setState(() {
+        _workOrderActualData = jsonData.map((item) => item as Map<String, dynamic>).toList();
+      });
+    } else if (response.statusCode == 401) {
+      throw Exception('401');
+    }
+  }
+
+  Future<void> _fetchPurchaseOrder(String baseUrl, String token, Map<String, String> queryParams) async {
+    final uri = Uri.parse('$baseUrl/api/dashboard/purchase-order').replace(queryParameters: queryParams);
+    
+    final response = await http.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final jsonData = json.decode(response.body) as List;
+      setState(() {
+        _purchaseOrderData = jsonData.map((item) => item as Map<String, dynamic>).toList();
+      });
+    } else if (response.statusCode == 401) {
+      throw Exception('401');
+    }
+  }
+
+  String _formatCurrency(double value) {
+    if (value >= 1000000000) {
+      return '${(value / 1000000000).toStringAsFixed(2)}B';
+    } else if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(2)}M';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(2)}K';
+    }
+    return value.toStringAsFixed(0);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Dummy data for charts
-    final List<Map<String, dynamic>> monthlyData = [
-      {'month': 'Jan', 'in': 850, 'out': 720},
-      {'month': 'Feb', 'in': 920, 'out': 780},
-      {'month': 'Mar', 'in': 1100, 'out': 950},
-      {'month': 'Apr', 'in': 1250, 'out': 1100},
-      {'month': 'May', 'in': 1350, 'out': 1200},
-      {'month': 'Jun', 'in': 1450, 'out': 1300},
-    ];
+    if (_isLoading && _totalJumlahPo == 0) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
 
-    final List<Map<String, dynamic>> categoryData = [
-      {'category': 'Plat Aluminium', 'value': 40, 'color': Colors.blue},
-      {'category': 'Pipa Aluminium', 'value': 25, 'color': Colors.green},
-      {'category': 'As Aluminium', 'value': 20, 'color': Colors.orange},
-      {'category': 'Holo Aluminium', 'value': 10, 'color': Colors.purple},
-      {'category': 'Lainnya', 'value': 5, 'color': Colors.red},
-    ];
-
-    final List<Map<String, dynamic>> recentActivities = [
-      {
-        'type': 'Masuk',
-        'item': 'Plat Aluminium A1100 - 2mm x 1200mm x 2400mm',
-        'quantity': 50,
-        'time': '2 jam yang lalu',
-        'icon': Icons.arrow_downward,
-        'color': Colors.green,
-      },
-      {
-        'type': 'Keluar',
-        'item': 'Pipa Aluminium 6061 - Ø50mm x 3m',
-        'quantity': 25,
-        'time': '4 jam yang lalu',
-        'icon': Icons.arrow_upward,
-        'color': Colors.red,
-      },
-      {
-        'type': 'Buang',
-        'item': 'Plat Aluminium A3003 - 1mm x 1000mm x 2000mm',
-        'quantity': 3,
-        'time': '5 jam yang lalu',
-        'icon': Icons.delete,
-        'color': Colors.orange,
-      },
-      {
-        'type': 'Masuk',
-        'item': 'As Aluminium 7075 - Ø30mm x 2m',
-        'quantity': 30,
-        'time': '6 jam yang lalu',
-        'icon': Icons.arrow_downward,
-        'color': Colors.green,
-      },
-      {
-        'type': 'Keluar',
-        'item': 'Holo Aluminium 6063 - 40x40mm x 6m',
-        'quantity': 15,
-        'time': '1 hari yang lalu',
-        'icon': Icons.arrow_upward,
-        'color': Colors.red,
-      },
-    ];
-
-    final List<Map<String, dynamic>> lowStockItems = [
-      {'item': 'Plat Aluminium A1100 - 1mm x 1000mm x 2000mm', 'stock': 8, 'min': 20},
-      {'item': 'Pipa Aluminium 6061 - Ø25mm x 3m', 'stock': 12, 'min': 15},
-      {'item': 'As Aluminium 7075 - Ø20mm x 1.5m', 'stock': 3, 'min': 10},
-      {'item': 'Holo Aluminium 6063 - 30x30mm x 6m', 'stock': 6, 'min': 8},
-      {'item': 'Plat Aluminium A3003 - 2mm x 1200mm x 2400mm', 'stock': 9, 'min': 12},
-      {'item': 'Pipa Aluminium 6063 - Ø40mm x 3m', 'stock': 10, 'min': 12},
-      {'item': 'As Aluminium 6061 - Ø25mm x 2m', 'stock': 7, 'min': 10},
-      {'item': 'Plat Aluminium A5052 - 1.5mm x 1000mm x 2000mm', 'stock': 25, 'min': 20},
-      {'item': 'Pipa Aluminium 6061 - Ø60mm x 3m', 'stock': 18, 'min': 15},
-      {'item': 'As Aluminium 7075 - Ø40mm x 2m', 'stock': 12, 'min': 10},
-    ];
+    if (_errorMessage != null && _totalJumlahPo == 0) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              'Error: $_errorMessage',
+              style: const TextStyle(color: Colors.red),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadDashboardData,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -335,7 +518,7 @@ class DashboardContent extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Selamat datang!',
+                  'Dashboard',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -344,7 +527,7 @@ class DashboardContent extends StatelessWidget {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'Sistem Manajemen Inventori SHN',
+                  'Statistik Umum & Aktivitas',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey,
@@ -355,51 +538,111 @@ class DashboardContent extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Quick Stats
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Total Items',
-                  '1,234',
-                  Icons.inventory,
-                  Colors.grey[400]!,
+          // Date Range Picker
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[800]!),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Periode',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  'Low Stock',
-                  '${lowStockItems.where((item) {
-                    final percentage = (item['stock'] / item['min']) * 100;
-                    return percentage < 80;
-                  }).length}',
-                  Icons.warning,
-                  Colors.orange,
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildDatePicker(
+                        label: 'Dari Tanggal',
+                        value: _dateFrom,
+                        onDateSelected: (date) {
+                          setState(() {
+                            _dateFrom = date;
+                          });
+                          if (date != null) {
+                            _loadDashboardData();
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildDatePicker(
+                        label: 'Sampai Tanggal',
+                        value: _dateTo,
+                        onDateSelected: (date) {
+                          setState(() {
+                            _dateTo = date;
+                          });
+                          if (date != null) {
+                            _loadDashboardData();
+                          }
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 12),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Memuat data...',
+                          style: TextStyle(color: Colors.grey, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // General Stats
+          const Text(
+            'Statistik Umum',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: _buildStatCard(
-                  'This Month In',
-                  '1,450',
-                  Icons.arrow_downward,
+                  'Total Jumlah PO',
+                  _totalJumlahPo.toString(),
+                  Icons.shopping_cart,
+                  Colors.blue,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildStatCard(
+                  'Total Rupiah PO',
+                  'Rp ${_formatCurrency(_totalRupiahPo)}',
+                  Icons.attach_money,
                   Colors.green,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  'This Month Out',
-                  '1,300',
-                  Icons.arrow_upward,
-                  Colors.red,
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -407,18 +650,18 @@ class DashboardContent extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildStatCard(
-                  'Discarded',
-                  '6',
-                  Icons.delete,
+                  'Accounts Receivable',
+                  'Rp ${_formatCurrency(_totalAr)}',
+                  Icons.account_balance_wallet,
                   Colors.orange,
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: _buildStatCard(
-                  'Damage Rate',
-                  '0.4%',
-                  Icons.trending_down,
+                  'Accounts Payable',
+                  'Rp ${_formatCurrency(_totalAp)}',
+                  Icons.payment,
                   Colors.red,
                 ),
               ),
@@ -426,7 +669,7 @@ class DashboardContent extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Monthly Chart
+          // Sales Order Chart
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -438,7 +681,7 @@ class DashboardContent extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Aktivitas Bulanan',
+                  'Sales Order per Hari',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -448,14 +691,14 @@ class DashboardContent extends StatelessWidget {
                 const SizedBox(height: 16),
                 SizedBox(
                   height: 200,
-                  child: _buildMonthlyChart(monthlyData),
+                  child: _buildDailyChart(_salesOrderData, 'Sales Order', Colors.blue),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
 
-          // Category Distribution
+          // Purchase Order Chart
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -467,7 +710,7 @@ class DashboardContent extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Distribusi Kategori',
+                  'Purchase Order per Hari',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -477,16 +720,14 @@ class DashboardContent extends StatelessWidget {
                 const SizedBox(height: 16),
                 SizedBox(
                   height: 200,
-                  child: _buildDonutChart(categoryData),
+                  child: _buildDailyChart(_purchaseOrderData, 'Purchase Order', Colors.green),
                 ),
-                const SizedBox(height: 16),
-                _buildCategoryLegend(categoryData),
               ],
             ),
           ),
           const SizedBox(height: 24),
 
-          // Recent Activities
+          // Work Order Planning Chart
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -498,7 +739,7 @@ class DashboardContent extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Aktivitas Terbaru',
+                  'Work Order Planning per Hari',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -506,13 +747,16 @@ class DashboardContent extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _buildRecentActivitiesList(recentActivities),
+                SizedBox(
+                  height: 200,
+                  child: _buildDailyChart(_workOrderPlanningData, 'Work Order Planning', Colors.orange),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 24),
 
-          // Low Stock Items
+          // Work Order Actual Chart
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -524,7 +768,7 @@ class DashboardContent extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Stok Menipis',
+                  'Work Order Actual per Hari',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -532,13 +776,83 @@ class DashboardContent extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _buildLowStockList(lowStockItems),
+                SizedBox(
+                  height: 200,
+                  child: _buildDailyChart(_workOrderActualData, 'Work Order Actual', Colors.purple),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+
+  Widget _buildDatePicker({
+    required String label,
+    required DateTime? value,
+    required Function(DateTime?) onDateSelected,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: () async {
+            final DateTime? picked = await showDatePicker(
+              context: context,
+              initialDate: value ?? DateTime.now(),
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2100),
+              builder: (context, child) {
+                return Theme(
+                  data: Theme.of(context).copyWith(
+                    colorScheme: ColorScheme.dark(
+                      primary: Colors.blue,
+                      onPrimary: Colors.white,
+                      surface: Colors.grey[900]!,
+                      onSurface: Colors.white,
+                    ),
+                    dialogBackgroundColor: Colors.grey[900],
+                  ),
+                  child: child!,
+                );
+              },
+            );
+            onDateSelected(picked);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[850],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[700]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today, color: Colors.grey[400], size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  value != null ? DateFormat('dd/MM/yyyy').format(value) : 'Pilih tanggal',
+                  style: TextStyle(
+                    color: value != null ? Colors.white : Colors.grey[500],
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -564,12 +878,16 @@ class DashboardContent extends StatelessWidget {
                 child: Icon(icon, color: color, size: 20),
               ),
               const Spacer(),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: color,
+              Flexible(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                  textAlign: TextAlign.right,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -578,7 +896,7 @@ class DashboardContent extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              fontSize: 14,
+              fontSize: 12,
               color: Colors.grey,
             ),
           ),
@@ -589,20 +907,53 @@ class DashboardContent extends StatelessWidget {
 
 
 
-  Widget _buildMonthlyChart(List<Map<String, dynamic>> monthlyData) {
+  Widget _buildDailyChart(List<Map<String, dynamic>> data, String title, Color color) {
+    if (data.isEmpty) {
+      return Center(
+        child: Text(
+          'Tidak ada data untuk ditampilkan',
+          style: TextStyle(color: Colors.grey[400], fontSize: 14),
+        ),
+      );
+    }
+
     // Calculate max value for Y axis
     double maxValue = 0;
-    for (var data in monthlyData) {
-      maxValue = maxValue < data['in'] ? data['in'].toDouble() : maxValue;
-      maxValue = maxValue < data['out'] ? data['out'].toDouble() : maxValue;
+    for (var item in data) {
+      final total = (item['total'] as num?)?.toDouble() ?? 0.0;
+      maxValue = maxValue < total ? total : maxValue;
     }
     maxValue = maxValue * 1.2; // Add 20% padding
+    if (maxValue == 0) maxValue = 10; // Minimum max value
+
+    // Sort data by date to ensure proper ordering
+    final sortedData = List<Map<String, dynamic>>.from(data);
+    sortedData.sort((a, b) {
+      final dateA = _parseDate(a);
+      final dateB = _parseDate(b);
+      return dateA.compareTo(dateB);
+    });
 
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
         maxY: maxValue,
-        barTouchData: BarTouchData(enabled: false),
+        barTouchData: BarTouchData(
+          enabled: true,
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipColor: (group) => Colors.grey[900]!,
+            tooltipRoundedRadius: 8,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              final day = sortedData[group.x.toInt()]['day'] ?? '';
+              final month = sortedData[group.x.toInt()]['month'] ?? '';
+              final total = (sortedData[group.x.toInt()]['total'] as num?)?.toInt() ?? 0;
+              return BarTooltipItem(
+                '$day $month: $total',
+                const TextStyle(color: Colors.white, fontSize: 12),
+              );
+            },
+          ),
+        ),
         titlesData: FlTitlesData(
           show: true,
           rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -612,14 +963,19 @@ class DashboardContent extends StatelessWidget {
               showTitles: true,
               getTitlesWidget: (value, meta) {
                 final index = value.toInt();
-                if (index >= 0 && index < monthlyData.length) {
-                  return Text(
-                    monthlyData[index]['month'],
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                if (index >= 0 && index < sortedData.length) {
+                  final day = sortedData[index]['day'] ?? '';
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      day,
+                      style: const TextStyle(color: Colors.grey, fontSize: 10),
+                    ),
                   );
                 }
                 return const Text('');
               },
+              reservedSize: 30,
             ),
           ),
           leftTitles: AxisTitles(
@@ -628,10 +984,10 @@ class DashboardContent extends StatelessWidget {
               reservedSize: 40,
               getTitlesWidget: (value, meta) {
                 final intValue = value.toInt();
-                if (intValue.isFinite) {
+                if (intValue.isFinite && intValue >= 0) {
                   return Text(
                     intValue.toString(),
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    style: const TextStyle(color: Colors.grey, fontSize: 10),
                   );
                 }
                 return const Text('');
@@ -641,237 +997,49 @@ class DashboardContent extends StatelessWidget {
         ),
         borderData: FlBorderData(show: false),
         barGroups: [
-          for (int i = 0; i < monthlyData.length; i++)
+          for (int i = 0; i < sortedData.length; i++)
             BarChartGroupData(
               x: i,
               barRods: [
                 BarChartRodData(
-                  toY: monthlyData[i]['in'].toDouble(),
-                  color: Colors.green,
-                  width: 8,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                ),
-                BarChartRodData(
-                  toY: monthlyData[i]['out'].toDouble(),
-                  color: Colors.red,
-                  width: 8,
+                  toY: (sortedData[i]['total'] as num?)?.toDouble() ?? 0.0,
+                  color: color,
+                  width: sortedData.length > 30 ? 4 : 8,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                 ),
               ],
             ),
         ],
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (value) {
+            return FlLine(
+              color: Colors.grey[800]!,
+              strokeWidth: 1,
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildDonutChart(List<Map<String, dynamic>> categoryData) {
-    return PieChart(
-      PieChartData(
-        sectionsSpace: 2,
-        centerSpaceRadius: 40,
-        sections: categoryData.map((data) {
-          return PieChartSectionData(
-            color: data['color'],
-            value: data['value'].toDouble(),
-            title: '${data['value']}%',
-            radius: 60,
-            titleStyle: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildCategoryLegend(List<Map<String, dynamic>> categoryData) {
-    return Column(
-      children: categoryData.map((data) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: Row(
-            children: [
-              Container(
-                width: 16,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: data['color'],
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  data['category'],
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              Text(
-                '${data['value']}%',
-                style: TextStyle(
-                  color: data['color'],
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildRecentActivitiesList(List<Map<String, dynamic>> recentActivities) {
-    return Column(
-      children: recentActivities.map((activity) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey[850],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: activity['color'].withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  activity['icon'],
-                  color: activity['color'],
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      activity['item'],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      '${activity['quantity']} unit - ${activity['time']}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: activity['color'].withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  activity['type'],
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: activity['color'],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildLowStockList(List<Map<String, dynamic>> lowStockItems) {
-    return Column(
-      children: lowStockItems.where((item) {
-        final percentage = (item['stock'] / item['min']) * 100;
-        return percentage < 80; // Hanya tampilkan item dengan status LOW atau KRITIS
-      }).map((item) {
-        final percentage = (item['stock'] / item['min']) * 100;
-        Color statusColor = Colors.orange;
-        String statusText = 'LOW';
-        
-        if (percentage < 50) {
-          statusColor = Colors.red;
-          statusText = 'KRITIS';
-        }
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey[850],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.inventory_2,
-                  color: statusColor,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item['item'],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'Stok: ${item['stock']} / Min: ${item['min']}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  statusText,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: statusColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
+  DateTime _parseDate(Map<String, dynamic> item) {
+    try {
+      final year = item['year'] as int? ?? DateTime.now().year;
+      final monthName = item['month'] as String? ?? 'January';
+      final day = int.tryParse(item['day'] as String? ?? '1') ?? 1;
+      
+      final monthMap = {
+        'January': 1, 'February': 2, 'March': 3, 'April': 4,
+        'May': 5, 'June': 6, 'July': 7, 'August': 8,
+        'September': 9, 'October': 10, 'November': 11, 'December': 12,
+      };
+      
+      final month = monthMap[monthName] ?? 1;
+      return DateTime(year, month, day);
+    } catch (e) {
+      return DateTime.now();
+    }
   }
 } 
