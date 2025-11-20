@@ -460,14 +460,33 @@ class _DashboardContentState extends State<DashboardContent> {
   }
 
   String _formatCurrency(double value) {
+    // Format with Indonesian locale (dot as thousand separator)
+    final formatter = NumberFormat('#,##0', 'id_ID');
+    
     if (value >= 1000000000) {
-      return '${(value / 1000000000).toStringAsFixed(2)}B';
+      final billions = value / 1000000000;
+      // For billions, show with 1 decimal if < 10, otherwise no decimal
+      final formatted = billions >= 10 
+          ? billions.toStringAsFixed(0)
+          : billions.toStringAsFixed(1);
+      return '$formatted M';
     } else if (value >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(2)}M';
+      final millions = value / 1000000;
+      // For millions, show with 1 decimal if < 10, otherwise no decimal
+      final formatted = millions >= 10
+          ? millions.toStringAsFixed(0)
+          : millions.toStringAsFixed(1);
+      return '$formatted JT';
     } else if (value >= 1000) {
-      return '${(value / 1000).toStringAsFixed(2)}K';
+      final thousands = value / 1000;
+      return '${thousands.toStringAsFixed(1)} RB';
     }
-    return value.toStringAsFixed(0);
+    return formatter.format(value.toInt());
+  }
+  
+  String _formatNumber(int value) {
+    final formatter = NumberFormat('#,##0', 'id_ID');
+    return formatter.format(value);
   }
 
   @override
@@ -618,52 +637,57 @@ class _DashboardContentState extends State<DashboardContent> {
           const Text(
             'Statistik Umum',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
           ),
-          const SizedBox(height: 16),
-          Row(
+          const SizedBox(height: 20),
+          // Grid layout for better spacing
+          Column(
             children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Total Jumlah PO',
-                  _totalJumlahPo.toString(),
-                  Icons.shopping_cart,
-                  Colors.blue,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      'Total Jumlah PO',
+                      _formatNumber(_totalJumlahPo),
+                      Icons.shopping_cart_outlined,
+                      Colors.blue,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Total Rupiah PO',
+                      'Rp ${_formatCurrency(_totalRupiahPo)}',
+                      Icons.attach_money,
+                      Colors.green,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  'Total Rupiah PO',
-                  'Rp ${_formatCurrency(_totalRupiahPo)}',
-                  Icons.attach_money,
-                  Colors.green,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Accounts Receivable',
-                  'Rp ${_formatCurrency(_totalAr)}',
-                  Icons.account_balance_wallet,
-                  Colors.orange,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  'Accounts Payable',
-                  'Rp ${_formatCurrency(_totalAp)}',
-                  Icons.payment,
-                  Colors.red,
-                ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      'Accounts Receivable',
+                      'Rp ${_formatCurrency(_totalAr)}',
+                      Icons.account_balance_wallet_outlined,
+                      Colors.orange,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Accounts Payable',
+                      'Rp ${_formatCurrency(_totalAp)}',
+                      Icons.payment_outlined,
+                      Colors.red,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -858,47 +882,61 @@ class _DashboardContentState extends State<DashboardContent> {
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.grey[900],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[800]!),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[800]!, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // Icon and title row
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: color, size: 20),
+                child: Icon(icon, color: color, size: 24),
               ),
-              const Spacer(),
-              Flexible(
+              const SizedBox(width: 12),
+              Expanded(
                 child: Text(
-                  value,
+                  title,
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: color,
+                    fontSize: 13,
+                    color: Colors.grey[400],
+                    fontWeight: FontWeight.w500,
                   ),
-                  textAlign: TextAlign.right,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
+          // Value
           Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: color,
+              height: 1.2,
             ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
