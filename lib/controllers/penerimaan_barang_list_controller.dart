@@ -7,6 +7,17 @@ import '../models/penerimaan_barang_model.dart';
 import '../models/gudang_model.dart';
 import '../utils/auth_helper.dart';
 
+// Helper function to safely parse values that might be String or num
+int _parseToInt(dynamic value) {
+  if (value == null) return 0;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) {
+    return int.tryParse(value) ?? 0;
+  }
+  return 0;
+}
+
 class PenerimaanBarangListController extends ChangeNotifier {
   List<PenerimaanBarang> _penerimaanBarangList = [];
   bool _isLoading = false;
@@ -222,9 +233,9 @@ class PenerimaanBarangListController extends ChangeNotifier {
                 _penerimaanBarangList.addAll(items);
               }
               
-              _currentPage = pagination['current_page'] ?? 1;
-              _totalPages = pagination['last_page'] ?? 1;
-              _totalItems = pagination['total'] ?? 0;
+              _currentPage = _parseToInt(pagination['current_page']);
+              _totalPages = _parseToInt(pagination['last_page']);
+              _totalItems = _parseToInt(pagination['total']);
               _hasMoreData = _currentPage < _totalPages;
             } else {
               // Try original format: {success: true, data: {current_page: 1, data: [...]}}

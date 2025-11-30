@@ -1,4 +1,4 @@
-package com.example.shn_mobile
+package id.co.divine.shn_mobile
 
 import io.flutter.embedding.android.FlutterActivity
 

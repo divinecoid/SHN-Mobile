@@ -1,5 +1,16 @@
 import 'package:flutter/foundation.dart';
 
+// Helper functions to safely parse values that might be String or num
+int _parseToInt(dynamic value) {
+  if (value == null) return 0;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) {
+    return int.tryParse(value) ?? 0;
+  }
+  return 0;
+}
+
 class PenerimaanBarangDetail {
   final int id;
   final int idPenerimaanBarang;
@@ -21,13 +32,13 @@ class PenerimaanBarangDetail {
 
   factory PenerimaanBarangDetail.fromMap(Map<String, dynamic> map) {
     return PenerimaanBarangDetail(
-      id: map['id'] ?? 0,
-      idPenerimaanBarang: map['id_penerimaan_barang'] ?? 0,
-      idItemBarang: map['id_item_barang'] ?? 0,
-      idRak: map['id_rak'] ?? 0,
-      qty: map['qty'] ?? 0,
-      idPurchaseOrderItem: map['id_purchase_order_item'],
-      idStockMutationDetail: map['id_stock_mutation_detail'],
+      id: _parseToInt(map['id']),
+      idPenerimaanBarang: _parseToInt(map['id_penerimaan_barang']),
+      idItemBarang: _parseToInt(map['id_item_barang']),
+      idRak: _parseToInt(map['id_rak']),
+      qty: _parseToInt(map['qty']),
+      idPurchaseOrderItem: map['id_purchase_order_item'] != null ? _parseToInt(map['id_purchase_order_item']) : null,
+      idStockMutationDetail: map['id_stock_mutation_detail'] != null ? _parseToInt(map['id_stock_mutation_detail']) : null,
     );
   }
 
@@ -57,7 +68,7 @@ class PurchaseOrder {
 
   factory PurchaseOrder.fromMap(Map<String, dynamic> map) {
     return PurchaseOrder(
-      id: map['id'] ?? 0,
+      id: _parseToInt(map['id']),
       nomorPo: map['nomor_po'] ?? '',
       tanggalPo: map['tanggal_po'] ?? '',
     );
@@ -85,7 +96,7 @@ class StockMutation {
 
   factory StockMutation.fromMap(Map<String, dynamic> map) {
     return StockMutation(
-      id: map['id'] ?? 0,
+      id: _parseToInt(map['id']),
       nomorMutasi: map['nomor_mutasi'] ?? '',
       createdAt: map['created_at'] ?? '',
     );
@@ -113,7 +124,7 @@ class GudangPenerimaan {
 
   factory GudangPenerimaan.fromMap(Map<String, dynamic> map) {
     return GudangPenerimaan(
-      id: map['id'] ?? 0,
+      id: _parseToInt(map['id']),
       namaGudang: map['nama_gudang'] ?? '',
       kode: map['kode'] ?? '',
     );
@@ -159,11 +170,11 @@ class PenerimaanBarang {
 
   factory PenerimaanBarang.fromMap(Map<String, dynamic> map) {
     return PenerimaanBarang(
-      id: map['id'] ?? 0,
+      id: _parseToInt(map['id']),
       origin: map['origin'] ?? '',
-      idPurchaseOrder: map['id_purchase_order'],
-      idStockMutation: map['id_stock_mutation'],
-      idGudang: map['id_gudang'] ?? 0,
+      idPurchaseOrder: map['id_purchase_order'] != null ? _parseToInt(map['id_purchase_order']) : null,
+      idStockMutation: map['id_stock_mutation'] != null ? _parseToInt(map['id_stock_mutation']) : null,
+      idGudang: _parseToInt(map['id_gudang']),
       catatan: map['catatan'] ?? '',
       urlFoto: map['url_foto'],
       createdAt: map['created_at'] ?? '',
@@ -416,20 +427,20 @@ class PenerimaanBarangListData {
 
   factory PenerimaanBarangListData.fromMap(Map<String, dynamic> map) {
     return PenerimaanBarangListData(
-      currentPage: map['current_page'] ?? 1,
+      currentPage: _parseToInt(map['current_page']),
       data: (map['data'] as List<dynamic>?)
           ?.map((item) => PenerimaanBarang.fromMap(item))
           .toList() ?? [],
       firstPageUrl: map['first_page_url'] ?? '',
-      from: map['from'] ?? 0,
-      lastPage: map['last_page'] ?? 1,
+      from: _parseToInt(map['from']),
+      lastPage: _parseToInt(map['last_page']),
       lastPageUrl: map['last_page_url'] ?? '',
       nextPageUrl: map['next_page_url'],
       path: map['path'] ?? '',
-      perPage: map['per_page'] ?? 10,
+      perPage: _parseToInt(map['per_page']),
       prevPageUrl: map['prev_page_url'],
-      to: map['to'] ?? 0,
-      total: map['total'] ?? 0,
+      to: _parseToInt(map['to']),
+      total: _parseToInt(map['total']),
     );
   }
 }

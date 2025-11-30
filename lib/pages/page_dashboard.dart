@@ -360,10 +360,10 @@ class _DashboardContentState extends State<DashboardContent> {
       if (jsonData['success'] == true && jsonData['data'] != null) {
         final data = jsonData['data'] as Map<String, dynamic>;
         setState(() {
-          _totalJumlahPo = (data['total_jumlah_po'] as num?)?.toInt() ?? 0;
-          _totalRupiahPo = (data['total_rupiah_po'] as num?)?.toDouble() ?? 0.0;
-          _totalAr = (data['total_ar'] as num?)?.toDouble() ?? 0.0;
-          _totalAp = (data['total_ap'] as num?)?.toDouble() ?? 0.0;
+          _totalJumlahPo = _parseToInt(data['total_jumlah_po']);
+          _totalRupiahPo = _parseToDouble(data['total_rupiah_po']);
+          _totalAr = _parseToDouble(data['total_ar']);
+          _totalAp = _parseToDouble(data['total_ap']);
         });
       }
     } else if (response.statusCode == 401) {
@@ -487,6 +487,27 @@ class _DashboardContentState extends State<DashboardContent> {
   String _formatNumber(int value) {
     final formatter = NumberFormat('#,##0', 'id_ID');
     return formatter.format(value);
+  }
+
+  // Helper methods to safely parse values that might be String or num
+  int _parseToInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) {
+      return int.tryParse(value) ?? 0;
+    }
+    return 0;
+  }
+
+  double _parseToDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value) ?? 0.0;
+    }
+    return 0.0;
   }
 
   @override
@@ -958,7 +979,7 @@ class _DashboardContentState extends State<DashboardContent> {
     // Calculate max value for Y axis
     double maxValue = 0;
     for (var item in data) {
-      final total = (item['total'] as num?)?.toDouble() ?? 0.0;
+      final total = _parseToDouble(item['total']);
       maxValue = maxValue < total ? total : maxValue;
     }
     maxValue = maxValue * 1.2; // Add 20% padding
@@ -984,7 +1005,7 @@ class _DashboardContentState extends State<DashboardContent> {
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               final day = sortedData[group.x.toInt()]['day'] ?? '';
               final month = sortedData[group.x.toInt()]['month'] ?? '';
-              final total = (sortedData[group.x.toInt()]['total'] as num?)?.toInt() ?? 0;
+              final total = _parseToInt(sortedData[group.x.toInt()]['total']);
               return BarTooltipItem(
                 '$day $month: $total',
                 const TextStyle(color: Colors.white, fontSize: 12),
@@ -1040,7 +1061,7 @@ class _DashboardContentState extends State<DashboardContent> {
               x: i,
               barRods: [
                 BarChartRodData(
-                  toY: (sortedData[i]['total'] as num?)?.toDouble() ?? 0.0,
+                  toY: _parseToDouble(sortedData[i]['total']),
                   color: color,
                   width: sortedData.length > 30 ? 4 : 8,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),

@@ -1,3 +1,24 @@
+// Helper functions to safely parse values that might be String or num
+int _parseToInt(dynamic value) {
+  if (value == null) return 0;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) {
+    return int.tryParse(value) ?? 0;
+  }
+  return 0;
+}
+
+int? _parseToIntNullable(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) {
+    return int.tryParse(value);
+  }
+  return null;
+}
+
 class StockOpnameUser {
   final int id;
   final String name;
@@ -17,7 +38,7 @@ class StockOpnameUser {
 
   factory StockOpnameUser.fromMap(Map<String, dynamic> map) {
     return StockOpnameUser(
-      id: map['id'] as int? ?? 0,
+      id: _parseToInt(map['id']),
       name: map['name'] as String? ?? '',
       email: map['email'] as String? ?? '',
       username: map['username'] as String?,
@@ -63,13 +84,13 @@ class StockOpnameGudang {
 
   factory StockOpnameGudang.fromMap(Map<String, dynamic> map) {
     return StockOpnameGudang(
-      id: map['id'] as int? ?? 0,
+      id: _parseToInt(map['id']),
       kode: map['kode'] as String? ?? '',
       namaGudang: map['nama_gudang'] as String? ?? '',
       tipeGudang: map['tipe_gudang'] as String?,
-      parentId: map['parent_id'] as int?,
+      parentId: _parseToIntNullable(map['parent_id']),
       teleponHp: map['telepon_hp'] as String?,
-      kapasitas: map['kapasitas'] as int?,
+      kapasitas: _parseToIntNullable(map['kapasitas']),
       createdAt: map['created_at'] as String? ?? '',
       updatedAt: map['updated_at'] as String? ?? '',
     );
@@ -115,13 +136,13 @@ class StockOpnameDetailItemBarang {
 
   factory StockOpnameDetailItemBarang.fromMap(Map<String, dynamic> map) {
     return StockOpnameDetailItemBarang(
-      id: map['id'] as int? ?? 0,
+      id: _parseToInt(map['id']),
       kodeBarang: map['kode_barang'] as String? ?? '',
       namaItemBarang: map['nama_item_barang'] as String? ?? '',
-      jenisBarangId: map['jenis_barang_id'] as int? ?? 0,
-      bentukBarangId: map['bentuk_barang_id'] as int? ?? 0,
-      gradeBarangId: map['grade_barang_id'] as int? ?? 0,
-      gudangId: map['gudang_id'] as int? ?? 0,
+      jenisBarangId: _parseToInt(map['jenis_barang_id']),
+      bentukBarangId: _parseToInt(map['bentuk_barang_id']),
+      gradeBarangId: _parseToInt(map['grade_barang_id']),
+      gudangId: _parseToInt(map['gudang_id']),
       createdAt: map['created_at'] as String? ?? '',
       updatedAt: map['updated_at'] as String? ?? '',
     );
@@ -167,11 +188,11 @@ class StockOpnameDetail {
 
   factory StockOpnameDetail.fromMap(Map<String, dynamic> map) {
     return StockOpnameDetail(
-      id: map['id'] as int? ?? 0,
-      stockOpnameId: map['stock_opname_id'] as int? ?? 0,
-      itemBarangId: map['item_barang_id'] as int? ?? 0,
-      stokSistem: map['stok_sistem'] as int?,
-      stokFisik: map['stok_fisik'] as int? ?? 0,
+      id: _parseToInt(map['id']),
+      stockOpnameId: _parseToInt(map['stock_opname_id']),
+      itemBarangId: _parseToInt(map['item_barang_id']),
+      stokSistem: _parseToIntNullable(map['stok_sistem']),
+      stokFisik: _parseToInt(map['stok_fisik']),
       catatan: map['catatan'] as String?,
       createdAt: map['created_at'] as String? ?? '',
       updatedAt: map['updated_at'] as String? ?? '',
@@ -223,9 +244,9 @@ class StockOpname {
 
   factory StockOpname.fromMap(Map<String, dynamic> map) {
     return StockOpname(
-      id: map['id'] as int? ?? 0,
-      picUserId: map['pic_user_id'] as int? ?? 0,
-      gudangId: map['gudang_id'] as int? ?? 0,
+      id: _parseToInt(map['id']),
+      picUserId: _parseToInt(map['pic_user_id']),
+      gudangId: _parseToInt(map['gudang_id']),
       catatan: map['catatan'] as String?,
       status: map['status'] as String? ?? 'active',
       createdAt: map['created_at'] as String? ?? '',
@@ -275,10 +296,10 @@ class StockOpnamePagination {
 
   factory StockOpnamePagination.fromMap(Map<String, dynamic> map) {
     return StockOpnamePagination(
-      currentPage: map['current_page'] as int? ?? 1,
-      perPage: map['per_page'] as int? ?? 100,
-      lastPage: map['last_page'] as int? ?? 1,
-      total: map['total'] as int? ?? 0,
+      currentPage: _parseToInt(map['current_page']),
+      perPage: _parseToInt(map['per_page']),
+      lastPage: _parseToInt(map['last_page']),
+      total: _parseToInt(map['total']),
     );
   }
 
