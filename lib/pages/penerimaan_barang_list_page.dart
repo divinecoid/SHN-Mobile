@@ -4,6 +4,7 @@ import '../controllers/penerimaan_barang_list_controller.dart';
 import '../models/penerimaan_barang_model.dart';
 import 'input_penerimaan_barang_page.dart';
 import 'penerimaan_barang_detail_page.dart';
+import '../services/permission_service.dart';
 
 class PenerimaanBarangListPage extends StatefulWidget {
   const PenerimaanBarangListPage({super.key});
@@ -24,6 +25,7 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage>
   final FocusNode _catatanFocusNode = FocusNode();
   late AnimationController _animationController;
   late Animation<double> _sizeAnimation;
+  bool _hasCreatePermission = false;
 
   @override
   void initState() {
@@ -38,6 +40,16 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage>
       curve: Curves.easeInOut,
     );
     _initializeController();
+    _checkPermissions();
+  }
+
+  Future<void> _checkPermissions() async {
+    final hasCreate = await PermissionService.hasPermission('TERIMA_BARANG', 'Create');
+    if (mounted) {
+      setState(() {
+        _hasCreatePermission = hasCreate;
+      });
+    }
   }
 
   @override
@@ -685,15 +697,16 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage>
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: _navigateToInputPenerimaanBarang,
-                icon: const Icon(Icons.add),
-                label: const Text('Tambah Penerimaan Barang'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[600],
-                  foregroundColor: Colors.white,
+              if (_hasCreatePermission) // Only show button if user has Create permission
+                ElevatedButton.icon(
+                  onPressed: _navigateToInputPenerimaanBarang,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Tambah Penerimaan Barang'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[600],
+                    foregroundColor: Colors.white,
+                  ),
                 ),
-              ),
             ],
           ),
         ),
