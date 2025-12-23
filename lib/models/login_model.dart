@@ -29,6 +29,9 @@ class LoginData {
   final String username;
   final String name;
   final List<String> roles;
+  final int roleId;
+  final String roleName;
+  final String roleCode;
 
   LoginData({
     required this.token,
@@ -37,6 +40,9 @@ class LoginData {
     required this.username,
     required this.name,
     required this.roles,
+    required this.roleId,
+    required this.roleName,
+    required this.roleCode,
   });
 
   factory LoginData.fromMap(Map<String, dynamic> map) {
@@ -47,6 +53,9 @@ class LoginData {
       username: map['username'] ?? '',
       name: map['name'] ?? '',
       roles: List<String>.from(map['roles'] ?? []),
+      roleId: map['role_id'] ?? 0,
+      roleName: map['role_name'] ?? '',
+      roleCode: map['role_code'] ?? '',
     );
   }
 
@@ -58,6 +67,9 @@ class LoginData {
       'username': username,
       'name': name,
       'roles': roles,
+      'role_id': roleId,
+      'role_name': roleName,
+      'role_code': roleCode,
     };
   }
 }

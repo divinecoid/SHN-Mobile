@@ -14,6 +14,21 @@ import 'page_work_order.dart';
 import 'page_stock_check.dart';
 import '../utils/auth_helper.dart';
 import '../controllers/stock_check_controller.dart';
+import '../services/permission_service.dart';
+
+class DashboardMenuItem {
+  final String title;
+  final String menuCode;
+  final IconData icon;
+  final Widget page;
+
+  DashboardMenuItem({
+    required this.title,
+    required this.menuCode,
+    required this.icon,
+    required this.page,
+  });
+}
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -25,29 +40,48 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   String username = 'Admin';
   int selectedIndex = 0;
+  bool _isLoading = true;
+  List<DashboardMenuItem> _availableMenuItems = [];
 
-  final List<Widget> _pages = [
-    const DashboardContent(),
-    const StockCheckPage(),
-    const TerimaBarangMainPage(),
-    const StockOpnameListPage(),
-    const WorkOrderPage(),
+  // Semua menu yang tersedia di dashboard
+  final List<DashboardMenuItem> _allMenuItems = [
+    DashboardMenuItem(
+      title: 'Dashboard',
+      menuCode: 'DASHBOARD',
+      icon: Icons.dashboard,
+      page: const DashboardContent(),
+    ),
+    DashboardMenuItem(
+      title: 'Cek Stok',
+      menuCode: 'CEK_STOK',
+      icon: Icons.search,
+      page: const StockCheckPage(),
+    ),
+    DashboardMenuItem(
+      title: 'Terima Barang',
+      menuCode: 'TERIMA_BARANG',
+      icon: Icons.inventory,
+      page: const TerimaBarangMainPage(),
+    ),
+    DashboardMenuItem(
+      title: 'Stock Opname',
+      menuCode: 'STOCK_OPNAME',
+      icon: Icons.assessment,
+      page: const StockOpnameListPage(),
+    ),
+    DashboardMenuItem(
+      title: 'Work Order',
+      menuCode: 'WORK_ORDER',
+      icon: Icons.work,
+      page: const WorkOrderPage(),
+    ),
   ];
-
-  final List<String> _menuItems = [
-    'Dashboard',
-    'Cek Stok',
-    'Terima Barang',
-    'Stock Opname',
-    'Work Order',
-  ];
-
-
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _loadAvailableMenus();
   }
 
   Future<void> _loadUserData() async {
@@ -55,6 +89,35 @@ class _DashboardPageState extends State<DashboardPage> {
     setState(() {
       username = prefs.getString('username') ?? 'Admin';
     });
+  }
+
+  Future<void> _loadAvailableMenus() async {
+    setState(() => _isLoading = true);
+
+    List<DashboardMenuItem> availableMenus = [];
+
+    // Check setiap menu apakah user punya akses
+    for (var menuItem in _allMenuItems) {
+      final hasAccess = await PermissionService.hasMenuAccess(menuItem.menuCode);
+      if (hasAccess) {
+        availableMenus.add(menuItem);
+      }
+    }
+
+    setState(() {
+      _availableMenuItems = availableMenus;
+      _isLoading = false;
+    });
+
+    // Jika tidak ada menu yang tersedia, tampilkan pesan
+    if (_availableMenuItems.isEmpty && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Anda tidak memiliki akses ke menu apapun'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _logout() async {
@@ -107,15 +170,51 @@ class _DashboardPageState extends State<DashboardPage> {
 
     // If user confirms logout
     if (shouldLogout == true) {
+      await PermissionService.clearPermissions(); // Clear permissions
       await AuthHelper.logout(context);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+
+    if (_availableMenuItems.isEmpty) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          title: const Text('SHN Mobile'),
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: _logout,
+              tooltip: 'Logout',
+            ),
+          ],
+        ),
+        body: const Center(
+          child: Text(
+            'Tidak ada menu yang tersedia',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(_menuItems[selectedIndex]),
+        title: Text(_availableMenuItems[selectedIndex].title),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -170,11 +269,12 @@ class _DashboardPageState extends State<DashboardPage> {
                 ],
               ),
             ),
-            // Menu Items
+            // Menu Items - Hanya tampilkan menu yang user punya akses
             Expanded(
               child: ListView.builder(
-                itemCount: _menuItems.length,
+                itemCount: _availableMenuItems.length,
                 itemBuilder: (context, index) {
+                  final menuItem = _availableMenuItems[index];
                   return Container(
                     margin: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -187,13 +287,13 @@ class _DashboardPageState extends State<DashboardPage> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       leading: Icon(
-                        _getIconForIndex(index),
+                        menuItem.icon,
                         color: selectedIndex == index
                             ? Colors.white
                             : Colors.grey[400],
                       ),
                       title: Text(
-                        _menuItems[index],
+                        menuItem.title,
                         style: TextStyle(
                           color: selectedIndex == index
                               ? Colors.white
@@ -217,28 +317,9 @@ class _DashboardPageState extends State<DashboardPage> {
           ],
         ),
       ),
-      body: _pages[selectedIndex],
+      body: _availableMenuItems[selectedIndex].page,
     );
   }
-
-  IconData _getIconForIndex(int index) {
-    switch (index) {
-      case 0:
-        return Icons.dashboard;
-      case 1:
-        return Icons.search;
-      case 2:
-        return Icons.inventory;
-      case 3:
-        return Icons.assessment;
-      case 4:
-        return Icons.work;
-      default:
-        return Icons.home;
-    }
-  }
-
-
 }
 
 // Dashboard Content Widget

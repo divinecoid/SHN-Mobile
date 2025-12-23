@@ -4,6 +4,21 @@ import 'package:shn_mobile/pages/terima_barang_main_page.dart';
 import 'package:shn_mobile/pages/page_stock_opname.dart';
 import 'package:shn_mobile/pages/stock_opname_list_page.dart';
 import 'package:shn_mobile/pages/page_work_order.dart';
+import 'package:shn_mobile/services/permission_service.dart';
+
+class MenuItem {
+  final String title;
+  final String menuCode;
+  final IconData icon;
+  final Widget page;
+
+  MenuItem({
+    required this.title,
+    required this.menuCode,
+    required this.icon,
+    required this.page,
+  });
+}
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,24 +30,99 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final HomeController _controller = HomeController();
   int _selectedIndex = 0;
+  bool _isLoading = true;
+  List<MenuItem> _availableMenuItems = [];
 
-  final List<Widget> _pages = [
-    const TerimaBarangMainPage(),
-    const StockOpnameListPage(),
-    const WorkOrderPage(),
-  ];
-
-  final List<String> _menuItems = [
-    'Terima Barang',
-    'Stock Opname',
-    'Work Order',
+  // Semua menu yang tersedia di mobile app
+  final List<MenuItem> _allMenuItems = [
+    MenuItem(
+      title: 'Terima Barang',
+      menuCode: 'TERIMA_BARANG',
+      icon: Icons.inventory,
+      page: const TerimaBarangMainPage(),
+    ),
+    MenuItem(
+      title: 'Stock Opname',
+      menuCode: 'STOCK_OPNAME',
+      icon: Icons.assessment,
+      page: const StockOpnameListPage(),
+    ),
+    MenuItem(
+      title: 'Work Order',
+      menuCode: 'WORK_ORDER',
+      icon: Icons.work,
+      page: const WorkOrderPage(),
+    ),
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadAvailableMenus();
+  }
+
+  Future<void> _loadAvailableMenus() async {
+    setState(() => _isLoading = true);
+
+    List<MenuItem> availableMenus = [];
+
+    // Check setiap menu apakah user punya akses
+    for (var menuItem in _allMenuItems) {
+      final hasAccess = await PermissionService.hasMenuAccess(menuItem.menuCode);
+      if (hasAccess) {
+        availableMenus.add(menuItem);
+      }
+    }
+
+    setState(() {
+      _availableMenuItems = availableMenus;
+      _isLoading = false;
+    });
+
+    // Jika tidak ada menu yang tersedia, tampilkan pesan
+    if (_availableMenuItems.isEmpty && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Anda tidak memiliki akses ke menu apapun'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+
+    if (_availableMenuItems.isEmpty) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          title: const Text('SHN Mobile'),
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: Text(
+            'Tidak ada menu yang tersedia',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(_menuItems[_selectedIndex]),
+        title: Text(_availableMenuItems[_selectedIndex].title),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -75,11 +165,12 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-            // Menu Items
+            // Menu Items - Hanya tampilkan menu yang user punya akses
             Expanded(
               child: ListView.builder(
-                itemCount: _menuItems.length,
+                itemCount: _availableMenuItems.length,
                 itemBuilder: (context, index) {
+                  final menuItem = _availableMenuItems[index];
                   return Container(
                     margin: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -92,13 +183,13 @@ class _HomePageState extends State<HomePage> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       leading: Icon(
-                        _getIconForIndex(index),
+                        menuItem.icon,
                         color: _selectedIndex == index
                             ? Colors.white
                             : Colors.grey[400],
                       ),
                       title: Text(
-                        _menuItems[index],
+                        menuItem.title,
                         style: TextStyle(
                           color: _selectedIndex == index
                               ? Colors.white
@@ -122,20 +213,8 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-      body: _pages[_selectedIndex],
+      body: _availableMenuItems[_selectedIndex].page,
     );
   }
-
-  IconData _getIconForIndex(int index) {
-    switch (index) {
-      case 0:
-        return Icons.inventory;
-      case 1:
-        return Icons.assessment;
-      case 2:
-        return Icons.work;
-      default:
-        return Icons.home;
-    }
-  }
-} 
+}
+ 

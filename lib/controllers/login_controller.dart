@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
 import '../pages/page_dashboard.dart';
 import '../models/login_model.dart';
+import '../services/permission_service.dart';
 
 class LoginController {
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
@@ -98,6 +99,27 @@ class LoginController {
         await prefs.setString('token', loginResponse.data!.token);
         await prefs.setString('refresh_token', loginResponse.data!.refreshToken);
         await prefs.setStringList('roles', loginResponse.data!.roles);
+        await prefs.setInt('role_id', loginResponse.data!.roleId);
+        await prefs.setString('role_name', loginResponse.data!.roleName);
+        await prefs.setString('role_code', loginResponse.data!.roleCode);
+        
+        // Fetch menu permissions
+        print('Fetching menu permissions for role_id: ${loginResponse.data!.roleId}');
+        final permissionResponse = await PermissionService.fetchMenuPermissions(
+          loginResponse.data!.roleId,
+          loginResponse.data!.token,
+        );
+        
+        if (permissionResponse != null && 
+            permissionResponse.success && 
+            permissionResponse.data != null) {
+          // Save permissions to shared preferences
+          await PermissionService.savePermissions(permissionResponse.data!);
+          print('Menu permissions saved successfully');
+        } else {
+          print('Failed to fetch menu permissions');
+          // Continue anyway - permissions can be fetched later if needed
+        }
         
         if (context.mounted) {
           // Show success message
