@@ -300,4 +300,34 @@ class StockCheckController extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<String?> fetchCanvasImage(int idItemBarang) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://10.232.105.4:8000';
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/item-barang/$idItemBarang/canvas-image'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['canvas_image'] as String?;
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized');
+      } else if (response.statusCode == 404) {
+        return null; // Canvas image tidak ditemukan
+      } else {
+        throw Exception('Error: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error fetching canvas image: $e');
+      return null;
+    }
+  }
 }

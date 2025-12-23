@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/stock_check_controller.dart';
 import '../models/stock_check_model.dart';
+import 'stock_check_detail_page.dart';
 
 class StockCheckPage extends StatefulWidget {
   const StockCheckPage({super.key});
@@ -474,15 +475,24 @@ class _StockCheckPageState extends State<StockCheckPage>
   }
 
   Widget _buildStockItemCard(StockCheckItem item) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[800]!),
-      ),
-      child: Column(
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => StockCheckDetailPage(item: item),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[800]!),
+        ),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header with kode barang
@@ -576,6 +586,7 @@ class _StockCheckPageState extends State<StockCheckPage>
             ],
           ),
         ],
+      ),
       ),
     );
   }
