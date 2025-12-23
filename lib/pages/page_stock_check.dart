@@ -16,6 +16,7 @@ class _StockCheckPageState extends State<StockCheckPage>
   final _panjangController = TextEditingController();
   final _lebarController = TextEditingController();
   final _tebalController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   bool _isFilterExpanded = false; // Default collapsed
   late AnimationController _animationController;
   late Animation<double> _sizeAnimation;
@@ -31,9 +32,24 @@ class _StockCheckPageState extends State<StockCheckPage>
       parent: _animationController,
       curve: Curves.easeInOut,
     );
+    
+    // Add scroll listener for pagination
+    _scrollController.addListener(_onScroll);
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<StockCheckController>().loadReferenceData();
     });
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= 
+        _scrollController.position.maxScrollExtent - 200) {
+      // Load more when 200px from bottom
+      final controller = context.read<StockCheckController>();
+      if (!controller.isLoadingMore && controller.hasMoreData) {
+        controller.loadMoreStock(context);
+      }
+    }
   }
 
   @override
@@ -41,6 +57,7 @@ class _StockCheckPageState extends State<StockCheckPage>
     _panjangController.dispose();
     _lebarController.dispose();
     _tebalController.dispose();
+    _scrollController.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -51,120 +68,123 @@ class _StockCheckPageState extends State<StockCheckPage>
       resizeToAvoidBottomInset: true,
       body: Consumer<StockCheckController>(
         builder: (context, controller, child) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 100),
-            child: Column(
-              children: [
-                // Filter Section
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[900],
-                    border: Border(
-                      bottom: BorderSide(color: Colors.grey[800]!),
+          return RefreshIndicator(
+            onRefresh: () => controller.checkStock(context),
+            child: CustomScrollView(
+              controller: _scrollController,
+              slivers: [
+                // Filter Section as Sliver
+                SliverToBoxAdapter(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[900],
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey[800]!),
+                      ),
                     ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header dengan toggle button
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            _isFilterExpanded = !_isFilterExpanded;
-                            if (_isFilterExpanded) {
-                              _animationController.forward();
-                            } else {
-                              _animationController.reverse();
-                            }
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              const Text(
-                                'Filter Pencarian',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header dengan toggle button
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              _isFilterExpanded = !_isFilterExpanded;
+                              if (_isFilterExpanded) {
+                                _animationController.forward();
+                              } else {
+                                _animationController.reverse();
+                              }
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                const Text(
+                                  'Filter Pencarian',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              ),
-                              const Spacer(),
-                              Icon(
-                                _isFilterExpanded
-                                    ? Icons.keyboard_arrow_up
-                                    : Icons.keyboard_arrow_down,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                            ],
+                                const Spacer(),
+                                Icon(
+                                  _isFilterExpanded
+                                      ? Icons.keyboard_arrow_up
+                                      : Icons.keyboard_arrow_down,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      // Collapsible content dengan animasi expand/collapse (atas ke bawah)
-                      SizeTransition(
-                        sizeFactor: _sizeAnimation,
-                        axis: Axis.vertical,
-                        axisAlignment: -1.0,
-                        child: _isFilterExpanded
-                            ? Container(
-                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildFilterSection(controller),
-                                    const SizedBox(height: 16),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: ElevatedButton(
-                                            onPressed: controller.isLoading
-                                                ? null
-                                                : () => controller.checkStock(context),
+                        // Collapsible content
+                        SizeTransition(
+                          sizeFactor: _sizeAnimation,
+                          axis: Axis.vertical,
+                          axisAlignment: -1.0,
+                          child: _isFilterExpanded
+                              ? Container(
+                                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildFilterSection(controller),
+                                      const SizedBox(height: 16),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: ElevatedButton(
+                                              onPressed: controller.isLoading
+                                                  ? null
+                                                  : () => controller.checkStock(context),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.blue,
+                                                foregroundColor: Colors.white,
+                                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                              ),
+                                              child: controller.isLoading
+                                                  ? const SizedBox(
+                                                      height: 20,
+                                                      width: 20,
+                                                      child: CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                      ),
+                                                    )
+                                                  : const Text('Cari Stok'),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              controller.clearFilters();
+                                              _panjangController.clear();
+                                              _lebarController.clear();
+                                              _tebalController.clear();
+                                            },
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.blue,
+                                              backgroundColor: Colors.grey[700],
                                               foregroundColor: Colors.white,
                                               padding: const EdgeInsets.symmetric(vertical: 12),
                                             ),
-                                            child: controller.isLoading
-                                                ? const SizedBox(
-                                                    height: 20,
-                                                    width: 20,
-                                                    child: CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                                    ),
-                                                  )
-                                                : const Text('Cari Stok'),
+                                            child: const Text('Reset'),
                                           ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        ElevatedButton(
-                                          onPressed: () {
-                                            controller.clearFilters();
-                                            _panjangController.clear();
-                                            _lebarController.clear();
-                                            _tebalController.clear();
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.grey[700],
-                                            foregroundColor: Colors.white,
-                                            padding: const EdgeInsets.symmetric(vertical: 12),
-                                          ),
-                                          child: const Text('Reset'),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : const SizedBox.shrink(),
-                      ),
-                    ],
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                // Results Section
+                // Results Section as Sliver
                 _buildResultsSection(controller),
               ],
             ),
@@ -369,108 +389,148 @@ class _StockCheckPageState extends State<StockCheckPage>
   }
 
   Widget _buildResultsSection(StockCheckController controller) {
-    if (controller.isLoading) {
-      return Container(
-        height: 200,
-        child: const Center(
-          child: CircularProgressIndicator(),
+    if (controller.isLoading && controller.stockItems.isEmpty) {
+      return SliverFillRemaining(
+        child: Container(
+          child: const Center(
+            child: CircularProgressIndicator(),
+          ),
         ),
       );
     }
 
-    if (controller.errorMessage.isNotEmpty) {
-      return Container(
-        height: 200,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Colors.red[400],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                controller.errorMessage,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
+    if (controller.errorMessage.isNotEmpty && controller.stockItems.isEmpty) {
+      return SliverFillRemaining(
+        child: Container(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.red[400],
                 ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+                const SizedBox(height: 16),
+                Text(
+                  controller.errorMessage,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
     if (controller.stockItems.isEmpty) {
-      return Container(
-        height: 200,
-        child: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.inventory_2_outlined,
-                size: 64,
-                color: Colors.grey,
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Tidak ada data stok yang ditemukan',
-                style: TextStyle(
+      return SliverFillRemaining(
+        child: Container(
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.inventory_2_outlined,
+                  size: 64,
                   color: Colors.grey,
-                  fontSize: 16,
                 ),
-              ),
-            ],
+                SizedBox(height: 16),
+                Text(
+                  'Tidak ada data stok yang ditemukan',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.grey[900],
-            border: Border(
-              bottom: BorderSide(color: Colors.grey[800]!),
-            ),
-          ),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.inventory_2,
-                color: Colors.blue,
-                size: 24,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Hasil Pencarian (${controller.stockItems.length} item)',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          if (index == 0) {
+            // Header
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey[800]!),
                 ),
               ),
-            ],
-          ),
-        ),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          itemCount: controller.stockItems.length,
-          itemBuilder: (context, index) {
-            final item = controller.stockItems[index];
-            return _buildStockItemCard(item);
-          },
-        ),
-      ],
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.inventory_2,
+                    color: Colors.blue,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Hasil Pencarian (${controller.total} total, halaman ${controller.currentPage}/${controller.lastPage})',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          
+          final itemIndex = index - 1;
+          
+          // Load more indicator
+          if (itemIndex == controller.stockItems.length) {
+            if (controller.hasMoreData) {
+              return Container(
+                padding: const EdgeInsets.all(20),
+                child: Center(
+                  child: controller.isLoadingMore
+                      ? const CircularProgressIndicator()
+                      : const SizedBox.shrink(),
+                ),
+              );
+            } else {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                child: const Center(
+                  child: Text(
+                    'Semua data telah ditampilkan',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              );
+            }
+          }
+          
+          // Stock item
+          final item = controller.stockItems[itemIndex];
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              16, 
+              itemIndex == 0 ? 16 : 0, 
+              16, 
+              12
+            ),
+            child: _buildStockItemCard(item),
+          );
+        },
+        childCount: controller.stockItems.length + 2, // +1 for header, +1 for load more
+      ),
     );
   }
 

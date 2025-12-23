@@ -18,7 +18,14 @@ class StockCheckController extends ChangeNotifier {
   List<RefGradeBarang> _gradeBarangList = [];
   
   bool _isLoading = false;
+  bool _isLoadingMore = false;
   String _errorMessage = '';
+  
+  // Pagination
+  int _currentPage = 1;
+  int _lastPage = 1;
+  int _perPage = 20; // Items per page
+  int _total = 0;
   
   // Filter values
   int? _selectedGudangId;
@@ -36,7 +43,14 @@ class StockCheckController extends ChangeNotifier {
   List<RefBentukBarang> get bentukBarangList => _bentukBarangList;
   List<RefGradeBarang> get gradeBarangList => _gradeBarangList;
   bool get isLoading => _isLoading;
+  bool get isLoadingMore => _isLoadingMore;
   String get errorMessage => _errorMessage;
+  
+  // Pagination getters
+  int get currentPage => _currentPage;
+  int get lastPage => _lastPage;
+  int get total => _total;
+  bool get hasMoreData => _currentPage < _lastPage;
   
   int? get selectedGudangId => _selectedGudangId;
   int? get selectedJenisBarangId => _selectedJenisBarangId;
@@ -90,6 +104,10 @@ class StockCheckController extends ChangeNotifier {
     _panjang = null;
     _lebar = null;
     _tebal = null;
+    _stockItems = [];
+    _currentPage = 1;
+    _lastPage = 1;
+    _total = 0;
     notifyListeners();
   }
 
@@ -229,8 +247,16 @@ class StockCheckController extends ChangeNotifier {
     }
   }
 
-  Future<void> checkStock(BuildContext context) async {
-    _isLoading = true;
+  Future<void> checkStock(BuildContext context, {bool loadMore = false}) async {
+    if (loadMore) {
+      if (!hasMoreData || _isLoadingMore) return;
+      _isLoadingMore = true;
+    } else {
+      _isLoading = true;
+      _currentPage = 1;
+      _stockItems = [];
+    }
+    
     _errorMessage = '';
     notifyListeners();
 
@@ -241,6 +267,12 @@ class StockCheckController extends ChangeNotifier {
 
       // Build query parameters
       final Map<String, String> queryParams = {};
+      
+      // Pagination parameters
+      queryParams['page'] = _currentPage.toString();
+      queryParams['per_page'] = _perPage.toString();
+      
+      // Filter parameters
       if (_selectedGudangId != null) {
         queryParams['gudang_id'] = _selectedGudangId.toString();
       }
@@ -278,9 +310,24 @@ class StockCheckController extends ChangeNotifier {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
-          _stockItems = (data['data'] as List)
+          // Handle Laravel pagination response
+          final paginationData = data['data'];
+          
+          // Parse stock items
+          final List<StockCheckItem> newItems = (paginationData['data'] as List)
               .map((item) => StockCheckItem.fromJson(item))
               .toList();
+          
+          // Update pagination info
+          _currentPage = paginationData['current_page'] ?? 1;
+          _lastPage = paginationData['last_page'] ?? 1;
+          _total = paginationData['total'] ?? 0;
+          
+          if (loadMore) {
+            _stockItems.addAll(newItems);
+          } else {
+            _stockItems = newItems;
+          }
         } else {
           _errorMessage = data['message'] ?? 'Error loading stock data';
         }
@@ -288,7 +335,9 @@ class StockCheckController extends ChangeNotifier {
         await AuthHelper.handleUnauthorized(context, null);
         return;
       } else if (response.statusCode == 404) {
-        _stockItems = [];
+        if (!loadMore) {
+          _stockItems = [];
+        }
         _errorMessage = 'Data tidak ditemukan';
       } else {
         _errorMessage = 'Error: ${response.statusCode}';
@@ -296,8 +345,19 @@ class StockCheckController extends ChangeNotifier {
     } catch (e) {
       _errorMessage = 'Error: $e';
     } finally {
-      _isLoading = false;
+      if (loadMore) {
+        _isLoadingMore = false;
+      } else {
+        _isLoading = false;
+      }
       notifyListeners();
+    }
+  }
+
+  Future<void> loadMoreStock(BuildContext context) async {
+    if (hasMoreData && !_isLoadingMore) {
+      _currentPage++;
+      await checkStock(context, loadMore: true);
     }
   }
 
