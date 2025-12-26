@@ -1082,7 +1082,7 @@ class _DashboardContentState extends State<DashboardContent> {
           enabled: true,
           touchTooltipData: BarTouchTooltipData(
             getTooltipColor: (group) => Colors.grey[900]!,
-            tooltipRoundedRadius: 8,
+            tooltipMargin: 8,
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               final day = sortedData[group.x.toInt()]['day'] ?? '';
               final month = sortedData[group.x.toInt()]['month'] ?? '';

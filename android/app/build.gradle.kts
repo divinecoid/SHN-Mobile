@@ -2,9 +2,14 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.android")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+dependencies {
+    implementation("com.google.android.play:core:1.10.3")
 }
 
 val keystoreProperties = Properties()
@@ -36,6 +41,10 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        ndk {
+            abiFilters.add("arm64-v8a")
+        }
     }
 
     signingConfigs {
@@ -48,17 +57,27 @@ android {
     }
 
     buildTypes {
-        //release {
-        //    // TODO: Add your own signing config for the release build.
-        //    // Signing with the debug keys for now, so `flutter run --release` works.
-        //    signingConfig = signingConfigs.getByName("debug")
-        //}
-        getByName("release") {
-            isMinifyEnabled = false
-            isShrinkResources = false
-            signingConfig = signingConfigs.getByName("release")
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
+    // buildTypes {
+    //     //release {
+    //     //    // TODO: Add your own signing config for the release build.
+    //     //    // Signing with the debug keys for now, so `flutter run --release` works.
+    //     //    signingConfig = signingConfigs.getByName("debug")
+    //     //}
+    //     getByName("release") {
+    //         isMinifyEnabled = false
+    //         isShrinkResources = false
+    //         signingConfig = signingConfigs.getByName("release")
+    //     }
+    // }
 }
 
 flutter {
