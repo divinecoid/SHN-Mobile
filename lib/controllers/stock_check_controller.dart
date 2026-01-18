@@ -111,6 +111,19 @@ class StockCheckController extends ChangeNotifier {
     notifyListeners();
   }
 
+  static int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) {
+      final intValue = int.tryParse(value);
+      if (intValue != null) return intValue;
+      final doubleValue = double.tryParse(value);
+      return doubleValue?.toInt();
+    }
+    return null;
+  }
+
   Future<void> loadReferenceData() async {
     _isLoading = true;
     _errorMessage = '';
@@ -308,28 +321,55 @@ class StockCheckController extends ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          // Handle Laravel pagination response
-          final paginationData = data['data'];
+        try {
+          final data = json.decode(response.body);
+          debugPrint('API Response success: ${data['success']}');
           
-          // Parse stock items
-          final List<StockCheckItem> newItems = (paginationData['data'] as List)
-              .map((item) => StockCheckItem.fromJson(item))
-              .toList();
-          
-          // Update pagination info
-          _currentPage = paginationData['current_page'] ?? 1;
-          _lastPage = paginationData['last_page'] ?? 1;
-          _total = paginationData['total'] ?? 0;
-          
-          if (loadMore) {
-            _stockItems.addAll(newItems);
+          if (data['success'] == true) {
+            // API returns data as a direct List, not paginated
+            final responseData = data['data'];
+            debugPrint('Response Data Type: ${responseData.runtimeType}');
+            
+            if (responseData == null) {
+              throw Exception('Response data is null');
+            }
+            
+            if (responseData is! List) {
+              throw Exception('Response data is not a List, it is: ${responseData.runtimeType}');
+            }
+            
+            // Parse stock items directly from the array
+            final List<StockCheckItem> newItems = (responseData as List)
+                .map((item) {
+                  try {
+                    return StockCheckItem.fromJson(item);
+                  } catch (e) {
+                    debugPrint('Error parsing item: $e');
+                    debugPrint('Item data: ${item.toString()}');
+                    rethrow;
+                  }
+                })
+                .toList();
+            
+            debugPrint('Successfully parsed ${newItems.length} items');
+            
+            // Since API doesn't return pagination info, we'll manage it manually
+            // For now, just replace the items (no pagination support)
+            if (loadMore) {
+              _stockItems.addAll(newItems);
+            } else {
+              _stockItems = newItems;
+              _currentPage = 1;
+              _lastPage = 1;
+              _total = newItems.length;
+            }
           } else {
-            _stockItems = newItems;
+            _errorMessage = data['message'] ?? 'Error loading stock data';
           }
-        } else {
-          _errorMessage = data['message'] ?? 'Error loading stock data';
+        } catch (e, stackTrace) {
+          debugPrint('Error parsing response: $e');
+          debugPrint('Stack trace: $stackTrace');
+          _errorMessage = 'Error parsing data: $e';
         }
       } else if (response.statusCode == 401) {
         await AuthHelper.handleUnauthorized(context, null);

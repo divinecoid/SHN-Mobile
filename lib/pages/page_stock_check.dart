@@ -245,8 +245,12 @@ class _StockCheckPageState extends State<StockCheckPage>
                 label: 'Panjang',
                 controller: _panjangController,
                 onChanged: (value) {
-                  final doubleValue = double.tryParse(value);
-                  controller.setPanjang(doubleValue);
+                  if (value.trim().isEmpty) {
+                    controller.setPanjang(null);
+                  } else {
+                    final doubleValue = double.tryParse(value);
+                    controller.setPanjang(doubleValue);
+                  }
                 },
               ),
             ),
@@ -256,8 +260,12 @@ class _StockCheckPageState extends State<StockCheckPage>
                 label: 'Lebar',
                 controller: _lebarController,
                 onChanged: (value) {
-                  final doubleValue = double.tryParse(value);
-                  controller.setLebar(doubleValue);
+                  if (value.trim().isEmpty) {
+                    controller.setLebar(null);
+                  } else {
+                    final doubleValue = double.tryParse(value);
+                    controller.setLebar(doubleValue);
+                  }
                 },
               ),
             ),
@@ -267,8 +275,12 @@ class _StockCheckPageState extends State<StockCheckPage>
                 label: 'Tebal',
                 controller: _tebalController,
                 onChanged: (value) {
-                  final doubleValue = double.tryParse(value);
-                  controller.setTebal(doubleValue);
+                  if (value.trim().isEmpty) {
+                    controller.setTebal(null);
+                  } else {
+                    final doubleValue = double.tryParse(value);
+                    controller.setTebal(doubleValue);
+                  }
                 },
               ),
             ),
@@ -307,8 +319,12 @@ class _StockCheckPageState extends State<StockCheckPage>
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<T>(
-              value: value != null ? items.firstWhere((item) => 
-                (item as dynamic).id == value, orElse: () => items.first) : null,
+              value: value != null && items.isNotEmpty
+                  ? items.firstWhere(
+                      (item) => (item as dynamic).id == value,
+                      orElse: () => null as T,
+                    )
+                  : null,
               isExpanded: true,
               hint: Text(
                 'Pilih $label',
