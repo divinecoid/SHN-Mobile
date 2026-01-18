@@ -9,7 +9,20 @@ plugins {
 }
 
 dependencies {
-    implementation("com.google.android.play:core:1.10.3")
+    implementation("com.google.android.gms:play-services-tasks:18.0.2")
+    implementation("com.google.android.play:feature-delivery:2.1.0")
+    implementation("com.google.android.play:asset-delivery:2.2.2")
+    implementation("com.google.android.play:asset-delivery-ktx:2.2.2")
+    implementation("com.google.android.play:feature-delivery:2.1.0") {
+        exclude(group = "com.google.android.play", module = "core")
+    }
+}
+
+configurations.all {
+    resolutionStrategy {
+        force("com.google.android.play:feature-delivery:2.1.0")
+        force("com.google.android.play:asset-delivery:2.2.2")
+    }
 }
 
 val keystoreProperties = Properties()
@@ -58,6 +71,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
