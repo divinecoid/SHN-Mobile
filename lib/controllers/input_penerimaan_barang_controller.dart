@@ -13,6 +13,7 @@ import '../controllers/penerimaan_barang_list_controller.dart';
 class InputPenerimaanBarangController extends ChangeNotifier {
   // Form controllers
   final TextEditingController catatanController = TextEditingController();
+  final TextEditingController rakController = TextEditingController();
   
   // Form state
   String _selectedOrigin = 'purchaseorder';
@@ -34,6 +35,11 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   bool _isLoadingGudang = false;
   String? _gudangError;
   
+  // RAK state
+  int? _selectedRakId;
+  String _selectedRakKode = '';
+  String _selectedRakNama = '';
+  
   // Loading state
   bool _isSubmitting = false;
 
@@ -51,10 +57,14 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   ScannedDokumenResult? get scannedDokumen => _scannedDokumen;
   List<ScannedItem> get scannedItems => _scannedItems;
   Set<String> get scannedBarcodes => _scannedBarcodes;
+  int? get selectedRakId => _selectedRakId;
+  String get selectedRakKode => _selectedRakKode;
+  String get selectedRakNama => _selectedRakNama;
 
   @override
   void dispose() {
     catatanController.dispose();
+    rakController.dispose();
     super.dispose();
   }
 
@@ -271,6 +281,78 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // RAK methods
+  void setRak(int rakId, String rakKode, String rakNama) {
+    _selectedRakId = rakId;
+    _selectedRakKode = rakKode;
+    _selectedRakNama = rakNama;
+    rakController.text = rakKode; // Update text field
+    notifyListeners();
+  }
+
+  void clearRak() {
+    _selectedRakId = null;
+    _selectedRakKode = '';
+    _selectedRakNama = '';
+    rakController.clear();
+    notifyListeners();
+  }
+
+  // Fetch RAK by code or ID
+  Future<void> fetchRakByCode(String codeOrId) async {
+    final code = codeOrId.trim();
+    if (code.isEmpty) {
+      return;
+    }
+
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('Token autentikasi tidak ditemukan. Silakan login kembali.');
+      }
+
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final url = Uri.parse('$baseUrl/api/rak/$code');
+
+      debugPrint('Fetch RAK URL: $url');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+
+      debugPrint('Fetch RAK status: ${response.statusCode}');
+      debugPrint('Fetch RAK body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['success'] == true) {
+          final rakData = jsonData['data'];
+          setRak(
+            rakData['id'],
+            rakData['kode'] ?? '',
+            rakData['nama_rak'] ?? '',
+          );
+        } else {
+          throw Exception('RAK tidak ditemukan');
+        }
+      } else if (response.statusCode == 404) {
+        throw Exception('RAK dengan kode "$code" tidak ditemukan');
+      } else if (response.statusCode == 401) {
+        throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
+      } else {
+        throw Exception('Gagal memuat data RAK: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error fetching RAK by code: $e');
+      rethrow;
+    }
+  }
+
   // Validation methods
   String? validateForm() {
     if (_scannedNumber.isEmpty) {
@@ -279,6 +361,10 @@ class InputPenerimaanBarangController extends ChangeNotifier {
 
     if (_selectedGudangId == null) {
       return 'Pilih gudang terlebih dahulu';
+    }
+
+    if (_selectedRakId == null) {
+      return 'Scan RAK terlebih dahulu';
     }
 
     if (_selectedImage == null) {
@@ -347,6 +433,7 @@ class InputPenerimaanBarangController extends ChangeNotifier {
           ukuran: '${item.panjang ?? '0'} x ${item.lebar ?? '0'} x ${item.tebal ?? '0'}',
           qty: item.qty ?? item.quantity ?? 1,
           statusScan: isScanned ? 'Terscan' : 'Belum Terscan',
+          idRak: _selectedRakId!, // Batch assign same RAK to all items
         );
         debugPrint('Detail item: ${detail.toMap()}');
         return detail;
@@ -448,6 +535,9 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     _scannedDokumen = null;
     _scannedItems = [];
     _scannedBarcodes.clear();
+    _selectedRakId = null;
+    _selectedRakKode = '';
+    _selectedRakNama = '';
     catatanController.clear();
     _gudangError = null;
     notifyListeners();

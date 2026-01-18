@@ -1,5 +1,42 @@
 import 'package:flutter/foundation.dart';
 
+// Rak model
+class Rak {
+  final int id;
+  final String kode;
+  final String namaRak;
+  final int? gudangId;
+  final int? kapasitas;
+
+  Rak({
+    required this.id,
+    required this.kode,
+    required this.namaRak,
+    this.gudangId,
+    this.kapasitas,
+  });
+
+  factory Rak.fromMap(Map<String, dynamic> map) {
+    return Rak(
+      id: _parseToInt(map['id']),
+      kode: map['kode'] ?? '',
+      namaRak: map['nama_rak'] ?? '',
+      gudangId: map['gudang_id'] != null ? _parseToInt(map['gudang_id']) : null,
+      kapasitas: map['kapasitas'] != null ? _parseToInt(map['kapasitas']) : null,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'kode': kode,
+      'nama_rak': namaRak,
+      'gudang_id': gudangId,
+      'kapasitas': kapasitas,
+    };
+  }
+}
+
 // Helper functions to safely parse values that might be String or num
 int _parseToInt(dynamic value) {
   if (value == null) return 0;
@@ -19,6 +56,7 @@ class PenerimaanBarangDetail {
   final int qty;
   final int? idPurchaseOrderItem;
   final int? idStockMutationDetail;
+  final Rak? rak;
 
   PenerimaanBarangDetail({
     required this.id,
@@ -28,6 +66,7 @@ class PenerimaanBarangDetail {
     required this.qty,
     this.idPurchaseOrderItem,
     this.idStockMutationDetail,
+    this.rak,
   });
 
   factory PenerimaanBarangDetail.fromMap(Map<String, dynamic> map) {
@@ -39,6 +78,7 @@ class PenerimaanBarangDetail {
       qty: _parseToInt(map['qty']),
       idPurchaseOrderItem: map['id_purchase_order_item'] != null ? _parseToInt(map['id_purchase_order_item']) : null,
       idStockMutationDetail: map['id_stock_mutation_detail'] != null ? _parseToInt(map['id_stock_mutation_detail']) : null,
+      rak: _parseRak(map['rak']),
     );
   }
 
@@ -51,7 +91,20 @@ class PenerimaanBarangDetail {
       'qty': qty,
       'id_purchase_order_item': idPurchaseOrderItem,
       'id_stock_mutation_detail': idStockMutationDetail,
+      'rak': rak?.toMap(),
     };
+  }
+
+  static Rak? _parseRak(dynamic rak) {
+    try {
+      if (rak is Map<String, dynamic>) {
+        return Rak.fromMap(rak);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error parsing rak: $e');
+      return null;
+    }
   }
 }
 
@@ -354,6 +407,7 @@ class DetailBarangSubmit {
   final String ukuran;
   final int qty;
   final String statusScan;
+  final int idRak;
 
   DetailBarangSubmit({
     required this.id,
@@ -362,6 +416,7 @@ class DetailBarangSubmit {
     required this.ukuran,
     required this.qty,
     required this.statusScan,
+    required this.idRak,
   });
 
   Map<String, dynamic> toMap() {
@@ -372,6 +427,7 @@ class DetailBarangSubmit {
       'ukuran': ukuran,
       'qty': qty,
       'status_scan': statusScan,
+      'id_rak': idRak,
     };
   }
 }

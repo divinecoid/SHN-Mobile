@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../controllers/input_penerimaan_barang_controller.dart';
 import '../models/gudang_model.dart';
 import 'scan_barang_page.dart';
@@ -20,6 +24,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
   final _formKey = GlobalKey<FormState>();
   late final InputPenerimaanBarangController _controller;
   late final TextEditingController _numberController;
+  late final TextEditingController _rakController;
   Timer? _debounce;
 
   @override
@@ -27,6 +32,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
     super.initState();
     _controller = InputPenerimaanBarangController();
     _numberController = TextEditingController(text: _controller.scannedNumber);
+    _rakController = _controller.rakController;
     // Load gudang list when page initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadGudangList();
@@ -372,6 +378,46 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
     );
   }
 
+  void _navigateToScanRakBatch() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => QRScanPage(
+          isRack: true, // Scanning RAK
+          onScanResult: (scannedData) async {
+            // Update text field immediately
+            setState(() {
+              _rakController.text = scannedData;
+            });
+            
+            // Fetch RAK details from API
+            try {
+              await _controller.fetchRakByCode(scannedData);
+              if (mounted) {
+                setState(() {});
+                _showSnackBar('RAK ${_controller.selectedRakKode} berhasil dipilih');
+              }
+            } catch (e) {
+              if (mounted) {
+                _showSnackBar('$e');
+              }
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _getAuthToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('token');
+    } catch (e) {
+      debugPrint('Error getting auth token: $e');
+      return null;
+    }
+  }
+
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -502,6 +548,10 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
 
                 // Gudang Selection
                 _buildGudangSection(),
+                const SizedBox(height: 16),
+
+                // RAK Selection
+                _buildRakSection(),
                 const SizedBox(height: 16),
 
                 // Details List (moved above Catatan)
@@ -812,6 +862,154 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRakSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[800]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.warehouse, color: Colors.purple[400], size: 24),
+              const SizedBox(width: 8),
+              const Text(
+                'RAK',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _rakController,
+            style: const TextStyle(color: Colors.white),
+            onChanged: (value) {
+              setState(() {});
+              _debounce?.cancel();
+              _debounce = Timer(const Duration(milliseconds: 1000), () async {
+                final text = _rakController.text.trim();
+                if (text.isEmpty) return;
+                try {
+                  await _controller.fetchRakByCode(text);
+                  if (mounted) setState(() {});
+                } catch (e) {
+                  if (mounted) _showSnackBar('$e');
+                }
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Masukkan atau scan kode RAK',
+              hintStyle: TextStyle(color: Colors.grey[400]),
+              filled: true,
+              fillColor: Colors.grey[850],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey[700]!),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey[700]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.purple[400]!),
+              ),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_rakController.text.isNotEmpty)
+                    IconButton(
+                      tooltip: 'Bersihkan',
+                      icon: const Icon(Icons.clear, color: Colors.grey),
+                      onPressed: () {
+                        setState(() {
+                          _controller.clearRak();
+                        });
+                      },
+                    ),
+                  IconButton(
+                    tooltip: 'Scan RAK',
+                    icon: Icon(Icons.qr_code_scanner, color: Colors.purple[400]),
+                    onPressed: _navigateToScanRakBatch,
+                  ),
+                ],
+              ),
+            ),
+            validator: (value) {
+              if (_controller.selectedRakId == null) {
+                return 'RAK harus dipilih';
+              }
+              return null;
+            },
+          ),
+          if (_controller.selectedRakId != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.purple[900],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.purple[700]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.warehouse, color: Colors.purple[400], size: 16),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _controller.selectedRakNama,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green[600],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.check_circle, color: Colors.white, size: 12),
+                            const SizedBox(width: 4),
+                            const Text(
+                              'Valid',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

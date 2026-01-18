@@ -668,13 +668,44 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(height: 4),
-                                  Text(
-                                    'Rak ID: ${detail.idRak}',
-                                    style: TextStyle(
-                                      color: Colors.grey[300],
-                                      fontSize: 12,
+                                  if (detail.rak != null) ...{
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.warehouse,
+                                          color: Colors.purple[400],
+                                          size: 14,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${detail.rak!.kode} • ${detail.rak!.namaRak}',
+                                          style: TextStyle(
+                                            color: Colors.purple[300],
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
+                                  } else ...{
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.warehouse,
+                                          color: Colors.grey[400],
+                                          size: 14,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Rak ID: ${detail.idRak}',
+                                          style: TextStyle(
+                                            color: Colors.grey[300],
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  },
                                 ],
                               ),
                             ),
