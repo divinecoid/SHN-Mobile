@@ -25,17 +25,27 @@ class Gudang {
 
   factory Gudang.fromMap(Map<String, dynamic> map) {
     return Gudang(
-      id: map['id'] as int,
+      id: _parseToInt(map['id']),
       kode: map['kode'] as String,
       namaGudang: map['nama_gudang'] as String,
       alamat: map['alamat'] as String?,
       latitude: map['latitude'] != null ? (map['latitude'] as num).toDouble() : null,
       longitude: map['longitude'] != null ? (map['longitude'] as num).toDouble() : null,
       tipeGudang: map['tipe_gudang'] as String?,
-      parentId: map['parent_id'] as int?,
+      parentId: map['parent_id'] != null ? _parseToInt(map['parent_id']) : null,
       teleponHp: map['telepon_hp'] as String?,
-      kapasitas: map['kapasitas'] as int?,
+      kapasitas: map['kapasitas'] != null ? _parseToInt(map['kapasitas']) : null,
     );
+  }
+
+  static int _parseToInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) {
+      return int.tryParse(value) ?? 0;
+    }
+    return 0;
   }
 
   Map<String, dynamic> toMap() {
