@@ -338,10 +338,10 @@ class InputPenerimaanBarangController extends ChangeNotifier {
             rakData['nama_rak'] ?? '',
           );
         } else {
-          throw Exception('RAK tidak ditemukan');
+          throw Exception('Rak tidak ditemukan');
         }
       } else if (response.statusCode == 404) {
-        throw Exception('RAK dengan kode "$code" tidak ditemukan');
+        throw Exception('Rak dengan kode "$code" tidak ditemukan');
       } else if (response.statusCode == 401) {
         throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
       } else {

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'dart:io';
+import 'dart:convert';
 
 class QRScanPage extends StatefulWidget {
   final bool isRack;
@@ -76,47 +77,7 @@ class _QRScanPageState extends State<QRScanPage> {
     });
 
     try {
-      // Try different image formats for better compatibility
-      InputImage inputImage;
-      
-      if (image.format.group == ImageFormatGroup.bgra8888) {
-        final WriteBuffer allBytes = WriteBuffer();
-        for (final Plane plane in image.planes) {
-          allBytes.putUint8List(plane.bytes);
-        }
-        final bytes = allBytes.done().buffer.asUint8List();
-
-        inputImage = InputImage.fromBytes(
-          bytes: bytes,
-          metadata: InputImageMetadata(
-            size: Size(image.width.toDouble(), image.height.toDouble()),
-            rotation: InputImageRotation.rotation0deg,
-            format: InputImageFormat.bgra8888,
-            bytesPerRow: image.planes.first.bytesPerRow,
-          ),
-        );
-      } else if (image.format.group == ImageFormatGroup.yuv420) {
-        final WriteBuffer allBytes = WriteBuffer();
-        for (final Plane plane in image.planes) {
-          allBytes.putUint8List(plane.bytes);
-        }
-        final bytes = allBytes.done().buffer.asUint8List();
-
-        inputImage = InputImage.fromBytes(
-          bytes: bytes,
-          metadata: InputImageMetadata(
-            size: Size(image.width.toDouble(), image.height.toDouble()),
-            rotation: InputImageRotation.rotation0deg,
-            format: InputImageFormat.yuv420,
-            bytesPerRow: image.planes.first.bytesPerRow,
-          ),
-        );
-      } else {
-        // Fallback to taking a picture
-        final XFile picture = await _cameraController!.takePicture();
-        inputImage = InputImage.fromFilePath(picture.path);
-      }
-
+      final InputImage inputImage = _convertCameraImage(image);
       final List<Barcode> barcodes = await _barcodeScanner.processImage(inputImage);
 
       setState(() {
@@ -128,13 +89,41 @@ class _QRScanPageState extends State<QRScanPage> {
         if (barcode.rawValue != null) {
           setState(() {
             _isScanning = false;
-            final rawValue = barcode.rawValue!;
-            final displayValue = rawValue.length > 10 
-                ? '${rawValue.substring(0, 10)}...' 
-                : rawValue;
-            _debugInfo = 'QR Code detected: $displayValue';
           });
-          _showSuccessDialog(barcode.rawValue!);
+          
+          // Parse the result based on whether it's a rack or item scan
+          String resultToReturn = barcode.rawValue!;
+          
+          // If scanning a rack, try to parse JSON and extract kode_rak
+          if (widget.isRack) {
+            try {
+              final jsonData = json.decode(barcode.rawValue!);
+              if (jsonData is Map<String, dynamic> && jsonData.containsKey('kode_rak')) {
+                resultToReturn = jsonData['kode_rak'];
+                setState(() {
+                  _debugInfo = 'Kode rak: $resultToReturn';
+                });
+              } else {
+                setState(() {
+                  _debugInfo = 'QR Code detected: ${barcode.rawValue}';
+                });
+              }
+            } catch (e) {
+              // If JSON parsing fails, use the raw value
+              setState(() {
+                _debugInfo = 'Using raw value: ${barcode.rawValue}';
+              });
+            }
+          } else {
+            setState(() {
+              final displayValue = resultToReturn.length > 10 
+                  ? '${resultToReturn.substring(0, 10)}...' 
+                  : resultToReturn;
+              _debugInfo = 'QR Code detected: $displayValue';
+            });
+          }
+          
+          _showSuccessDialog(resultToReturn);
         }
       }
     } catch (e) {
@@ -149,6 +138,106 @@ class _QRScanPageState extends State<QRScanPage> {
     }
   }
 
+  InputImage _convertCameraImage(CameraImage image) {
+    // Get the rotation based on device orientation
+    final rotation = _getImageRotation();
+    
+    // Handle different image formats
+    final format = _getInputImageFormat(image.format.group);
+    
+    // For NV21 format (common on Android), we need to handle it properly
+    if (Platform.isAndroid && image.format.group == ImageFormatGroup.yuv420) {
+      // NV21 format - concatenate all plane bytes
+      final WriteBuffer allBytes = WriteBuffer();
+      for (final Plane plane in image.planes) {
+        allBytes.putUint8List(plane.bytes);
+      }
+      final bytes = allBytes.done().buffer.asUint8List();
+
+      return InputImage.fromBytes(
+        bytes: bytes,
+        metadata: InputImageMetadata(
+          size: Size(image.width.toDouble(), image.height.toDouble()),
+          rotation: rotation,
+          format: InputImageFormat.nv21, // Use NV21 for Android YUV420
+          bytesPerRow: image.planes.first.bytesPerRow,
+        ),
+      );
+    } else if (Platform.isIOS && image.format.group == ImageFormatGroup.bgra8888) {
+      // BGRA8888 format (common on iOS)
+      final WriteBuffer allBytes = WriteBuffer();
+      for (final Plane plane in image.planes) {
+        allBytes.putUint8List(plane.bytes);
+      }
+      final bytes = allBytes.done().buffer.asUint8List();
+
+      return InputImage.fromBytes(
+        bytes: bytes,
+        metadata: InputImageMetadata(
+          size: Size(image.width.toDouble(), image.height.toDouble()),
+          rotation: rotation,
+          format: InputImageFormat.bgra8888,
+          bytesPerRow: image.planes.first.bytesPerRow,
+        ),
+      );
+    } else {
+      // Generic fallback
+      final WriteBuffer allBytes = WriteBuffer();
+      for (final Plane plane in image.planes) {
+        allBytes.putUint8List(plane.bytes);
+      }
+      final bytes = allBytes.done().buffer.asUint8List();
+
+      return InputImage.fromBytes(
+        bytes: bytes,
+        metadata: InputImageMetadata(
+          size: Size(image.width.toDouble(), image.height.toDouble()),
+          rotation: rotation,
+          format: format,
+          bytesPerRow: image.planes.first.bytesPerRow,
+        ),
+      );
+    }
+  }
+
+  InputImageRotation _getImageRotation() {
+    // Get the device orientation
+    final sensorOrientation = _cameraController!.description.sensorOrientation;
+    
+    // For Android, we need to account for sensor orientation
+    if (Platform.isAndroid) {
+      // Portrait mode is default
+      switch (sensorOrientation) {
+        case 0:
+          return InputImageRotation.rotation0deg;
+        case 90:
+          return InputImageRotation.rotation90deg;
+        case 180:
+          return InputImageRotation.rotation180deg;
+        case 270:
+          return InputImageRotation.rotation270deg;
+        default:
+          return InputImageRotation.rotation0deg;
+      }
+    } else {
+      // For iOS
+      return InputImageRotation.rotation0deg;
+    }
+  }
+
+  InputImageFormat _getInputImageFormat(ImageFormatGroup formatGroup) {
+    switch (formatGroup) {
+      case ImageFormatGroup.yuv420:
+        return Platform.isAndroid 
+            ? InputImageFormat.nv21 
+            : InputImageFormat.yuv420;
+      case ImageFormatGroup.bgra8888:
+        return InputImageFormat.bgra8888;
+      default:
+        return InputImageFormat.nv21; // Default to NV21 for Android
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_isCameraInitialized) {
@@ -159,6 +248,7 @@ class _QRScanPageState extends State<QRScanPage> {
           foregroundColor: Colors.white,
           title: Text(
             widget.isRack ? 'Scan QR Rak' : 'Scan QR Label Barang',
+            style: const TextStyle(fontSize: 18),
           ),
         ),
         body: const Center(

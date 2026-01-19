@@ -883,7 +883,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
               Icon(Icons.warehouse, color: Colors.purple[400], size: 24),
               const SizedBox(width: 8),
               const Text(
-                'RAK',
+                'Rak',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -911,7 +911,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
               });
             },
             decoration: InputDecoration(
-              hintText: 'Masukkan atau scan kode RAK',
+              hintText: 'Masukkan atau scan kode rak',
               hintStyle: TextStyle(color: Colors.grey[400]),
               filled: true,
               fillColor: Colors.grey[850],
