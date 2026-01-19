@@ -298,7 +298,7 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Fetch RAK by code or ID
+  // Fetch RAK by code using POST endpoint
   Future<void> fetchRakByCode(String codeOrId) async {
     final code = codeOrId.trim();
     if (code.isEmpty) {
@@ -312,43 +312,60 @@ class InputPenerimaanBarangController extends ChangeNotifier {
       }
 
       final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
-      final url = Uri.parse('$baseUrl/api/rak/$code');
+      final url = Uri.parse('$baseUrl/api/rak/search-by-kode');
+      
+      final requestBody = {'kode': code};
 
-      debugPrint('Fetch RAK URL: $url');
+      debugPrint('=== FETCH RAK DEBUG ===');
+      debugPrint('URL: $url');
+      debugPrint('Kode yang dicari: "$code"');
+      debugPrint('Request body: ${json.encode(requestBody)}');
+      debugPrint('Token (first 20 chars): ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
 
-      final response = await http.get(
+      final response = await http.post(
         url,
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
+        body: json.encode(requestBody),
       );
 
-      debugPrint('Fetch RAK status: ${response.statusCode}');
-      debugPrint('Fetch RAK body: ${response.body}');
+      debugPrint('Response status: ${response.statusCode}');
+      debugPrint('Response body: ${response.body}');
+      debugPrint('======================');
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
+        debugPrint('Parsed JSON success: ${jsonData['success']}');
+        
         if (jsonData['success'] == true) {
           final rakData = jsonData['data'];
+          debugPrint('Rak found - ID: ${rakData['id']}, Kode: ${rakData['kode']}, Nama: ${rakData['nama_rak']}');
           setRak(
             rakData['id'],
             rakData['kode'] ?? '',
             rakData['nama_rak'] ?? '',
           );
         } else {
-          throw Exception('Rak tidak ditemukan');
+          // Handle error response with success: false
+          final errorMessage = jsonData['message'] ?? 'Rak tidak ditemukan';
+          debugPrint('API returned success=false: $errorMessage');
+          throw Exception(errorMessage);
         }
       } else if (response.statusCode == 404) {
+        debugPrint('404 Not Found');
         throw Exception('Rak dengan kode "$code" tidak ditemukan');
       } else if (response.statusCode == 401) {
+        debugPrint('401 Unauthorized');
         throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
       } else {
-        throw Exception('Gagal memuat data RAK: ${response.statusCode}');
+        debugPrint('Unexpected status code: ${response.statusCode}');
+        throw Exception('Gagal memuat data rak: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('Error fetching RAK by code: $e');
+      debugPrint('ERROR in fetchRakByCode: $e');
       rethrow;
     }
   }

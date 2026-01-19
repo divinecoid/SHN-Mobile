@@ -94,32 +94,52 @@ class _QRScanPageState extends State<QRScanPage> {
           // Parse the result based on whether it's a rack or item scan
           String resultToReturn = barcode.rawValue!;
           
-          // If scanning a rack, try to parse JSON and extract kode_rak
-          if (widget.isRack) {
-            try {
-              final jsonData = json.decode(barcode.rawValue!);
-              if (jsonData is Map<String, dynamic> && jsonData.containsKey('kode_rak')) {
-                resultToReturn = jsonData['kode_rak'];
-                setState(() {
-                  _debugInfo = 'Kode rak: $resultToReturn';
-                });
+          try {
+            // Try to parse as JSON first
+            final jsonData = json.decode(barcode.rawValue!);
+            
+            if (jsonData is Map<String, dynamic>) {
+              if (widget.isRack) {
+                // For RAK: extract kode_rak
+                if (jsonData.containsKey('kode_rak')) {
+                  resultToReturn = jsonData['kode_rak'];
+                  setState(() {
+                    _debugInfo = 'Kode rak: $resultToReturn';
+                  });
+                } else {
+                  setState(() {
+                    _debugInfo = 'QR Code detected (no kode_rak): ${barcode.rawValue}';
+                  });
+                }
               } else {
-                setState(() {
-                  _debugInfo = 'QR Code detected: ${barcode.rawValue}';
-                });
+                // For BARANG: extract kode
+                if (jsonData.containsKey('kode')) {
+                  resultToReturn = jsonData['kode'];
+                  setState(() {
+                    _debugInfo = 'Kode barang: $resultToReturn';
+                  });
+                } else {
+                  setState(() {
+                    _debugInfo = 'QR Code detected (no kode): ${barcode.rawValue}';
+                  });
+                }
               }
-            } catch (e) {
-              // If JSON parsing fails, use the raw value
+            } else {
+              // Not a JSON object, use raw value
               setState(() {
-                _debugInfo = 'Using raw value: ${barcode.rawValue}';
+                final displayValue = resultToReturn.length > 10 
+                    ? '${resultToReturn.substring(0, 10)}...' 
+                    : resultToReturn;
+                _debugInfo = 'QR Code detected: $displayValue';
               });
             }
-          } else {
+          } catch (e) {
+            // If JSON parsing fails, use the raw value as-is
             setState(() {
               final displayValue = resultToReturn.length > 10 
                   ? '${resultToReturn.substring(0, 10)}...' 
                   : resultToReturn;
-              _debugInfo = 'QR Code detected: $displayValue';
+              _debugInfo = 'Using raw value: $displayValue';
             });
           }
           
