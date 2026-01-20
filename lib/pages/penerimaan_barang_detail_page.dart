@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/penerimaan_barang_model.dart';
+import '../controllers/penerimaan_barang_list_controller.dart';
 
-class PenerimaanBarangDetailPage extends StatelessWidget {
+class PenerimaanBarangDetailPage extends StatefulWidget {
   final PenerimaanBarang penerimaanBarang;
 
   const PenerimaanBarangDetailPage({
@@ -10,7 +11,59 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
   });
 
   @override
+  State<PenerimaanBarangDetailPage> createState() => _PenerimaanBarangDetailPageState();
+}
+
+class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage> {
+  late PenerimaanBarangListController _controller;
+  PenerimaanBarang? _detailData;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PenerimaanBarangListController();
+    _detailData = widget.penerimaanBarang; // Use initial data from list
+    _fetchDetailData();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchDetailData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      final detailData = await _controller.getPenerimaanBarangById(widget.penerimaanBarang.id);
+      
+      if (mounted) {
+        setState(() {
+          if (detailData != null) {
+            _detailData = detailData;
+          }
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final penerimaanBarang = _detailData ?? widget.penerimaanBarang;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -20,46 +73,92 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
           style: TextStyle(color: Colors.white),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            ),
+        ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header Info
-              _buildHeaderSection(),
-              const SizedBox(height: 16),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Show error message if any
+                  if (_error != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.red[900]?.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red[700]!),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning, color: Colors.red[400], size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Gagal memuat detail lengkap. Menampilkan data dari list.',
+                              style: TextStyle(
+                                color: Colors.red[300],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  
+                  // Header Info
+                  _buildHeaderSection(penerimaanBarang),
+                  const SizedBox(height: 16),
 
-              // Origin Info
-              _buildOriginSection(),
-              const SizedBox(height: 16),
+                  // Origin Info
+                  _buildOriginSection(penerimaanBarang),
+                  const SizedBox(height: 16),
 
-              // Gudang Info
-              _buildGudangSection(),
-              const SizedBox(height: 16),
+                  // Gudang Info
+                  _buildGudangSection(penerimaanBarang),
+                  const SizedBox(height: 16),
 
-              // Catatan
-              _buildCatatanSection(),
-              const SizedBox(height: 16),
+                  // Catatan
+                  _buildCatatanSection(penerimaanBarang),
+                  const SizedBox(height: 16),
 
-              // Photo
-              if (penerimaanBarang.urlFoto != null) ...[
-                _buildPhotoSection(),
-                const SizedBox(height: 16),
-              ],
+                  // Photo
+                  if (penerimaanBarang.urlFoto != null) ...[
+                    _buildPhotoSection(penerimaanBarang),
+                    const SizedBox(height: 16),
+                  ],
 
-              // Details List
-              _buildDetailsSection(),
-              const SizedBox(height: 24),
-            ],
+                  // Details List
+                  _buildDetailsSection(penerimaanBarang),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildHeaderSection() {
+  Widget _buildHeaderSection(PenerimaanBarang penerimaanBarang) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -137,7 +236,7 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildOriginSection() {
+  Widget _buildOriginSection(PenerimaanBarang penerimaanBarang) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -164,9 +263,9 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           if (penerimaanBarang.purchaseOrder != null)
-            _buildPurchaseOrderInfo()
+            _buildPurchaseOrderInfo(penerimaanBarang)
           else if (penerimaanBarang.stockMutation != null)
-            _buildStockMutationInfo()
+            _buildStockMutationInfo(penerimaanBarang)
           else
             Container(
               width: double.infinity,
@@ -189,7 +288,7 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPurchaseOrderInfo() {
+  Widget _buildPurchaseOrderInfo(PenerimaanBarang penerimaanBarang) {
     final po = penerimaanBarang.purchaseOrder!;
     return Container(
       width: double.infinity,
@@ -264,7 +363,7 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildStockMutationInfo() {
+  Widget _buildStockMutationInfo(PenerimaanBarang penerimaanBarang) {
     final sm = penerimaanBarang.stockMutation!;
     return Container(
       width: double.infinity,
@@ -339,7 +438,7 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildGudangSection() {
+  Widget _buildGudangSection(PenerimaanBarang penerimaanBarang) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -450,7 +549,7 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildCatatanSection() {
+  Widget _buildCatatanSection(PenerimaanBarang penerimaanBarang) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -497,7 +596,7 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPhotoSection() {
+  Widget _buildPhotoSection(PenerimaanBarang penerimaanBarang) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -569,7 +668,7 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailsSection() {
+  Widget _buildDetailsSection(PenerimaanBarang penerimaanBarang) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -645,72 +744,72 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
               itemCount: penerimaanBarang.penerimaanBarangDetails.length,
               itemBuilder: (context, index) {
                 final detail = penerimaanBarang.penerimaanBarangDetails[index];
+                final itemBarang = detail.itemBarang;
+                
                 return Card(
                   color: Colors.grey[850],
-                  margin: const EdgeInsets.only(bottom: 8),
+                  margin: const EdgeInsets.only(bottom: 12),
                   child: Padding(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Header with item info and quantity
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    'Item ID: ${detail.idItemBarang}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  if (detail.rak != null) ...{
+                                  // Item Barang Info (if available)
+                                  if (itemBarang != null) ...[
                                     Row(
                                       children: [
                                         Icon(
-                                          Icons.warehouse,
-                                          color: Colors.purple[400],
-                                          size: 14,
+                                          Icons.inventory_2,
+                                          color: Colors.blue[400],
+                                          size: 16,
                                         ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${detail.rak!.kode} • ${detail.rak!.namaRak}',
-                                          style: TextStyle(
-                                            color: Colors.purple[300],
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            itemBarang.kodeBarang,
+                                            style: TextStyle(
+                                              color: Colors.blue[300],
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
                                         ),
                                       ],
                                     ),
-                                  } else ...{
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.warehouse,
-                                          color: Colors.grey[400],
-                                          size: 14,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'Rak ID: ${detail.idRak}',
-                                          style: TextStyle(
-                                            color: Colors.grey[300],
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      itemBarang.namaItemBarang,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  },
+                                  ] else ...[
+                                    // Fallback when item_barang is not available
+                                    Text(
+                                      'Item ID: ${detail.idItemBarang}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
+                            const SizedBox(width: 12),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
                                 color: Colors.blue[600],
                                 borderRadius: BorderRadius.circular(8),
@@ -719,30 +818,272 @@ class PenerimaanBarangDetailPage extends StatelessWidget {
                                 '${detail.qty} pcs',
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        if (detail.idPurchaseOrderItem != null) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'PO Item ID: ${detail.idPurchaseOrderItem}',
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 10,
+                        
+                        // Item Barang Details (if available)
+                        if (itemBarang != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[800],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey[700]!),
+                            ),
+                            child: Column(
+                              children: [
+                                // Dimensions
+                                if (itemBarang.panjang != null || itemBarang.lebar != null || itemBarang.tebal != null) ...[
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.straighten,
+                                        color: Colors.orange[400],
+                                        size: 14,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Dimensi:',
+                                        style: TextStyle(
+                                          color: Colors.grey[400],
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          '${itemBarang.panjang ?? '-'} × ${itemBarang.lebar ?? '-'} × ${itemBarang.tebal ?? '-'}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                
+                                // Berat
+                                if (itemBarang.berat != null) ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.scale,
+                                        color: Colors.green[400],
+                                        size: 14,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Berat:',
+                                        style: TextStyle(
+                                          color: Colors.grey[400],
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '${itemBarang.berat} kg',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                
+                                // Jenis Potongan
+                                if (itemBarang.jenisPotongan != null) ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.category,
+                                        color: Colors.cyan[400],
+                                        size: 14,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Jenis:',
+                                        style: TextStyle(
+                                          color: Colors.grey[400],
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.cyan[700],
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          itemBarang.jenisPotongan!.toUpperCase(),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                
+                                // Sisa Luas (if available)
+                                if (itemBarang.sisaLuas != null && itemBarang.sisaLuas! > 0) ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.crop_square,
+                                        color: Colors.amber[400],
+                                        size: 14,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Sisa Luas:',
+                                        style: TextStyle(
+                                          color: Colors.grey[400],
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '${itemBarang.sisaLuas} m²',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                         ],
-                        if (detail.idStockMutationDetail != null) ...[
+                        
+                        const SizedBox(height: 12),
+                        
+                        // Rak Information
+                        if (detail.rak != null) ...[
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.warehouse,
+                                color: Colors.purple[400],
+                                size: 14,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Rak:',
+                                style: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${detail.rak!.kode} • ${detail.rak!.namaRak}',
+                                  style: TextStyle(
+                                    color: Colors.purple[300],
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ] else ...[
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.warehouse,
+                                color: Colors.grey[400],
+                                size: 14,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Rak ID: ${detail.idRak}',
+                                style: TextStyle(
+                                  color: Colors.grey[300],
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        
+                        // Additional IDs (PO Item or Stock Mutation Detail)
+                        if (detail.idPurchaseOrderItem != null || detail.idStockMutationDetail != null) ...[
                           const SizedBox(height: 8),
-                          Text(
-                            'Stock Mutation Detail ID: ${detail.idStockMutationDetail}',
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 10,
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[800]?.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.grey[700]!.withOpacity(0.5)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (detail.idPurchaseOrderItem != null) ...[
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.shopping_cart,
+                                        color: Colors.grey[500],
+                                        size: 12,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'PO Item ID: ${detail.idPurchaseOrderItem}',
+                                        style: TextStyle(
+                                          color: Colors.grey[400],
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                if (detail.idStockMutationDetail != null) ...[
+                                  if (detail.idPurchaseOrderItem != null) const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.swap_horiz,
+                                        color: Colors.grey[500],
+                                        size: 12,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Mutation Detail ID: ${detail.idStockMutationDetail}',
+                                        style: TextStyle(
+                                          color: Colors.grey[400],
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                         ],

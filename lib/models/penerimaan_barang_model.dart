@@ -1,5 +1,138 @@
 import 'package:flutter/foundation.dart';
 
+// ItemBarang model
+class ItemBarang {
+  final int id;
+  final String kodeBarang;
+  final int? jenisBarangId;
+  final int? bentukBarangId;
+  final int? gradeBarangId;
+  final String namaItemBarang;
+  final double? sisaLuas;
+  final String? panjang;
+  final String? lebar;
+  final String? tebal;
+  final String? berat;
+  final int? quantity;
+  final int? quantityTebalSama;
+  final String? jenisPotongan;
+  final bool? isAvailable;
+  final bool? isEdit;
+  final bool? isOnprogressPo;
+  final int? userId;
+  final String? canvasFile;
+  final String? canvasImage;
+  final String? convertDate;
+  final String? splitDate;
+  final String? mergeDate;
+  final int? gudangId;
+  final int? idRak;
+  final String? frozenAt;
+  final int? frozenBy;
+  final String? createdAt;
+  final String? updatedAt;
+
+  ItemBarang({
+    required this.id,
+    required this.kodeBarang,
+    this.jenisBarangId,
+    this.bentukBarangId,
+    this.gradeBarangId,
+    required this.namaItemBarang,
+    this.sisaLuas,
+    this.panjang,
+    this.lebar,
+    this.tebal,
+    this.berat,
+    this.quantity,
+    this.quantityTebalSama,
+    this.jenisPotongan,
+    this.isAvailable,
+    this.isEdit,
+    this.isOnprogressPo,
+    this.userId,
+    this.canvasFile,
+    this.canvasImage,
+    this.convertDate,
+    this.splitDate,
+    this.mergeDate,
+    this.gudangId,
+    this.idRak,
+    this.frozenAt,
+    this.frozenBy,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory ItemBarang.fromMap(Map<String, dynamic> map) {
+    return ItemBarang(
+      id: _parseToInt(map['id']),
+      kodeBarang: map['kode_barang'] ?? '',
+      jenisBarangId: map['jenis_barang_id'] != null ? _parseToInt(map['jenis_barang_id']) : null,
+      bentukBarangId: map['bentuk_barang_id'] != null ? _parseToInt(map['bentuk_barang_id']) : null,
+      gradeBarangId: map['grade_barang_id'] != null ? _parseToInt(map['grade_barang_id']) : null,
+      namaItemBarang: map['nama_item_barang'] ?? '',
+      sisaLuas: map['sisa_luas'] != null ? _parseToDouble(map['sisa_luas']) : null,
+      panjang: map['panjang']?.toString(),
+      lebar: map['lebar']?.toString(),
+      tebal: map['tebal']?.toString(),
+      berat: map['berat']?.toString(),
+      quantity: map['quantity'] != null ? _parseToInt(map['quantity']) : null,
+      quantityTebalSama: map['quantity_tebal_sama'] != null ? _parseToInt(map['quantity_tebal_sama']) : null,
+      jenisPotongan: map['jenis_potongan'],
+      isAvailable: map['is_available'] as bool?,
+      isEdit: map['is_edit'] as bool?,
+      isOnprogressPo: map['is_onprogress_po'] as bool?,
+      userId: map['user_id'] != null ? _parseToInt(map['user_id']) : null,
+      canvasFile: map['canvas_file'],
+      canvasImage: map['canvas_image'],
+      convertDate: map['convert_date'],
+      splitDate: map['split_date'],
+      mergeDate: map['merge_date'],
+      gudangId: map['gudang_id'] != null ? _parseToInt(map['gudang_id']) : null,
+      idRak: map['id_rak'] != null ? _parseToInt(map['id_rak']) : null,
+      frozenAt: map['frozen_at'],
+      frozenBy: map['frozen_by'] != null ? _parseToInt(map['frozen_by']) : null,
+      createdAt: map['created_at'],
+      updatedAt: map['updated_at'],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'kode_barang': kodeBarang,
+      'jenis_barang_id': jenisBarangId,
+      'bentuk_barang_id': bentukBarangId,
+      'grade_barang_id': gradeBarangId,
+      'nama_item_barang': namaItemBarang,
+      'sisa_luas': sisaLuas,
+      'panjang': panjang,
+      'lebar': lebar,
+      'tebal': tebal,
+      'berat': berat,
+      'quantity': quantity,
+      'quantity_tebal_sama': quantityTebalSama,
+      'jenis_potongan': jenisPotongan,
+      'is_available': isAvailable,
+      'is_edit': isEdit,
+      'is_onprogress_po': isOnprogressPo,
+      'user_id': userId,
+      'canvas_file': canvasFile,
+      'canvas_image': canvasImage,
+      'convert_date': convertDate,
+      'split_date': splitDate,
+      'merge_date': mergeDate,
+      'gudang_id': gudangId,
+      'id_rak': idRak,
+      'frozen_at': frozenAt,
+      'frozen_by': frozenBy,
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+    };
+  }
+}
+
 // Rak model
 class Rak {
   final int id;
@@ -48,6 +181,16 @@ int _parseToInt(dynamic value) {
   return 0;
 }
 
+double _parseToDouble(dynamic value) {
+  if (value == null) return 0.0;
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  if (value is String) {
+    return double.tryParse(value) ?? 0.0;
+  }
+  return 0.0;
+}
+
 class PenerimaanBarangDetail {
   final int id;
   final int idPenerimaanBarang;
@@ -56,6 +199,7 @@ class PenerimaanBarangDetail {
   final int qty;
   final int? idPurchaseOrderItem;
   final int? idStockMutationDetail;
+  final ItemBarang? itemBarang;
   final Rak? rak;
 
   PenerimaanBarangDetail({
@@ -66,6 +210,7 @@ class PenerimaanBarangDetail {
     required this.qty,
     this.idPurchaseOrderItem,
     this.idStockMutationDetail,
+    this.itemBarang,
     this.rak,
   });
 
@@ -78,6 +223,7 @@ class PenerimaanBarangDetail {
       qty: _parseToInt(map['qty']),
       idPurchaseOrderItem: map['id_purchase_order_item'] != null ? _parseToInt(map['id_purchase_order_item']) : null,
       idStockMutationDetail: map['id_stock_mutation_detail'] != null ? _parseToInt(map['id_stock_mutation_detail']) : null,
+      itemBarang: _parseItemBarang(map['item_barang']),
       rak: _parseRak(map['rak']),
     );
   }
@@ -91,8 +237,21 @@ class PenerimaanBarangDetail {
       'qty': qty,
       'id_purchase_order_item': idPurchaseOrderItem,
       'id_stock_mutation_detail': idStockMutationDetail,
+      'item_barang': itemBarang?.toMap(),
       'rak': rak?.toMap(),
     };
+  }
+
+  static ItemBarang? _parseItemBarang(dynamic itemBarang) {
+    try {
+      if (itemBarang is Map<String, dynamic>) {
+        return ItemBarang.fromMap(itemBarang);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error parsing item_barang: $e');
+      return null;
+    }
   }
 
   static Rak? _parseRak(dynamic rak) {
@@ -112,11 +271,19 @@ class PurchaseOrder {
   final int id;
   final String nomorPo;
   final String tanggalPo;
+  final int? idSupplier;
+  final String? tanggalPenerimaan;
+  final String? status;
+  final double? totalHarga;
 
   PurchaseOrder({
     required this.id,
     required this.nomorPo,
     required this.tanggalPo,
+    this.idSupplier,
+    this.tanggalPenerimaan,
+    this.status,
+    this.totalHarga,
   });
 
   factory PurchaseOrder.fromMap(Map<String, dynamic> map) {
@@ -124,6 +291,10 @@ class PurchaseOrder {
       id: _parseToInt(map['id']),
       nomorPo: map['nomor_po'] ?? '',
       tanggalPo: map['tanggal_po'] ?? '',
+      idSupplier: map['id_supplier'] != null ? _parseToInt(map['id_supplier']) : null,
+      tanggalPenerimaan: map['tanggal_penerimaan'],
+      status: map['status'],
+      totalHarga: map['total_harga'] != null ? _parseToDouble(map['total_harga']) : null,
     );
   }
 
@@ -132,6 +303,10 @@ class PurchaseOrder {
       'id': id,
       'nomor_po': nomorPo,
       'tanggal_po': tanggalPo,
+      'id_supplier': idSupplier,
+      'tanggal_penerimaan': tanggalPenerimaan,
+      'status': status,
+      'total_harga': totalHarga,
     };
   }
 }
@@ -168,18 +343,28 @@ class GudangPenerimaan {
   final int id;
   final String namaGudang;
   final String kode;
+  final String? kodeGudang;
+  final String? alamat;
+  final String? tipeGudang;
 
   GudangPenerimaan({
     required this.id,
     required this.namaGudang,
     required this.kode,
+    this.kodeGudang,
+    this.alamat,
+    this.tipeGudang,
   });
 
   factory GudangPenerimaan.fromMap(Map<String, dynamic> map) {
     return GudangPenerimaan(
       id: _parseToInt(map['id']),
       namaGudang: map['nama_gudang'] ?? '',
-      kode: map['kode'] ?? '',
+      // Support both old 'kode' and new 'kode_gudang' for backward compatibility
+      kode: map['kode'] ?? map['kode_gudang'] ?? '',
+      kodeGudang: map['kode_gudang'],
+      alamat: map['alamat'],
+      tipeGudang: map['tipe_gudang'],
     );
   }
 
@@ -188,6 +373,9 @@ class GudangPenerimaan {
       'id': id,
       'nama_gudang': namaGudang,
       'kode': kode,
+      'kode_gudang': kodeGudang,
+      'alamat': alamat,
+      'tipe_gudang': tipeGudang,
     };
   }
 }
@@ -513,8 +701,16 @@ class PenerimaanBarangResponse {
   });
 
   factory PenerimaanBarangResponse.fromMap(Map<String, dynamic> map) {
+    // Handle both old format (success: boolean) and new format (status: "success")
+    bool isSuccess = false;
+    if (map.containsKey('success')) {
+      isSuccess = map['success'] ?? false;
+    } else if (map.containsKey('status')) {
+      isSuccess = map['status'] == 'success';
+    }
+    
     return PenerimaanBarangResponse(
-      success: map['success'] ?? false,
+      success: isSuccess,
       message: map['message'] ?? '',
       data: PenerimaanBarang.fromMap(map['data'] ?? {}),
     );
