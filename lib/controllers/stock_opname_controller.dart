@@ -36,6 +36,12 @@ class StockOpnameController extends ChangeNotifier {
   StockOpname? _currentStockOpname;
   bool _isLoadingStockOpname = false;
 
+  // Rak State
+  int? _currentRakId;
+  String _currentRakKode = '';
+  String _currentRakNama = '';
+  bool _isLoadingRak = false;
+
   // Getters
   bool get isLoadingLocation => _isLoadingLocation;
   bool get isLoadingWarehouses => _isLoadingWarehouses;
@@ -59,6 +65,12 @@ class StockOpnameController extends ChangeNotifier {
   Map<int, double> get stockFisikMap => _stockFisikMap;
   StockOpname? get currentStockOpname => _currentStockOpname;
   bool get isLoadingStockOpname => _isLoadingStockOpname;
+  
+  // Rak Getters
+  int? get currentRakId => _currentRakId;
+  String get currentRakKode => _currentRakKode;
+  String get currentRakNama => _currentRakNama;
+  bool get isLoadingRak => _isLoadingRak;
 
   StockOpnameController() {
     _initialize();
@@ -562,9 +574,10 @@ class StockOpnameController extends ChangeNotifier {
           _isLoadingItems = false;
         });
       }
-      debugPrint('Error loading item barang: $e');
     }
   }
+
+
 
   /// Create stock opname with freeze/unfreeze option
   Future<Map<String, dynamic>?> _createStockOpname({
@@ -1367,11 +1380,127 @@ class StockOpnameController extends ChangeNotifier {
   }
 
   /// Add detail stock opname
+  // --- Rak Management Methods ---
+
+  void setRak(int id, String kode, String nama) {
+    _currentRakId = id;
+    _currentRakKode = kode;
+    _currentRakNama = nama;
+    notifyListeners();
+  }
+
+  void clearRak() {
+    _currentRakId = null;
+    _currentRakKode = '';
+    _currentRakNama = '';
+    notifyListeners();
+  }
+
+  Future<void> fetchRakByCode(String codeOrId) async {
+    final code = codeOrId.trim();
+    if (code.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingRak = true;
+      _errorMessage = '';
+    });
+
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        throw Exception('Token autentikasi tidak ditemukan. Silakan login kembali.');
+      }
+
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final url = Uri.parse('$baseUrl/api/rak/search-by-kode');
+
+      debugPrint('Fetch RAK URL: $url');
+      debugPrint('Searching for RAK with kode: $code');
+      
+      final requestBody = {'kode': code};
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode(requestBody),
+      );
+
+      debugPrint('Fetch RAK status: ${response.statusCode}');
+      debugPrint('Fetch RAK body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['success'] == true) {
+          final rakData = jsonData['data'];
+          
+          // Verify if rak belongs to selected warehouse if warehouse is selected
+          if (_selectedWarehouse.isNotEmpty) {
+            // Find selected warehouse ID
+            try {
+              final selectedGudang = _warehouses.firstWhere(
+                (g) => g.namaGudang == _selectedWarehouse,
+              );
+              
+              if (rakData['gudang_id'] != null && rakData['gudang_id'] != selectedGudang.id) {
+                throw Exception('Rak ini bukan milik gudang yang dipilih ($_selectedWarehouse). Rak ini milik gudang: ${rakData['gudang']?['nama_gudang'] ?? 'Lainnya'}');
+              }
+            } catch (e) {
+              debugPrint('Warning verifying rak warehouse: $e');
+              // Continue anyway if verification fails but rak found
+            }
+          }
+          
+          setRak(
+            rakData['id'],
+            rakData['kode'] ?? '',
+            rakData['nama_rak'] ?? '',
+          );
+        } else {
+          // Handle error response with success: false
+          final errorMessage = jsonData['message'] ?? 'Rak tidak ditemukan';
+          throw Exception(errorMessage);
+        }
+      } else if (response.statusCode == 404) {
+        throw Exception('Rak dengan kode "$code" tidak ditemukan');
+      } else if (response.statusCode == 401) {
+        throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
+      } else {
+        throw Exception('Gagal memuat data rak: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error fetching RAK by code: $e');
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      });
+      rethrow;
+    } finally {
+      setState(() {
+        _isLoadingRak = false;
+      });
+    }
+  }
+
+  // --- End Rak Management Methods ---
+
   Future<Map<String, dynamic>> addDetailStockOpname({
     required ItemBarang item,
     required int stokFisik,
     String? catatan,
   }) async {
+    // Validate Rak selection first
+    if (_currentRakId == null) {
+      return {
+        'success': false,
+        'message': 'Silakan scan rak terlebih dahulu sebelum input stok fisik.',
+      };
+    }
+
     try {
       // Check if stock opname ID exists
       if (_currentStockOpnameId == null) {
@@ -1400,6 +1529,7 @@ class StockOpnameController extends ChangeNotifier {
       final Map<String, dynamic> requestBody = {
         'kode_barang': item.kodeBarang,
         'stok_fisik': stokFisik,
+        'id_rak': _currentRakId, // Send selected rak ID
       };
 
       // Add catatan if provided
@@ -1469,12 +1599,6 @@ class StockOpnameController extends ChangeNotifier {
         };
       } else if (response.statusCode == 422) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
-        // Handle validation errors including:
-        // - Item barang sudah ada di detail stock opname ini
-        // - Barang tidak berada di gudang stock opname
-        // - Barang tidak memiliki gudang yang ditetapkan
-        // - Stok sistem wajib diisi karena item barang dalam status beku
-        // - Other validation errors
         return {
           'success': false,
           'message': jsonData['message'] ?? 'Validasi gagal. Pastikan barang berada di gudang yang sama dengan stock opname.',

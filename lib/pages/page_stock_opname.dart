@@ -204,7 +204,7 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
       builder: (context, child) {
         return Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
+            decoration: BoxDecoration(
             color: Colors.grey[900],
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.grey[800]!),
@@ -350,6 +350,98 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                   ),
                 ),
               ),
+
+              // --- RAK SECTION ---
+              // Only show if Opname has started/frozen
+              if (_controller.opnameStarted || _controller.stockFrozen) ...[
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Icon(Icons.shelves, color: Colors.purple[400], size: 24),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Lokasi Rak',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                
+                if (_controller.isLoadingRak)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Memuat data rak...',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[850],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _controller.currentRakId != null 
+                            ? Colors.purple[700]! 
+                            : Colors.red[900]!,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _controller.currentRakId != null ? 'Rak Aktif:' : 'Rak Belum Dipilih:',
+                                style: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _controller.currentRakId != null 
+                                    ? '${_controller.currentRakNama} (${_controller.currentRakKode})' 
+                                    : 'Wajib scan rak sebelum scan barang',
+                                style: TextStyle(
+                                  color: _controller.currentRakId != null ? Colors.white : Colors.red[300],
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: _navigateToScanRak,
+                          icon: const Icon(Icons.qr_code_scanner, size: 18),
+                          label: Text(_controller.currentRakId != null ? 'Ganti' : 'Scan'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.purple[600],
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
               
               // Only show location-related errors in this section
               if (_controller.errorMessage.isNotEmpty && 
@@ -1251,7 +1343,60 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
     );
   }
 
+  void _navigateToScanRak() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => QRScanPage(
+          isRack: true,
+          onScanResult: (scannedCode) {
+            _handleRakScanResult(scannedCode);
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleRakScanResult(String scannedCode) async {
+    try {
+      if (scannedCode.isEmpty) return;
+      
+      await _controller.fetchRakByCode(scannedCode);
+      
+      if (mounted) {
+        if (_controller.currentRakId != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Rak berhasil dipilih: ${_controller.currentRakNama}'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _showScanBarangDialog(BuildContext context) {
+    // Validate Rak selection first
+    if (_controller.currentRakId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silakan scan rak terlebih dahulu sebelum scan barang'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     // Save the context from StockOpnamePage
     final stockOpnameContext = context;
     
