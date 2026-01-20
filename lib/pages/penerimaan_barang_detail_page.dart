@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/penerimaan_barang_model.dart';
 import '../controllers/penerimaan_barang_list_controller.dart';
@@ -41,7 +42,24 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
         _error = null;
       });
 
+      debugPrint('🔍 Fetching detail for ID: ${widget.penerimaanBarang.id}');
       final detailData = await _controller.getPenerimaanBarangById(widget.penerimaanBarang.id);
+      
+      debugPrint('📦 Detail data received: ${detailData != null ? "YES" : "NULL"}');
+      if (detailData != null) {
+        debugPrint('📊 Number of details: ${detailData.penerimaanBarangDetails.length}');
+        if (detailData.penerimaanBarangDetails.isNotEmpty) {
+          final firstDetail = detailData.penerimaanBarangDetails.first;
+          debugPrint('🔧 First detail - Item ID: ${firstDetail.idItemBarang}');
+          debugPrint('🔧 First detail - Has itemBarang: ${firstDetail.itemBarang != null}');
+          if (firstDetail.itemBarang != null) {
+            debugPrint('✅ ItemBarang kode: ${firstDetail.itemBarang!.kodeBarang}');
+            debugPrint('✅ ItemBarang nama: ${firstDetail.itemBarang!.namaItemBarang}');
+          } else {
+            debugPrint('❌ itemBarang is NULL!');
+          }
+        }
+      }
       
       if (mounted) {
         setState(() {
@@ -52,6 +70,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
         });
       }
     } catch (e) {
+      debugPrint('❌ Error fetching detail: $e');
       if (mounted) {
         setState(() {
           _error = e.toString();
@@ -631,36 +650,67 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                penerimaanBarang.urlFoto!,
-                width: double.infinity,
-                height: 200,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 200,
-                    color: Colors.grey[800],
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: Colors.red[400],
-                          size: 48,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Gagal memuat gambar',
-                          style: TextStyle(
-                            color: Colors.red[400],
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+              child: _buildPhotoWidget(penerimaanBarang.urlFoto!),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhotoWidget(String urlFoto) {
+    try {
+      // Check if it's a base64 data URI
+      if (urlFoto.startsWith('data:image')) {
+        // Extract base64 string from data URI
+        final base64String = urlFoto.split(',').last;
+        final bytes = base64Decode(base64String);
+        
+        return Image.memory(
+          bytes,
+          width: double.infinity,
+          height: 200,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildPhotoError();
+          },
+        );
+      } else {
+        // Regular network URL
+        return Image.network(
+          urlFoto,
+          width: double.infinity,
+          height: 200,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildPhotoError();
+          },
+        );
+      }
+    } catch (e) {
+      debugPrint('Error loading photo: $e');
+      return _buildPhotoError();
+    }
+  }
+
+  Widget _buildPhotoError() {
+    return Container(
+      height: 200,
+      color: Colors.grey[800],
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            color: Colors.red[400],
+            size: 48,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Gagal memuat gambar',
+            style: TextStyle(
+              color: Colors.red[400],
+              fontSize: 14,
             ),
           ),
         ],
@@ -963,7 +1013,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        '${itemBarang.sisaLuas} m²',
+                                        '${itemBarang.sisaLuas} mm²',
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 12,
