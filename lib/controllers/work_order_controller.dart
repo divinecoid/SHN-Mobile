@@ -190,14 +190,9 @@ class WorkOrderController extends ChangeNotifier {
     switch (status.toLowerCase()) {
       case 'pending':
         return Colors.orange[400]!;
-      case 'planning':
-        return Colors.orange[400]!;
-      case 'actual':
-      case 'on progress':
-        return Colors.blue[400]!;
-      case 'selesai':
+      case 'complete':
         return Colors.green[400]!;
-      case 'cancelled':
+      case 'cancel':
         return Colors.red[400]!;
       default:
         return Colors.grey[400]!;
