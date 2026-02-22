@@ -716,3 +716,87 @@ class PenerimaanBarangResponse {
     );
   }
 }
+
+class PenerimaanBarangNonPoSubmitRequest {
+  final int gudangId;
+  final String? catatan;
+  final String? buktiFoto; // base64 string
+  final List<DetailBarangNonPo> detailBarang;
+
+  PenerimaanBarangNonPoSubmitRequest({
+    required this.gudangId,
+    this.catatan,
+    this.buktiFoto,
+    required this.detailBarang,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'gudang_id': gudangId,
+      'catatan': catatan,
+      'bukti_foto': buktiFoto,
+      'detail_barang': detailBarang.map((detail) => detail.toMap()).toList(),
+    };
+  }
+}
+
+class DetailBarangNonPo {
+  final int? itemBarangGroupId;
+  final int? jenisBarangId;
+  final int? bentukBarangId;
+  final int? gradeBarangId;
+  final String? panjang;
+  final String? lebar;
+  final String? tebal;
+  final String? diameterLuar;
+  final String? diameterDalam;
+  final String? diameter;
+  final String? sisi1;
+  final String? sisi2;
+  final int qty;
+  final String tipeTerima; // "bundle" or "satuan"
+  final int idRak;
+
+  DetailBarangNonPo({
+    this.itemBarangGroupId,
+    this.jenisBarangId,
+    this.bentukBarangId,
+    this.gradeBarangId,
+    this.panjang,
+    this.lebar,
+    this.tebal,
+    this.diameterLuar,
+    this.diameterDalam,
+    this.diameter,
+    this.sisi1,
+    this.sisi2,
+    required this.qty,
+    required this.tipeTerima,
+    required this.idRak,
+  });
+
+  Map<String, dynamic> toMap() {
+    final map = {
+      'item_barang_group_id': itemBarangGroupId,
+      'qty': qty,
+      'tipe_terima': tipeTerima,
+      'id_rak': idRak,
+    };
+
+    if (itemBarangGroupId == null) {
+      map['jenis_barang_id'] = jenisBarangId;
+      map['bentuk_barang_id'] = bentukBarangId;
+      map['grade_barang_id'] = gradeBarangId;
+      if (panjang != null) map['panjang'] = panjang;
+      if (lebar != null) map['lebar'] = lebar;
+      if (tebal != null) map['tebal'] = tebal;
+      if (diameterLuar != null) map['diameter_luar'] = diameterLuar;
+      if (diameterDalam != null) map['diameter_dalam'] = diameterDalam;
+      if (diameter != null) map['diameter'] = diameter;
+      if (sisi1 != null) map['sisi1'] = sisi1;
+      if (sisi2 != null) map['sisi2'] = sisi2;
+    }
+
+    return map;
+  }
+}

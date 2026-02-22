@@ -8,6 +8,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/gudang_model.dart';
 import '../models/penerimaan_barang_model.dart';
+import '../models/item_barang_group_model.dart';
+import '../models/ref_jenis_barang_model.dart';
+import '../models/ref_bentuk_barang_model.dart';
+import '../models/ref_grade_barang_model.dart';
 import '../controllers/penerimaan_barang_list_controller.dart';
 
 class InputPenerimaanBarangController extends ChangeNotifier {
@@ -43,6 +47,16 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   // Loading state
   bool _isSubmitting = false;
 
+  // --- NON-PO STATE ---
+  List<DetailBarangNonPo> _nonPoDetails = [];
+  List<ItemBarangGroup> _itemBarangGroups = [];
+  List<RefJenisBarang> _jenisBarangList = [];
+  List<RefBentukBarang> _bentukBarangList = [];
+  List<RefGradeBarang> _gradeBarangList = [];
+  
+  bool _isLoadingRefData = false;
+  bool _isSearchingGroups = false;
+
   // Getters
   String get selectedOrigin => _selectedOrigin;
   int? get selectedGudangId => _selectedGudangId;
@@ -60,6 +74,15 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   int? get selectedRakId => _selectedRakId;
   String get selectedRakKode => _selectedRakKode;
   String get selectedRakNama => _selectedRakNama;
+
+  // Non-PO Getters
+  List<DetailBarangNonPo> get nonPoDetails => _nonPoDetails;
+  List<ItemBarangGroup> get itemBarangGroups => _itemBarangGroups;
+  List<RefJenisBarang> get jenisBarangList => _jenisBarangList;
+  List<RefBentukBarang> get bentukBarangList => _bentukBarangList;
+  List<RefGradeBarang> get gradeBarangList => _gradeBarangList;
+  bool get isLoadingRefData => _isLoadingRefData;
+  bool get isSearchingGroups => _isSearchingGroups;
 
   @override
   void dispose() {
@@ -91,14 +114,9 @@ class InputPenerimaanBarangController extends ChangeNotifier {
         throw Exception('Token autentikasi tidak ditemukan. Silakan login kembali.');
       }
 
-      // Get base URL and endpoint from environment
       final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
-      final gudangEndpoint = '/api/gudang';
-      final url = Uri.parse('$baseUrl$gudangEndpoint');
+      final url = Uri.parse('$baseUrl/api/gudang');
       
-      // Debug: Print URL being used
-      debugPrint('Gudang API URL: $url');
-
       final response = await http.get(
         url,
         headers: {
@@ -108,10 +126,6 @@ class InputPenerimaanBarangController extends ChangeNotifier {
         },
       );
       
-      // Debug: Print response details
-      debugPrint('Gudang Response Status Code: ${response.statusCode}');
-      debugPrint('Gudang Response Body: ${response.body}');
-
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
         final gudangResult = GudangResult.fromMap(jsonData);
@@ -129,7 +143,6 @@ class InputPenerimaanBarangController extends ChangeNotifier {
       }
     } catch (e) {
       _gudangError = 'Gagal memuat data gudang: $e';
-      debugPrint('Error loading gudang list: $e');
     } finally {
       _isLoadingGudang = false;
       notifyListeners();
@@ -145,9 +158,12 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   // Origin methods
   void setSelectedOrigin(String origin) {
     _selectedOrigin = origin;
-    _scannedNumber = ''; // Reset scanned number when origin changes
+    _scannedNumber = ''; 
     _scannedDokumen = null;
     _scannedItems = [];
+    if (origin == 'nonpo' && _jenisBarangList.isEmpty) {
+      fetchReferenceData();
+    }
     notifyListeners();
   }
 
@@ -178,8 +194,6 @@ class InputPenerimaanBarangController extends ChangeNotifier {
         url = Uri.parse('$baseUrl/api/stock-mutation/scan-nomor-mutasi/$nomor');
       }
 
-      debugPrint('Scan nomor URL: $url');
-
       final response = await http.get(
         url,
         headers: {
@@ -188,9 +202,6 @@ class InputPenerimaanBarangController extends ChangeNotifier {
           'Accept': 'application/json',
         },
       );
-
-      debugPrint('Scan nomor status: ${response.statusCode}');
-      debugPrint('Scan nomor body: ${response.body}');
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body) as Map<String, dynamic>;
@@ -215,9 +226,100 @@ class InputPenerimaanBarangController extends ChangeNotifier {
         throw Exception('Gagal memuat data: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('Error fetching dokumen by number: $e');
       rethrow;
     }
+  }
+
+  // --- SEARCH GROUP METHODS ---
+  Future<void> searchGroups(String query) async {
+    if (query.length < 2) return;
+    
+    _isSearchingGroups = true;
+    notifyListeners();
+
+    try {
+      final token = await _getAuthToken();
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final url = Uri.parse('$baseUrl/api/item-barang/group?search=$query');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        final List data = jsonData['data'] ?? [];
+        _itemBarangGroups = data.map((e) => ItemBarangGroup.fromJson(e)).toList();
+      }
+    } catch (e) {
+       debugPrint('Error searching groups: $e');
+    } finally {
+      _isSearchingGroups = false;
+      notifyListeners();
+    }
+  }
+
+  // --- FETCH REFERENCE DATA ---
+  Future<void> fetchReferenceData() async {
+    _isLoadingRefData = true;
+    notifyListeners();
+
+    try {
+      final token = await _getAuthToken();
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      };
+
+      // Fetch parallelly
+      final futures = [
+        http.get(Uri.parse('$baseUrl/api/jenis-barang'), headers: headers),
+        http.get(Uri.parse('$baseUrl/api/bentuk-barang'), headers: headers),
+        http.get(Uri.parse('$baseUrl/api/grade-barang'), headers: headers),
+      ];
+
+      final responses = await Future.wait(futures);
+
+      if (responses[0].statusCode == 200) {
+        final body = json.decode(responses[0].body);
+        final List data = body['data'] ?? [];
+        _jenisBarangList = data.map((e) => RefJenisBarang.fromJson(e)).toList();
+      }
+
+      if (responses[1].statusCode == 200) {
+        final body = json.decode(responses[1].body);
+        final List data = body['data'] ?? [];
+        _bentukBarangList = data.map((e) => RefBentukBarang.fromJson(e)).toList();
+      }
+
+      if (responses[2].statusCode == 200) {
+        final body = json.decode(responses[2].body);
+        final List data = body['data'] ?? [];
+        _gradeBarangList = data.map((e) => RefGradeBarang.fromJson(e)).toList();
+      }
+    } catch (e) {
+      debugPrint('Error fetching ref data: $e');
+    } finally {
+      _isLoadingRefData = false;
+      notifyListeners();
+    }
+  }
+
+  // --- NON-PO DETAIL METHODS ---
+  void addNonPoDetail(DetailBarangNonPo detail) {
+    _nonPoDetails.add(detail);
+    notifyListeners();
+  }
+
+  void removeNonPoDetail(int index) {
+    _nonPoDetails.removeAt(index);
+    notifyListeners();
   }
 
   // Image methods
@@ -245,7 +347,7 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Details methods
+  // Details methods (Batch for PO/Mutation)
   void addDetail(int idItemBarang, int idRak, int qty) {
     _details.add(PenerimaanBarangDetailInput(
       idItemBarang: idItemBarang,
@@ -286,7 +388,7 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     _selectedRakId = rakId;
     _selectedRakKode = rakKode;
     _selectedRakNama = rakNama;
-    rakController.text = rakKode; // Update text field
+    rakController.text = rakKode; 
     notifyListeners();
   }
 
@@ -298,30 +400,16 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Fetch RAK by code using POST endpoint
+  // Fetch RAK by code
   Future<void> fetchRakByCode(String codeOrId) async {
     final code = codeOrId.trim();
-    if (code.isEmpty) {
-      return;
-    }
+    if (code.isEmpty) return;
 
     try {
       final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('Token autentikasi tidak ditemukan. Silakan login kembali.');
-      }
-
       final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
       final url = Uri.parse('$baseUrl/api/rak/search-by-kode');
       
-      final requestBody = {'kode': code};
-
-      debugPrint('=== FETCH RAK DEBUG ===');
-      debugPrint('URL: $url');
-      debugPrint('Kode yang dicari: "$code"');
-      debugPrint('Request body: ${json.encode(requestBody)}');
-      debugPrint('Token (first 20 chars): ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
-
       final response = await http.post(
         url,
         headers: {
@@ -329,150 +417,107 @@ class InputPenerimaanBarangController extends ChangeNotifier {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: json.encode(requestBody),
+        body: json.encode({'kode': code}),
       );
-
-      debugPrint('Response status: ${response.statusCode}');
-      debugPrint('Response body: ${response.body}');
-      debugPrint('======================');
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        debugPrint('Parsed JSON success: ${jsonData['success']}');
-        
         if (jsonData['success'] == true) {
           final rakData = jsonData['data'];
-          debugPrint('Rak found - ID: ${rakData['id']}, Kode: ${rakData['kode']}, Nama: ${rakData['nama_rak']}');
-          setRak(
-            rakData['id'],
-            rakData['kode'] ?? '',
-            rakData['nama_rak'] ?? '',
-          );
+          setRak(rakData['id'], rakData['kode'] ?? '', rakData['nama_rak'] ?? '');
         } else {
-          // Handle error response with success: false
-          final errorMessage = jsonData['message'] ?? 'Rak tidak ditemukan';
-          debugPrint('API returned success=false: $errorMessage');
-          throw Exception(errorMessage);
+          throw Exception(jsonData['message'] ?? 'Rak tidak ditemukan');
         }
-      } else if (response.statusCode == 404) {
-        debugPrint('404 Not Found');
-        throw Exception('Rak dengan kode "$code" tidak ditemukan');
-      } else if (response.statusCode == 401) {
-        debugPrint('401 Unauthorized');
-        throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
       } else {
-        debugPrint('Unexpected status code: ${response.statusCode}');
-        throw Exception('Gagal memuat data rak: ${response.statusCode}');
+         throw Exception('Gagal memuat data rak: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('ERROR in fetchRakByCode: $e');
       rethrow;
     }
   }
 
-  // Validation methods
+  // Validation
   String? validateForm() {
-    if (_scannedNumber.isEmpty) {
-      return 'Scan ${_selectedOrigin == 'purchaseorder' ? 'Nomor PO' : 'Nomor Mutasi'} terlebih dahulu';
-    }
+    if (_selectedGudangId == null) return 'Pilih gudang terlebih dahulu';
+    if (_selectedImage == null) return 'Upload bukti foto terlebih dahulu';
 
-    if (_selectedGudangId == null) {
-      return 'Pilih gudang terlebih dahulu';
+    if (_selectedOrigin != 'nonpo') {
+      if (_scannedNumber.isEmpty) return 'Scan Nomor PO/Mutasi terlebih dahulu';
+      if (_selectedRakId == null) return 'Scan RAK terlebih dahulu';
+    } else {
+      if (_nonPoDetails.isEmpty) return 'Tambah minimal satu detail barang';
     }
-
-    if (_selectedRakId == null) {
-      return 'Scan RAK terlebih dahulu';
-    }
-
-    if (_selectedImage == null) {
-      return 'Upload bukti foto terlebih dahulu';
-    }
-
     return null;
   }
 
-  // Check if all items are scanned
   bool areAllItemsScanned() {
-    if (_scannedItems.isEmpty) return true; // No items to scan
+    if (_selectedOrigin == 'nonpo') return true;
+    if (_scannedItems.isEmpty) return true;
     return _scannedBarcodes.length == _scannedItems.length;
   }
 
-  // Get count of scanned vs total items
   String getScanProgress() {
+    if (_selectedOrigin == 'nonpo') return '${_nonPoDetails.length} items';
     if (_scannedItems.isEmpty) return '0/0';
     return '${_scannedBarcodes.length}/${_scannedItems.length}';
   }
 
-  // Submit method
+  // Submit
   Future<bool> submitForm() async {
     final validationError = validateForm();
-    if (validationError != null) {
-      throw Exception(validationError);
-    }
+    if (validationError != null) throw Exception(validationError);
 
     _isSubmitting = true;
     notifyListeners();
 
     try {
       final token = await _getAuthToken();
-      if (token == null) {
-        throw Exception('Token autentikasi tidak ditemukan. Silakan login kembali.');
-      }
-
-      // Convert image to base64
+      
       String? base64Image;
       if (_selectedImage != null) {
-        try {
-          debugPrint('Converting image to base64...');
-          debugPrint('Image path: ${_selectedImage!.path}');
-          final bytes = await _selectedImage!.readAsBytes();
-          debugPrint('Image size: ${bytes.length} bytes');
-          base64Image = base64Encode(bytes);
-          debugPrint('Base64 length: ${base64Image.length} characters');
-        } catch (e) {
-          debugPrint('Error converting image to base64: $e');
-          throw Exception('Gagal mengkonversi gambar: $e');
-        }
-      } else {
-        debugPrint('No image selected');
+        final bytes = await _selectedImage!.readAsBytes();
+        base64Image = base64Encode(bytes);
       }
 
-      // Build detail barang from scanned items
-      debugPrint('Building detail barang from ${_scannedItems.length} scanned items');
-      debugPrint('Scanned barcodes: $_scannedBarcodes');
-      
-      final detailBarang = _scannedItems.map((item) {
-        final isScanned = _scannedBarcodes.contains(item.kodeBarang);
-        final detail = DetailBarangSubmit(
-          id: item.itemBarangId ?? 0, // Use item_barang_id instead of id
-          kode: item.kodeBarang ?? '',
-          namaItem: 'Item ${item.itemBarangId ?? 0}', // Use item_barang_id for display
-          ukuran: '${item.panjang ?? '0'} x ${item.lebar ?? '0'} x ${item.tebal ?? '0'}',
-          qty: item.qty ?? item.quantity ?? 1,
-          statusScan: isScanned ? 'Terscan' : 'Belum Terscan',
-          idRak: _selectedRakId!, // Batch assign same RAK to all items
-        );
-        debugPrint('Detail item: ${detail.toMap()}');
-        return detail;
-      }).toList();
-      
-      debugPrint('Total detail barang: ${detailBarang.length}');
-
-      final request = PenerimaanBarangSubmitRequest(
-        asalPenerimaan: _selectedOrigin,
-        nomorPo: _selectedOrigin == 'purchaseorder' ? _scannedNumber : null,
-        nomorMutasi: _selectedOrigin == 'stockmutation' ? _scannedNumber : null,
-        gudangId: _selectedGudangId!,
-        catatan: catatanController.text.trim(),
-        buktiFoto: base64Image,
-        detailBarang: detailBarang,
-      );
-
       final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
-      final url = Uri.parse('$baseUrl/api/penerimaan-barang');
+      late final Uri url;
+      late final Map<String, dynamic> body;
 
-      debugPrint('Submit URL: $url');
-      debugPrint('Request body: ${json.encode(request.toMap())}');
+      if (_selectedOrigin == 'nonpo') {
+        url = Uri.parse('$baseUrl/api/penerimaan-barang/non-po');
+        final request = PenerimaanBarangNonPoSubmitRequest(
+          gudangId: _selectedGudangId!,
+          catatan: catatanController.text.trim(),
+          buktiFoto: base64Image,
+          detailBarang: _nonPoDetails,
+        );
+        body = request.toMap();
+      } else {
+        url = Uri.parse('$baseUrl/api/penerimaan-barang');
+        final detailBarang = _scannedItems.map((item) {
+          final isScanned = _scannedBarcodes.contains(item.kodeBarang);
+          return DetailBarangSubmit(
+            id: item.itemBarangId ?? 0,
+            kode: item.kodeBarang ?? '',
+            namaItem: 'Item ${item.itemBarangId ?? 0}',
+            ukuran: '${item.panjang ?? '0'} x ${item.lebar ?? '0'} x ${item.tebal ?? '0'}',
+            qty: item.qty ?? item.quantity ?? 1,
+            statusScan: isScanned ? 'Terscan' : 'Belum Terscan',
+            idRak: _selectedRakId!, 
+          );
+        }).toList();
+
+        final request = PenerimaanBarangSubmitRequest(
+          asalPenerimaan: _selectedOrigin,
+          nomorPo: _selectedOrigin == 'purchaseorder' ? _scannedNumber : null,
+          nomorMutasi: _selectedOrigin == 'stockmutation' ? _scannedNumber : null,
+          gudangId: _selectedGudangId!,
+          catatan: catatanController.text.trim(),
+          buktiFoto: base64Image,
+          detailBarang: detailBarang,
+        );
+        body = request.toMap();
+      }
 
       final response = await http.post(
         url,
@@ -481,59 +526,19 @@ class InputPenerimaanBarangController extends ChangeNotifier {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: json.encode(request.toMap()),
+        body: json.encode(body),
       );
 
-      debugPrint('Submit response status: ${response.statusCode}');
-      debugPrint('Submit response headers: ${response.headers}');
-      debugPrint('Submit response body: ${response.body}');
-
       if (response.statusCode == 200 || response.statusCode == 201) {
-        try {
-          final jsonData = json.decode(response.body) as Map<String, dynamic>;
-          debugPrint('Parsed response data: $jsonData');
-          
-          final success = jsonData['success'] == true;
-          if (!success) {
-            final errorMessage = jsonData['message'] ?? 'Gagal menyimpan data';
-            debugPrint('API returned success=false: $errorMessage');
-            throw Exception(errorMessage);
-          }
+        final jsonData = json.decode(response.body) as Map<String, dynamic>;
+        if (jsonData['success'] == true || jsonData['status'] == 'success') {
           return true;
-        } catch (e) {
-          debugPrint('Error parsing response JSON: $e');
-          debugPrint('Raw response body: ${response.body}');
-          throw Exception('Gagal memproses respons dari server: $e');
         }
-      } else if (response.statusCode == 401) {
-        debugPrint('Authentication error - status 401');
-        throw Exception('Sesi Anda telah berakhir. Silakan login kembali.');
-      } else if (response.statusCode == 422) {
-        debugPrint('Validation error - status 422');
-        try {
-          final jsonData = json.decode(response.body) as Map<String, dynamic>;
-          final errors = jsonData['errors'] ?? jsonData['message'] ?? 'Data tidak valid';
-          debugPrint('Validation errors: $errors');
-          throw Exception('Data tidak valid: $errors');
-        } catch (e) {
-          debugPrint('Error parsing validation response: $e');
-          throw Exception('Data tidak valid: ${response.body}');
-        }
-      } else if (response.statusCode == 500) {
-        debugPrint('Server error - status 500');
-        debugPrint('Server error response: ${response.body}');
-        throw Exception('Terjadi kesalahan pada server. Silakan coba lagi.');
+        throw Exception(jsonData['message'] ?? 'Gagal menyimpan data');
       } else {
-        debugPrint('Unexpected status code: ${response.statusCode}');
-        debugPrint('Response body: ${response.body}');
-        throw Exception('Gagal menyimpan data: ${response.statusCode} - ${response.body}');
+        throw Exception('Gagal menyimpan data: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('Error in submitForm: $e');
-      debugPrint('Error type: ${e.runtimeType}');
-      if (e is Exception) {
-        debugPrint('Exception details: ${e.toString()}');
-      }
       throw Exception('Gagal menyimpan data: $e');
     } finally {
       _isSubmitting = false;
@@ -541,7 +546,6 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     }
   }
 
-  // Reset form method
   void resetForm() {
     _selectedOrigin = 'purchaseorder';
     _selectedGudangId = null;
@@ -555,11 +559,13 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     _selectedRakId = null;
     _selectedRakKode = '';
     _selectedRakNama = '';
+    _nonPoDetails.clear();
     catatanController.clear();
     _gudangError = null;
     notifyListeners();
   }
 }
+
 
 // Models for scanned document
 class ScannedDokumenResult {

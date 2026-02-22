@@ -7,6 +7,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../controllers/input_penerimaan_barang_controller.dart';
 import '../models/gudang_model.dart';
+import '../models/penerimaan_barang_model.dart';
+import '../models/item_barang_group_model.dart';
+import '../models/ref_jenis_barang_model.dart';
+import '../models/ref_bentuk_barang_model.dart';
+import '../models/ref_grade_barang_model.dart';
+import '../models/tipe_barang_model.dart';
 import 'scan_barang_page.dart';
 import 'scan_rak_page.dart';
 import 'qr_scan_page.dart';
@@ -543,8 +549,16 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                 const SizedBox(height: 16),
 
                 // Scan Number Section
-                _buildScanNumberSection(),
-                const SizedBox(height: 16),
+                if (_controller.selectedOrigin != 'nonpo') ...[
+                  _buildScanNumberSection(),
+                  const SizedBox(height: 16),
+                ],
+
+                // Non-PO Add Item Section
+                if (_controller.selectedOrigin == 'nonpo') ...[
+                  _buildNonPoAddItemSection(),
+                  const SizedBox(height: 16),
+                ],
 
                 // Gudang Selection
                 _buildGudangSection(),
@@ -625,6 +639,10 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                   DropdownMenuItem<String>(
                     value: 'stockmutation',
                     child: Text('Stock Mutation'),
+                  ),
+                  DropdownMenuItem<String>(
+                    value: 'nonpo',
+                    child: Text('Non-PO'),
                   ),
                 ],
                 onChanged: (String? newValue) {
@@ -1206,6 +1224,10 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
   }
 
   Widget _buildDetailsSection() {
+    if (_controller.selectedOrigin == 'nonpo') {
+      return _buildNonPoDetailsSection();
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1482,7 +1504,162 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
     );
   }
 
+  Widget _buildNonPoAddItemSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[800]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.add_box, color: Colors.green[400], size: 24),
+              const SizedBox(width: 8),
+              const Text(
+                'Item Non-PO',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            onPressed: _showAddNonPoItemModal,
+            icon: const Icon(Icons.add),
+            label: const Text('Tambah Item Non-PO'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green[600],
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 45),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNonPoDetailsSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[800]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.list_alt, color: Colors.orange[400], size: 24),
+              const SizedBox(width: 8),
+              const Text(
+                'Daftar Item',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue[800],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${_controller.nonPoDetails.length} items',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_controller.nonPoDetails.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Belum ada item ditambahkan',
+                  style: TextStyle(color: Colors.grey[500]),
+                ),
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _controller.nonPoDetails.length,
+              itemBuilder: (context, index) {
+                final item = _controller.nonPoDetails[index];
+                return Card(
+                  color: Colors.grey[850],
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    title: Text(
+                      item.itemBarangGroupId != null 
+                        ? 'Item Group ID: ${item.itemBarangGroupId}' 
+                        : 'Custom Item (${item.tebal}x${item.lebar}x${item.panjang})',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Qty: ${item.qty} (${item.tipeTerima})', style: const TextStyle(color: Colors.grey)),
+                        Text('Rak ID: ${item.idRak}', style: const TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () {
+                        setState(() {
+                          _controller.removeNonPoDetail(index);
+                        });
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddNonPoItemModal() {
+    // This will be a complex modal
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _AddNonPoItemModal(
+        controller: _controller,
+        onAdd: (detail) {
+          setState(() {
+            _controller.addNonPoDetail(detail);
+          });
+        },
+      ),
+    );
+  }
+
   Widget _buildSubmitButton() {
+
     return SizedBox(
       width: double.infinity,
       height: 50,
@@ -1528,3 +1705,430 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
     );
   }
 }
+
+class _AddNonPoItemModal extends StatefulWidget {
+  final InputPenerimaanBarangController controller;
+  final Function(DetailBarangNonPo) onAdd;
+
+  const _AddNonPoItemModal({
+    required this.controller,
+    required this.onAdd,
+  });
+
+  @override
+  State<_AddNonPoItemModal> createState() => _AddNonPoItemModalState();
+}
+
+class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
+  bool _isManual = false;
+  
+  // Existing Group Selection
+  ItemBarangGroup? _selectedGroup;
+  Timer? _searchDebounce;
+
+  // Manual Selection
+  RefJenisBarang? _selectedJenis;
+  RefBentukBarang? _selectedBentuk;
+  RefGradeBarang? _selectedGrade;
+  
+  // Dimensions
+  final Map<String, TextEditingController> _dimControllers = {
+    'panjang': TextEditingController(),
+    'lebar': TextEditingController(),
+    'tebal': TextEditingController(),
+    'diameter_luar': TextEditingController(),
+    'diameter_dalam': TextEditingController(),
+    'diameter': TextEditingController(),
+    'sisi1': TextEditingController(),
+    'sisi2': TextEditingController(),
+  };
+
+  // Common
+  final TextEditingController _qtyController = TextEditingController(text: '1');
+  String _tipeTerima = 'satuan';
+  
+  // Rak
+  final TextEditingController _rakController = TextEditingController();
+  int? _selectedRakId;
+  String _selectedRakKode = '';
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _dimControllers.values.forEach((c) => c.dispose());
+    _qtyController.dispose();
+    _rakController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+      widget.controller.searchGroups(query).then((_) {
+        if (mounted) setState(() {});
+      });
+    });
+  }
+
+  Future<void> _scanRak() async {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => QRScanPage(
+          isRack: true,
+          onScanResult: (result) async {
+            try {
+              await widget.controller.fetchRakByCode(result);
+              if (mounted) {
+                setState(() {
+                  _selectedRakId = widget.controller.selectedRakId;
+                  _selectedRakKode = widget.controller.selectedRakKode;
+                  _rakController.text = _selectedRakKode;
+                });
+              }
+            } catch (e) {
+              if (mounted) {
+                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Rak tidak ditemukan: $e')));
+              }
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  void _submit() {
+    if (_isManual) {
+      if (_selectedJenis == null || _selectedBentuk == null || _selectedGrade == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Jenis, Bentuk, dan Grade harus dipilih')));
+        return;
+      }
+    } else {
+      if (_selectedGroup == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih Group Items terlebih dahulu')));
+        return;
+      }
+    }
+
+    if (_qtyController.text.isEmpty || int.tryParse(_qtyController.text) == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Qty tidak valid')));
+      return;
+    }
+
+    if (_selectedRakId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rak belum dipilih')));
+      return;
+    }
+
+    final detail = DetailBarangNonPo(
+      itemBarangGroupId: _isManual ? null : _selectedGroup!.id,
+      jenisBarangId: _isManual ? _selectedJenis!.id : null,
+      bentukBarangId: _isManual ? _selectedBentuk!.id : null,
+      gradeBarangId: _isManual ? _selectedGrade!.id : null,
+      panjang: _isManual ? _dimControllers['panjang']!.text : null,
+      lebar: _isManual ? _dimControllers['lebar']!.text : null,
+      tebal: _isManual ? _dimControllers['tebal']!.text : null,
+      diameterLuar: _isManual ? _dimControllers['diameter_luar']!.text : null,
+      diameterDalam: _isManual ? _dimControllers['diameter_dalam']!.text : null,
+      diameter: _isManual ? _dimControllers['diameter']!.text : null,
+      sisi1: _isManual ? _dimControllers['sisi1']!.text : null,
+      sisi2: _isManual ? _dimControllers['sisi2']!.text : null,
+      qty: int.parse(_qtyController.text),
+      tipeTerima: _tipeTerima,
+      idRak: _selectedRakId!,
+    );
+
+    widget.onAdd(detail);
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        top: 20,
+        left: 20,
+        right: 20,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Tambah Item Non-PO',
+                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.grey),
+                  onPressed: () => Navigator.pop(context),
+                )
+              ],
+            ),
+            const SizedBox(height: 20),
+            
+            // Toggle Manual / Group
+            Row(
+              children: [
+                Expanded(
+                  child: ChoiceChip(
+                    label: const Center(child: Text('Pilih Group Existing')),
+                    selected: !_isManual,
+                    onSelected: (val) => setState(() => _isManual = !val),
+                    selectedColor: Colors.blue[800],
+                    labelStyle: TextStyle(color: !_isManual ? Colors.white : Colors.grey),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ChoiceChip(
+                    label: const Center(child: Text('Input Manual')),
+                    selected: _isManual,
+                    onSelected: (val) => setState(() => _isManual = val),
+                    selectedColor: Colors.green[800],
+                    labelStyle: TextStyle(color: _isManual ? Colors.white : Colors.grey),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            _isManual ? _buildManualFlow() : _buildGroupFlow(),
+
+            const Divider(color: Colors.grey, height: 40),
+
+            // Common Fields
+            const Text('Kuantitas & Tipe', style: TextStyle(color: Colors.white70)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: TextFormField(
+                    controller: _qtyController,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Qty',
+                      labelStyle: TextStyle(color: Colors.grey),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 3,
+                  child: DropdownButtonFormField<String>(
+                    value: _tipeTerima,
+                    dropdownColor: Colors.grey[900],
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Tipe Terima',
+                      labelStyle: TextStyle(color: Colors.grey),
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'satuan', child: Text('Satuan')),
+                      DropdownMenuItem(value: 'bundle', child: Text('Bundle')),
+                    ],
+                    onChanged: (val) => setState(() => _tipeTerima = val!),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            // Rak Selection
+            const Text('Pilih Rak', style: TextStyle(color: Colors.white70)),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _rakController,
+              readOnly: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Scan Rak',
+                hintStyle: const TextStyle(color: Colors.grey),
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.qr_code_scanner, color: Colors.purple),
+                  onPressed: _scanRak,
+                ),
+              ),
+            ),
+            if (_selectedRakKode.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text('Terpilih: $_selectedRakKode', style: const TextStyle(color: Colors.green, fontSize: 12)),
+              ),
+            
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[600],
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              child: const Text('TAMBAHKAN KE DAFTAR'),
+            ),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGroupFlow() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          onChanged: _onSearchChanged,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Cari Nama Group (min. 2 huruf)',
+            hintStyle: TextStyle(color: Colors.grey),
+            prefixIcon: Icon(Icons.search, color: Colors.grey),
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (widget.controller.isSearchingGroups)
+          const LinearProgressIndicator(),
+        if (_selectedGroup != null)
+           Container(
+             margin: const EdgeInsets.only(top: 8),
+             padding: const EdgeInsets.all(12),
+             decoration: BoxDecoration(color: Colors.blue[900]!.withOpacity(0.3), borderRadius: BorderRadius.circular(8)),
+             child: Row(
+               children: [
+                 const Icon(Icons.check_circle, color: Colors.green),
+                 const SizedBox(width: 8),
+                 Expanded(child: Text(_selectedGroup!.namaGroupBarang, style: const TextStyle(color: Colors.white))),
+                 IconButton(icon: const Icon(Icons.close, color: Colors.white70), onPressed: () => setState(() => _selectedGroup = null))
+               ],
+             ),
+           ),
+        Container(
+          constraints: const BoxConstraints(maxHeight: 200),
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: widget.controller.itemBarangGroups.length,
+            itemBuilder: (context, index) {
+              final group = widget.controller.itemBarangGroups[index];
+              return ListTile(
+                title: Text(group.namaGroupBarang, style: const TextStyle(color: Colors.white)),
+                onTap: () => setState(() => _selectedGroup = group),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildManualFlow() {
+    final tipe = _selectedBentuk?.tipeBarang;
+    
+    return Column(
+      children: [
+        _buildDropdownRef<RefJenisBarang>(
+          label: 'Jenis Barang',
+          items: widget.controller.jenisBarangList,
+          value: _selectedJenis,
+          toString: (j) => j.namaJenis,
+          onChanged: (val) => setState(() => _selectedJenis = val),
+        ),
+        const SizedBox(height: 12),
+        _buildDropdownRef<RefBentukBarang>(
+          label: 'Bentuk Barang',
+          items: widget.controller.bentukBarangList,
+          value: _selectedBentuk,
+          toString: (b) => b.namaBentuk,
+          onChanged: (val) {
+            setState(() {
+              _selectedBentuk = val;
+              // Reset dimensions
+              _dimControllers.values.forEach((c) => c.clear());
+            });
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildDropdownRef<RefGradeBarang>(
+          label: 'Grade Barang',
+          items: widget.controller.gradeBarangList,
+          value: _selectedGrade,
+          toString: (g) => g.nama,
+          onChanged: (val) => setState(() => _selectedGrade = val),
+        ),
+        const SizedBox(height: 20),
+        
+        if (tipe != null) ...[
+          const Text('Dimensi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              if (tipe.panjang) _buildDimField('panjang', 'Panjang'),
+              if (tipe.lebar) _buildDimField('lebar', 'Lebar'),
+              if (tipe.tebal) _buildDimField('tebal', 'Tebal'),
+              if (tipe.diameter) _buildDimField('diameter', 'Diameter'),
+              if (tipe.diameterLuar) _buildDimField('diameter_luar', 'D. Luar'),
+              if (tipe.diameterDalam) _buildDimField('diameter_dalam', 'D. Dalam'),
+              if (tipe.sisi1) _buildDimField('sisi1', 'Sisi 1'),
+              if (tipe.sisi2) _buildDimField('sisi2', 'Sisi 2'),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDropdownRef<T>({
+    required String label,
+    required List<T> items,
+    required T? value,
+    required String Function(T) toString,
+    required void Function(T?) onChanged,
+  }) {
+    return DropdownButtonFormField<T>(
+      value: value,
+      dropdownColor: Colors.grey[900],
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.grey),
+        border: const OutlineInputBorder(),
+      ),
+      items: items.map((i) => DropdownMenuItem<T>(value: i, child: Text(toString(i)))).toList(),
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _buildDimField(String key, String label) {
+    return SizedBox(
+      width: (MediaQuery.of(context).size.width - 60) / 2,
+      child: TextFormField(
+        controller: _dimControllers[key],
+        keyboardType: TextInputType.number,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+          border: const OutlineInputBorder(),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        ),
+      ),
+    );
+  }
+}
+

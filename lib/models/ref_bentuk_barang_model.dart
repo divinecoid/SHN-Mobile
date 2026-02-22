@@ -1,14 +1,18 @@
+import 'tipe_barang_model.dart';
+
 class RefBentukBarang {
   final int id;
   final String kode;
   final String namaBentuk;
   final String dimensi;
+  final TipeBarang? tipeBarang;
 
   RefBentukBarang({
     required this.id,
     required this.kode,
     required this.namaBentuk,
     required this.dimensi,
+    this.tipeBarang,
   });
 
   factory RefBentukBarang.fromJson(Map<String, dynamic> json) {
@@ -17,6 +21,7 @@ class RefBentukBarang {
       kode: json['kode'] ?? '',
       namaBentuk: json['nama_bentuk'] ?? '',
       dimensi: json['dimensi'] ?? '',
+      tipeBarang: json['tipe_barang'] != null ? TipeBarang.fromJson(json['tipe_barang']) : null,
     );
   }
 
@@ -36,6 +41,8 @@ class RefBentukBarang {
       'kode': kode,
       'nama_bentuk': namaBentuk,
       'dimensi': dimensi,
+      'tipe_barang': tipeBarang?.toJson(),
     };
   }
 }
+
