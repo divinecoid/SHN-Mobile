@@ -1850,7 +1850,7 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 40,
         top: 20,
         left: 20,
         right: 20,
@@ -1979,7 +1979,7 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
               ),
               child: const Text('TAMBAHKAN KE DAFTAR'),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 60),
           ],
         ),
       ),
