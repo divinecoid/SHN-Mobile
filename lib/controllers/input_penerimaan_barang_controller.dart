@@ -545,7 +545,21 @@ class InputPenerimaanBarangController extends ChangeNotifier {
         }
         throw Exception(jsonData['message'] ?? 'Gagal menyimpan data');
       } else {
-        throw Exception('Gagal menyimpan data: ${response.statusCode}');
+        String errorDetail = 'Status: ${response.statusCode}';
+        try {
+          final errorData = json.decode(response.body);
+          if (errorData is Map && errorData.containsKey('message')) {
+            errorDetail = errorData['message'];
+          } else if (errorData is Map && errorData.containsKey('error')) {
+            errorDetail = errorData['error'];
+          }
+        } catch (_) {
+          // If not JSON, use truncated body
+          errorDetail = response.body.length > 100 
+            ? '${response.body.substring(0, 100)}...' 
+            : response.body;
+        }
+        throw Exception(errorDetail);
       }
     } catch (e) {
       throw Exception('Gagal menyimpan data: $e');
