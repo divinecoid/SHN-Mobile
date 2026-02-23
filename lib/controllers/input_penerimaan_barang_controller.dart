@@ -231,8 +231,9 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   }
 
   // --- SEARCH GROUP METHODS ---
-  Future<void> searchGroups(String query) async {
-    if (query.length < 2) return;
+  Future<void> searchGroups(String query, {int? jenisBarangId, int? bentukBarangId, int? gradeBarangId}) async {
+    // If query is empty but we have filters, we still want to search
+    if (query.length < 2 && jenisBarangId == null && bentukBarangId == null && gradeBarangId == null) return;
     
     _isSearchingGroups = true;
     notifyListeners();
@@ -240,7 +241,13 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     try {
       final token = await _getAuthToken();
       final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
-      final url = Uri.parse('$baseUrl/api/item-barang/group?search=$query');
+      
+      String urlString = '$baseUrl/api/item-barang/group?search=$query';
+      if (jenisBarangId != null) urlString += '&jenis_barang_id=$jenisBarangId';
+      if (bentukBarangId != null) urlString += '&bentuk_barang_id=$bentukBarangId';
+      if (gradeBarangId != null) urlString += '&grade_barang_id=$gradeBarangId';
+      
+      final url = Uri.parse(urlString);
 
       final response = await http.get(
         url,

@@ -1731,6 +1731,12 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
   RefBentukBarang? _selectedBentuk;
   RefGradeBarang? _selectedGrade;
   
+  // Filter for search group
+  RefJenisBarang? _filterJenis;
+  RefBentukBarang? _filterBentuk;
+  RefGradeBarang? _filterGrade;
+  final TextEditingController _searchController = TextEditingController();
+  
   // Dimensions
   final Map<String, TextEditingController> _dimControllers = {
     'panjang': TextEditingController(),
@@ -1753,13 +1759,19 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
     _searchDebounce?.cancel();
     _dimControllers.values.forEach((c) => c.dispose());
     _qtyController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   void _onSearchChanged(String query) {
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 500), () {
-      widget.controller.searchGroups(query).then((_) {
+      widget.controller.searchGroups(
+        query,
+        jenisBarangId: _filterJenis?.id,
+        bentukBarangId: _filterBentuk?.id,
+        gradeBarangId: _filterGrade?.id,
+      ).then((_) {
         if (mounted) setState(() {});
       });
     });
@@ -1935,7 +1947,74 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Filters
+        Row(
+          children: [
+            const Icon(Icons.filter_list, color: Colors.grey, size: 18),
+            const SizedBox(width: 8),
+            const Text('Filter Pencarian', style: TextStyle(color: Colors.grey, fontSize: 13)),
+            const Spacer(),
+            if (_filterJenis != null || _filterBentuk != null || _filterGrade != null)
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _filterJenis = null;
+                    _filterBentuk = null;
+                    _filterGrade = null;
+                  });
+                  _onSearchChanged(_searchController.text);
+                },
+                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0)),
+                child: const Text('Reset', style: TextStyle(color: Colors.blue, fontSize: 12)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildFilterDropdown<RefJenisBarang>(
+                value: _filterJenis,
+                items: widget.controller.jenisBarangList,
+                hint: 'Jenis',
+                toString: (v) => v.namaJenis,
+                onChanged: (val) {
+                  setState(() => _filterJenis = val);
+                  _onSearchChanged(_searchController.text);
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildFilterDropdown<RefBentukBarang>(
+                value: _filterBentuk,
+                items: widget.controller.bentukBarangList,
+                hint: 'Bentuk',
+                toString: (v) => v.namaBentuk,
+                onChanged: (val) {
+                  setState(() => _filterBentuk = val);
+                  _onSearchChanged(_searchController.text);
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildFilterDropdown<RefGradeBarang>(
+                value: _filterGrade,
+                items: widget.controller.gradeBarangList,
+                hint: 'Grade',
+                toString: (v) => v.nama,
+                onChanged: (val) {
+                  setState(() => _filterGrade = val);
+                  _onSearchChanged(_searchController.text);
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
         TextFormField(
+          controller: _searchController,
           onChanged: _onSearchChanged,
           style: const TextStyle(color: Colors.white),
           decoration: const InputDecoration(
@@ -1943,6 +2022,7 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
             hintStyle: TextStyle(color: Colors.grey),
             prefixIcon: Icon(Icons.search, color: Colors.grey),
             border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
         ),
         const SizedBox(height: 8),
@@ -2071,6 +2151,41 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
           labelStyle: const TextStyle(color: Colors.grey, fontSize: 12),
           border: const OutlineInputBorder(),
           contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterDropdown<T>({
+    required T? value,
+    required List<T> items,
+    required String hint,
+    required String Function(T) toString,
+    required void Function(T?) onChanged,
+  }) {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[800]!),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          isExpanded: true,
+          hint: Text(hint, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          dropdownColor: Colors.grey[900],
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.grey, size: 20),
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          items: items.map((T item) {
+            return DropdownMenuItem<T>(
+              value: item,
+              child: Text(toString(item), overflow: TextOverflow.ellipsis),
+            );
+          }).toList(),
+          onChanged: onChanged,
         ),
       ),
     );
