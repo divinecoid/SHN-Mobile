@@ -1480,11 +1480,11 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     title: Text(
-                      'Item ID: ${detail.idItemBarang}',
+                      detail.itemBarangName ?? 'Item ID: ${detail.idItemBarang}',
                       style: const TextStyle(color: Colors.white),
                     ),
                     subtitle: Text(
-                      'Rak ID: ${detail.idRak} • Qty: ${detail.qty}',
+                      'Rak: ${detail.rakKode ?? detail.idRak} • Qty: ${detail.qty}',
                       style: TextStyle(color: Colors.grey[400]),
                     ),
                     trailing: IconButton(
@@ -1613,7 +1613,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                   child: ListTile(
                     title: Text(
                       item.itemBarangGroupId != null 
-                        ? 'Item Group ID: ${item.itemBarangGroupId}' 
+                        ? (item.itemBarangGroupName ?? 'Group ID: ${item.itemBarangGroupId}') 
                         : 'Custom Item (${item.tebal}x${item.lebar}x${item.panjang})',
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
@@ -1621,7 +1621,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Qty: ${item.qty} (${item.tipeTerima})', style: const TextStyle(color: Colors.grey)),
-                        Text('Rak ID: ${item.idRak}', style: const TextStyle(color: Colors.grey)),
+                        Text('Rak: ${item.rakKode ?? item.idRak}', style: const TextStyle(color: Colors.grey)),
                       ],
                     ),
                     trailing: IconButton(
@@ -1817,6 +1817,8 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
       qty: int.parse(_qtyController.text),
       tipeTerima: _tipeTerima,
       idRak: widget.controller.selectedRakId!,
+      itemBarangGroupName: _isManual ? null : _selectedGroup?.namaGroupBarang,
+      rakKode: widget.controller.selectedRakKode,
     );
 
     widget.onAdd(detail);

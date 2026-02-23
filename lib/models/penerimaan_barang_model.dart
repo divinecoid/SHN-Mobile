@@ -503,6 +503,8 @@ class PenerimaanBarangDetailInput {
   final int qty;
   final int? idPurchaseOrderItem;
   final int? idStockMutationDetail;
+  final String? itemBarangName; // Optional for UI display
+  final String? rakKode; // Optional for UI display
 
   PenerimaanBarangDetailInput({
     required this.idItemBarang,
@@ -510,6 +512,8 @@ class PenerimaanBarangDetailInput {
     required this.qty,
     this.idPurchaseOrderItem,
     this.idStockMutationDetail,
+    this.itemBarangName,
+    this.rakKode,
   });
 
   Map<String, dynamic> toMap() {
@@ -756,6 +760,8 @@ class DetailBarangNonPo {
   final int qty;
   final String tipeTerima; // "bundle" or "satuan"
   final int idRak;
+  final String? itemBarangGroupName; // Optional for UI display
+  final String? rakKode; // Optional for UI display
 
   DetailBarangNonPo({
     this.itemBarangGroupId,
@@ -773,6 +779,8 @@ class DetailBarangNonPo {
     required this.qty,
     required this.tipeTerima,
     required this.idRak,
+    this.itemBarangGroupName,
+    this.rakKode,
   });
 
   Map<String, dynamic> toMap() {

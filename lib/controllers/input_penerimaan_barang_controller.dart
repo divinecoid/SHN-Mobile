@@ -355,11 +355,13 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   }
 
   // Details methods (Batch for PO/Mutation)
-  void addDetail(int idItemBarang, int idRak, int qty) {
+  void addDetail(int idItemBarang, int idRak, int qty, {String? itemBarangName, String? rakKode}) {
     _details.add(PenerimaanBarangDetailInput(
       idItemBarang: idItemBarang,
       idRak: idRak,
       qty: qty,
+      itemBarangName: itemBarangName,
+      rakKode: rakKode,
     ));
     notifyListeners();
   }
