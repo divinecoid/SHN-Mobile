@@ -544,6 +544,10 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Gudang Selection
+                _buildGudangSection(),
+                const SizedBox(height: 16),
+
                 // Origin Selection
                 _buildOriginSection(),
                 const SizedBox(height: 16),
@@ -554,19 +558,15 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                   const SizedBox(height: 16),
                 ],
 
+                // RAK Selection
+                _buildRakSection(),
+                const SizedBox(height: 16),
+
                 // Non-PO Add Item Section
                 if (_controller.selectedOrigin == 'nonpo') ...[
                   _buildNonPoAddItemSection(),
                   const SizedBox(height: 16),
                 ],
-
-                // Gudang Selection
-                _buildGudangSection(),
-                const SizedBox(height: 16),
-
-                // RAK Selection
-                _buildRakSection(),
-                const SizedBox(height: 16),
 
                 // Details List (moved above Catatan)
                 _buildDetailsSection(),
@@ -1747,17 +1747,12 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
   final TextEditingController _qtyController = TextEditingController(text: '1');
   String _tipeTerima = 'satuan';
   
-  // Rak
-  final TextEditingController _rakController = TextEditingController();
-  int? _selectedRakId;
-  String _selectedRakKode = '';
 
   @override
   void dispose() {
     _searchDebounce?.cancel();
     _dimControllers.values.forEach((c) => c.dispose());
     _qtyController.dispose();
-    _rakController.dispose();
     super.dispose();
   }
 
@@ -1770,32 +1765,6 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
     });
   }
 
-  Future<void> _scanRak() async {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => QRScanPage(
-          isRack: true,
-          onScanResult: (result) async {
-            try {
-              await widget.controller.fetchRakByCode(result);
-              if (mounted) {
-                setState(() {
-                  _selectedRakId = widget.controller.selectedRakId;
-                  _selectedRakKode = widget.controller.selectedRakKode;
-                  _rakController.text = _selectedRakKode;
-                });
-              }
-            } catch (e) {
-              if (mounted) {
-                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Rak tidak ditemukan: $e')));
-              }
-            }
-          },
-        ),
-      ),
-    );
-  }
 
   void _submit() {
     if (_isManual) {
@@ -1815,8 +1784,8 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
       return;
     }
 
-    if (_selectedRakId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rak belum dipilih')));
+    if (widget.controller.selectedRakId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih Rak di halaman utama terlebih dahulu')));
       return;
     }
 
@@ -1835,7 +1804,7 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
       sisi2: _isManual ? _dimControllers['sisi2']!.text : null,
       qty: int.parse(_qtyController.text),
       tipeTerima: _tipeTerima,
-      idRak: _selectedRakId!,
+      idRak: widget.controller.selectedRakId!,
     );
 
     widget.onAdd(detail);
@@ -1944,30 +1913,6 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            
-            // Rak Selection
-            const Text('Pilih Rak', style: TextStyle(color: Colors.white70)),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _rakController,
-              readOnly: true,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Scan Rak',
-                hintStyle: const TextStyle(color: Colors.grey),
-                border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.qr_code_scanner, color: Colors.purple),
-                  onPressed: _scanRak,
-                ),
-              ),
-            ),
-            if (_selectedRakKode.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4.0),
-                child: Text('Terpilih: $_selectedRakKode', style: const TextStyle(color: Colors.green, fontSize: 12)),
-              ),
             
             const SizedBox(height: 30),
             ElevatedButton(
