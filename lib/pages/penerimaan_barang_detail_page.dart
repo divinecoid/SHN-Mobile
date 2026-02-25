@@ -494,27 +494,38 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Nama Gudang',
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  penerimaanBarang.gudang.namaGudang,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
                 const SizedBox(height: 8),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Nama Gudang',
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            penerimaanBarang.gudang.namaGudang,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 1,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -522,33 +533,11 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                             'Kode',
                             style: TextStyle(
                               color: Colors.grey[400],
-                              fontSize: 10,
+                              fontSize: 12,
                             ),
                           ),
                           Text(
                             penerimaanBarang.gudang.kode,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'ID',
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 10,
-                            ),
-                          ),
-                          Text(
-                            '${penerimaanBarang.gudang.id}',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 14,

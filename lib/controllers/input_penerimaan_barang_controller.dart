@@ -23,6 +23,7 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   String _selectedOrigin = 'purchaseorder';
   int? _selectedGudangId;
   String _selectedGudangName = '';
+  String _selectedGudangKode = '';
   File? _selectedImage;
   List<PenerimaanBarangDetailInput> _details = [];
   String _scannedNumber = '';
@@ -61,6 +62,7 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   String get selectedOrigin => _selectedOrigin;
   int? get selectedGudangId => _selectedGudangId;
   String get selectedGudangName => _selectedGudangName;
+  String get selectedGudangKode => _selectedGudangKode;
   File? get selectedImage => _selectedImage;
   List<PenerimaanBarangDetailInput> get details => _details;
   String get scannedNumber => _scannedNumber;
@@ -152,6 +154,7 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   void selectGudang(Gudang gudang) {
     _selectedGudangId = gudang.id;
     _selectedGudangName = gudang.namaGudang;
+    _selectedGudangKode = gudang.kode;
     notifyListeners();
   }
 
@@ -573,6 +576,7 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     _selectedOrigin = 'purchaseorder';
     _selectedGudangId = null;
     _selectedGudangName = '';
+    _selectedGudangKode = '';
     _selectedImage = null;
     _details.clear();
     _scannedNumber = '';
