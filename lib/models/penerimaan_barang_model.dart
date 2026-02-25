@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'item_barang_group_model.dart';
 
 // ItemBarang model
 class ItemBarang {
@@ -201,6 +202,8 @@ class PenerimaanBarangDetail {
   final int? idStockMutationDetail;
   final ItemBarang? itemBarang;
   final Rak? rak;
+  final ItemBarangGroup? itemBarangGroup;
+  final String? tipeTerima;
 
   PenerimaanBarangDetail({
     required this.id,
@@ -212,6 +215,8 @@ class PenerimaanBarangDetail {
     this.idStockMutationDetail,
     this.itemBarang,
     this.rak,
+    this.itemBarangGroup,
+    this.tipeTerima,
   });
 
   factory PenerimaanBarangDetail.fromMap(Map<String, dynamic> map) {
@@ -225,6 +230,8 @@ class PenerimaanBarangDetail {
       idStockMutationDetail: map['id_stock_mutation_detail'] != null ? _parseToInt(map['id_stock_mutation_detail']) : null,
       itemBarang: _parseItemBarang(map['item_barang']),
       rak: _parseRak(map['rak']),
+      itemBarangGroup: _parseItemBarangGroup(map['item_barang_group']),
+      tipeTerima: map['tipe_terima'],
     );
   }
 
@@ -239,6 +246,8 @@ class PenerimaanBarangDetail {
       'id_stock_mutation_detail': idStockMutationDetail,
       'item_barang': itemBarang?.toMap(),
       'rak': rak?.toMap(),
+      'item_barang_group': itemBarangGroup?.toJson(),
+      'tipe_terima': tipeTerima,
     };
   }
 
@@ -262,6 +271,18 @@ class PenerimaanBarangDetail {
       return null;
     } catch (e) {
       debugPrint('Error parsing rak: $e');
+      return null;
+    }
+  }
+
+  static ItemBarangGroup? _parseItemBarangGroup(dynamic group) {
+    try {
+      if (group is Map<String, dynamic>) {
+        return ItemBarangGroup.fromJson(group);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error parsing item_barang_group: $e');
       return null;
     }
   }

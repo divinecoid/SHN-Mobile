@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/penerimaan_barang_model.dart';
+import '../models/item_barang_group_model.dart';
 import '../controllers/penerimaan_barang_list_controller.dart';
 
 class PenerimaanBarangDetailPage extends StatefulWidget {
@@ -192,8 +193,8 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
             children: [
               Icon(Icons.receipt_long, color: Colors.blue[400], size: 24),
               const SizedBox(width: 8),
-              const Text(
-                'Informasi Penerimaan',
+              Text(
+                'INFORMASI PENERIMAAN',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -231,7 +232,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'ID Penerimaan',
+                  'ID PENERIMAAN',
                   style: TextStyle(
                     color: Colors.grey[400],
                     fontSize: 12,
@@ -270,8 +271,8 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
             children: [
               Icon(Icons.source, color: Colors.cyan[400], size: 24),
               const SizedBox(width: 8),
-              const Text(
-                'Asal Penerimaan',
+              Text(
+                'ASAL PENERIMAAN',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -285,6 +286,8 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
             _buildPurchaseOrderInfo(penerimaanBarang)
           else if (penerimaanBarang.stockMutation != null)
             _buildStockMutationInfo(penerimaanBarang)
+          else if (penerimaanBarang.origin.toLowerCase() == 'nonpo')
+            _buildNonPoInfo(penerimaanBarang)
           else
             Container(
               width: double.infinity,
@@ -321,7 +324,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Purchase Order',
+            'PURCHASE ORDER',
             style: TextStyle(
               color: Colors.grey[400],
               fontSize: 12,
@@ -336,7 +339,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'No. PO',
+                      'NO. PO',
                       style: TextStyle(
                         color: Colors.grey[400],
                         fontSize: 10,
@@ -358,7 +361,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Tanggal PO',
+                      'TANGGAL PO',
                       style: TextStyle(
                         color: Colors.grey[400],
                         fontSize: 10,
@@ -396,7 +399,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Stock Mutation',
+            'STOCK MUTATION',
             style: TextStyle(
               color: Colors.grey[400],
               fontSize: 12,
@@ -411,7 +414,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'No. Mutation',
+                      'NO. MUTATION',
                       style: TextStyle(
                         color: Colors.grey[400],
                         fontSize: 10,
@@ -433,7 +436,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Tanggal Mutation',
+                      'TANGGAL MUTATION',
                       style: TextStyle(
                         color: Colors.grey[400],
                         fontSize: 10,
@@ -472,8 +475,8 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
             children: [
               Icon(Icons.location_on, color: Colors.blue[400], size: 24),
               const SizedBox(width: 8),
-              const Text(
-                'Gudang',
+              Text(
+                'GUDANG',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -504,7 +507,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Nama Gudang',
+                            'NAMA GUDANG',
                             style: TextStyle(
                               color: Colors.grey[400],
                               fontSize: 12,
@@ -530,7 +533,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Kode',
+                            'KODE',
                             style: TextStyle(
                               color: Colors.grey[400],
                               fontSize: 12,
@@ -572,8 +575,8 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
             children: [
               Icon(Icons.note, color: Colors.yellow[400], size: 24),
               const SizedBox(width: 8),
-              const Text(
-                'Catatan',
+              Text(
+                'CATATAN',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -619,8 +622,8 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
             children: [
               Icon(Icons.photo, color: Colors.green[400], size: 24),
               const SizedBox(width: 8),
-              const Text(
-                'Bukti Foto',
+              Text(
+                'BUKTI FOTO',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -722,8 +725,8 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
             children: [
               Icon(Icons.inventory, color: Colors.orange[400], size: 24),
               const SizedBox(width: 8),
-              const Text(
-                'Detail Barang',
+              Text(
+                'DETAIL BARANG',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -801,7 +804,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Item Barang Info (if available)
+                                  // Item Barang Info or Group Info
                                   if (itemBarang != null) ...[
                                     Row(
                                       children: [
@@ -832,10 +835,46 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                  ] else ...[
-                                    // Fallback when item_barang is not available
+                                  ] else if (detail.itemBarangGroup != null) ...[
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.category,
+                                          color: Colors.orange[400],
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange[900]?.withOpacity(0.3),
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(color: Colors.orange[700]!, width: 0.5),
+                                          ),
+                                          child: const Text(
+                                            'NON-PO GROUP',
+                                            style: TextStyle(
+                                              color: Colors.orange,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
                                     Text(
-                                      'Item ID: ${detail.idItemBarang}',
+                                      detail.itemBarangGroup!.namaGroupBarang.toUpperCase(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ] else ...[
+                                    // Fallback when neither item_barang nor item_barang_group is available
+                                    Text(
+                                      'ITEM ID: ${detail.idItemBarang}',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 15,
@@ -846,27 +885,42 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.blue[600],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '${detail.qty} pcs',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue[600],
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '${detail.qty} PCS',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                if (detail.tipeTerima != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    detail.tipeTerima!.toUpperCase(),
+                                    style: TextStyle(
+                                      color: Colors.grey[400],
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
                         
-                        // Item Barang Details (if available)
-                        if (itemBarang != null) ...[
+                        // Item Barang or Group Details
+                        if (itemBarang != null || detail.itemBarangGroup != null) ...[
                           const SizedBox(height: 12),
                           Container(
                             padding: const EdgeInsets.all(12),
@@ -877,8 +931,9 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                             ),
                             child: Column(
                               children: [
-                                // Dimensions
-                                if (itemBarang.panjang != null || itemBarang.lebar != null || itemBarang.tebal != null) ...[
+                                // Dimensions (from itemBarang or itemBarangGroup)
+                                if ((itemBarang != null && (itemBarang.panjang != null || itemBarang.lebar != null || itemBarang.tebal != null)) ||
+                                    (detail.itemBarangGroup != null)) ...[
                                   Row(
                                     children: [
                                       Icon(
@@ -888,7 +943,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
-                                        'Dimensi:',
+                                        'DIMENSI:',
                                         style: TextStyle(
                                           color: Colors.grey[400],
                                           fontSize: 11,
@@ -898,7 +953,9 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          '${itemBarang.panjang ?? '-'} × ${itemBarang.lebar ?? '-'} × ${itemBarang.tebal ?? '-'}',
+                                          itemBarang != null 
+                                            ? '${itemBarang.panjang ?? '-'} × ${itemBarang.lebar ?? '-'} × ${itemBarang.tebal ?? '-'}'
+                                            : _getGroupDimensions(detail.itemBarangGroup!),
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontSize: 12,
@@ -910,8 +967,8 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                                   ),
                                 ],
                                 
-                                // Berat
-                                if (itemBarang.berat != null) ...[
+                                // Berat (only for itemBarang)
+                                if (itemBarang?.berat != null) ...[
                                   const SizedBox(height: 8),
                                   Row(
                                     children: [
@@ -922,7 +979,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
-                                        'Berat:',
+                                        'BERAT:',
                                         style: TextStyle(
                                           color: Colors.grey[400],
                                           fontSize: 11,
@@ -931,7 +988,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        '${itemBarang.berat} kg',
+                                        '${itemBarang!.berat} kg',
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 12,
@@ -942,8 +999,8 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                                   ),
                                 ],
                                 
-                                // Jenis Potongan
-                                if (itemBarang.jenisPotongan != null) ...[
+                                // Jenis (only for itemBarang)
+                                if (itemBarang?.jenisPotongan != null) ...[
                                   const SizedBox(height: 8),
                                   Row(
                                     children: [
@@ -954,7 +1011,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
-                                        'Jenis:',
+                                        'JENIS:',
                                         style: TextStyle(
                                           color: Colors.grey[400],
                                           fontSize: 11,
@@ -962,27 +1019,20 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.cyan[700],
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          itemBarang.jenisPotongan!.toUpperCase(),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                      Text(
+                                        itemBarang!.jenisPotongan!.toUpperCase(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ],
                                 
-                                // Sisa Luas (if available)
-                                if (itemBarang.sisaLuas != null && itemBarang.sisaLuas! > 0) ...[
+                                // Sisa Luas (only for itemBarang)
+                                if (itemBarang?.sisaLuas != null && itemBarang!.sisaLuas! > 0) ...[
                                   const SizedBox(height: 8),
                                   Row(
                                     children: [
@@ -993,7 +1043,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
-                                        'Sisa Luas:',
+                                        'SISA LUAS:',
                                         style: TextStyle(
                                           color: Colors.grey[400],
                                           fontSize: 11,
@@ -1002,7 +1052,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        '${itemBarang.sisaLuas} mm²',
+                                        '${itemBarang!.sisaLuas} mm²',
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 12,
@@ -1017,10 +1067,9 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                           ),
                         ],
                         
-                        const SizedBox(height: 12),
-                        
                         // Rak Information
                         if (detail.rak != null) ...[
+                          const SizedBox(height: 12),
                           Row(
                             children: [
                               Icon(
@@ -1029,10 +1078,10 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                                 size: 14,
                               ),
                               const SizedBox(width: 6),
-                              Text(
-                                'Rak:',
+                              const Text(
+                                'RAK:',
                                 style: TextStyle(
-                                  color: Colors.grey[400],
+                                  color: Colors.grey,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -1040,7 +1089,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  '${detail.rak!.kode} • ${detail.rak!.namaRak}',
+                                  '${detail.rak!.kode.toUpperCase()} • ${detail.rak!.namaRak.toUpperCase()}',
                                   style: TextStyle(
                                     color: Colors.purple[300],
                                     fontSize: 12,
@@ -1051,6 +1100,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                             ],
                           ),
                         ] else ...[
+                          const SizedBox(height: 12),
                           Row(
                             children: [
                               Icon(
@@ -1060,7 +1110,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                'Rak ID: ${detail.idRak}',
+                                'RAK ID: ${detail.idRak}',
                                 style: TextStyle(
                                   color: Colors.grey[300],
                                   fontSize: 12,
@@ -1137,6 +1187,40 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
     );
   }
 
+  Widget _buildNonPoInfo(PenerimaanBarang penerimaanBarang) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[850],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[700]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'NON-PO',
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'PENERIMAAN BARANG NON-PO (TANPA REFERENSI PO/MUTASI)',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Color _getOriginColor(String origin) {
     switch (origin.toLowerCase()) {
       case 'purchaseorder':
@@ -1151,11 +1235,30 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
   String _getOriginLabel(String origin) {
     switch (origin.toLowerCase()) {
       case 'purchaseorder':
-        return 'Purchase Order';
+        return 'PURCHASE ORDER';
       case 'stockmutation':
-        return 'Stock Mutation';
+        return 'STOCK MUTATION';
+      case 'nonpo':
+        return 'NON-PO';
       default:
         return origin.toUpperCase();
     }
+  }
+
+  String _getGroupDimensions(ItemBarangGroup group) {
+    List<String> parts = [];
+    if (group.panjang != null && group.panjang != '0') parts.add(group.panjang!);
+    if (group.lebar != null && group.lebar != '0') parts.add(group.lebar!);
+    if (group.tebal != null && group.tebal != '0') parts.add(group.tebal!);
+    
+    if (parts.isEmpty) {
+      if (group.diameterLuar != null && group.diameterLuar != '0') parts.add('DL:${group.diameterLuar}');
+      if (group.diameterDalam != null && group.diameterDalam != '0') parts.add('DD:${group.diameterDalam}');
+      if (group.diameter != null && group.diameter != '0') parts.add('D:${group.diameter}');
+      if (group.sisi1 != null && group.sisi1 != '0') parts.add('S1:${group.sisi1}');
+      if (group.sisi2 != null && group.sisi2 != '0') parts.add('S2:${group.sisi2}');
+    }
+    
+    return parts.isEmpty ? '-' : parts.join(' × ');
   }
 }
