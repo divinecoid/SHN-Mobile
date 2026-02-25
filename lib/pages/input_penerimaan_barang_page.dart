@@ -39,14 +39,21 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
     _controller = InputPenerimaanBarangController();
     _numberController = TextEditingController(text: _controller.scannedNumber);
     _rakController = _controller.rakController;
-    // Load gudang list when page initializes
+    
+    // Pre-load all necessary data when page initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadGudangList();
+      _initialLoad();
     });
   }
 
-  Future<void> _loadGudangList() async {
-    await _controller.loadGudangList();
+  Future<void> _initialLoad() async {
+    // Load concurrently for efficiency
+    await Future.wait([
+      _controller.loadGudangList(),
+      _controller.loadSupplierList(),
+      _controller.fetchReferenceData(),
+    ]);
+    
     if (mounted) {
       setState(() {});
     }
@@ -254,13 +261,77 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
-                _loadGudangList();
+                _initialLoad();
               },
               child: const Text(
                 'Refresh',
                 style: TextStyle(color: Colors.blue),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  void _showSupplierSelector() {
+    if (_controller.supplierList.isEmpty && !_controller.isLoadingSuppliers) {
+      _controller.loadSupplierList();
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          'Pilih Supplier',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: _controller.isLoadingSuppliers
+              ? const Center(child: CircularProgressIndicator())
+              : _controller.supplierList.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'Tidak ada supplier',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _controller.supplierList.length,
+                      itemBuilder: (context, index) {
+                        final supplier = _controller.supplierList[index];
+                        return ListTile(
+                          title: Text(
+                            supplier.nama.toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'KODE: ${supplier.kode}${supplier.alamat != null ? ' • ${supplier.alamat}' : ''}',
+                            style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                          ),
+                          onTap: () {
+                            setState(() {
+                              _controller.selectSupplier(supplier);
+                            });
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
         ],
       ),
     );
@@ -552,6 +623,12 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                 _buildOriginSection(),
                 const SizedBox(height: 16),
 
+                // Supplier Selection (for Non-PO)
+                if (_controller.selectedOrigin == 'nonpo') ...[
+                  _buildSupplierSection(),
+                  const SizedBox(height: 16),
+                ],
+
                 // Scan Number Section
                 if (_controller.selectedOrigin != 'nonpo') ...[
                   _buildScanNumberSection(),
@@ -657,6 +734,85 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSupplierSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[800]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.business, color: Colors.orange[400], size: 24),
+              const SizedBox(width: 8),
+              const Text(
+                'Supplier',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (_controller.isLoadingSuppliers) ...[
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.orange[400]!),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          InkWell(
+            onTap: _showSupplierSelector,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+              decoration: BoxDecoration(
+                color: Colors.grey[850],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _controller.selectedSupplierId == null ? Colors.red[900]!.withOpacity(0.5) : Colors.grey[700]!,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _controller.selectedSupplierId == null
+                          ? 'Pilih Supplier'
+                          : _controller.selectedSupplierName,
+                      style: TextStyle(
+                        color: _controller.selectedSupplierId == null ? Colors.grey[400] : Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.arrow_drop_down, color: Colors.grey[400]),
+                ],
+              ),
+            ),
+          ),
+          if (_controller.selectedOrigin == 'nonpo' && _controller.selectedSupplierId == null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 4),
+              child: Text(
+                'Wajib pilih supplier untuk Non-PO',
+                style: TextStyle(color: Colors.red[400], fontSize: 12),
+              ),
+            ),
         ],
       ),
     );
@@ -821,7 +977,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                     ),
                   ),
                   TextButton(
-                    onPressed: _loadGudangList,
+                    onPressed: _initialLoad,
                     child: Text(
                       'Coba Lagi',
                       style: TextStyle(
@@ -1696,18 +1852,21 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
   }
 
   void _showAddNonPoItemModal() {
-    // This will be a complex modal
+    // Wrap in ListenableBuilder so the modal rebuilds when controller data arrives
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _AddNonPoItemModal(
-        controller: _controller,
-        onAdd: (detail) {
-          setState(() {
-            _controller.addNonPoDetail(detail);
-          });
-        },
+      builder: (context) => ListenableBuilder(
+        listenable: _controller,
+        builder: (context, child) => _AddNonPoItemModal(
+          controller: _controller,
+          onAdd: (detail) {
+            setState(() {
+              _controller.addNonPoDetail(detail);
+            });
+          },
+        ),
       ),
     );
   }

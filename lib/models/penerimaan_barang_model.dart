@@ -171,6 +171,43 @@ class Rak {
   }
 }
 
+// Supplier model
+class Supplier {
+  final int id;
+  final String kode;
+  final String nama;
+  final String? alamat;
+  final String? telepon;
+
+  Supplier({
+    required this.id,
+    required this.kode,
+    required this.nama,
+    this.alamat,
+    this.telepon,
+  });
+
+  factory Supplier.fromMap(Map<String, dynamic> map) {
+    return Supplier(
+      id: _parseToInt(map['id']),
+      kode: map['kode'] ?? '',
+      nama: map['nama_supplier'] ?? map['nama'] ?? '',
+      alamat: map['alamat'] ?? map['kota'],
+      telepon: map['telepon_hp'] ?? map['telepon'],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'kode': kode,
+      'nama': nama,
+      'alamat': alamat,
+      'telepon': telepon,
+    };
+  }
+}
+
 // Helper functions to safely parse values that might be String or num
 int _parseToInt(dynamic value) {
   if (value == null) return 0;
@@ -406,12 +443,14 @@ class PenerimaanBarang {
   final String origin;
   final int? idPurchaseOrder;
   final int? idStockMutation;
+  final int? idSupplier;
   final int idGudang;
   final String catatan;
   final String? urlFoto;
   final String createdAt;
   final PurchaseOrder? purchaseOrder;
   final StockMutation? stockMutation;
+  final Supplier? supplier;
   final GudangPenerimaan gudang;
   final List<PenerimaanBarangDetail> penerimaanBarangDetails;
 
@@ -420,12 +459,14 @@ class PenerimaanBarang {
     required this.origin,
     this.idPurchaseOrder,
     this.idStockMutation,
+    this.idSupplier,
     required this.idGudang,
     required this.catatan,
     this.urlFoto,
     required this.createdAt,
     this.purchaseOrder,
     this.stockMutation,
+    this.supplier,
     required this.gudang,
     required this.penerimaanBarangDetails,
   });
@@ -436,12 +477,14 @@ class PenerimaanBarang {
       origin: map['origin'] ?? '',
       idPurchaseOrder: map['id_purchase_order'] != null ? _parseToInt(map['id_purchase_order']) : null,
       idStockMutation: map['id_stock_mutation'] != null ? _parseToInt(map['id_stock_mutation']) : null,
+      idSupplier: map['id_supplier'] != null ? _parseToInt(map['id_supplier']) : null,
       idGudang: _parseToInt(map['id_gudang']),
       catatan: map['catatan'] ?? '',
       urlFoto: map['url_foto'],
       createdAt: map['created_at'] ?? '',
       purchaseOrder: _parsePurchaseOrder(map['purchase_order']),
       stockMutation: _parseStockMutation(map['stock_mutation']),
+      supplier: _parseSupplier(map['supplier']),
       gudang: _parseGudang(map['gudang']),
       penerimaanBarangDetails: _parsePenerimaanBarangDetails(map['penerimaan_barang_details']),
     );
@@ -453,12 +496,14 @@ class PenerimaanBarang {
       'origin': origin,
       'id_purchase_order': idPurchaseOrder,
       'id_stock_mutation': idStockMutation,
+      'id_supplier': idSupplier,
       'id_gudang': idGudang,
       'catatan': catatan,
       'url_foto': urlFoto,
       'created_at': createdAt,
       'purchase_order': purchaseOrder?.toMap(),
       'stock_mutation': stockMutation?.toMap(),
+      'supplier': supplier?.toMap(),
       'gudang': gudang.toMap(),
       'penerimaan_barang_details': penerimaanBarangDetails.map((detail) => detail.toMap()).toList(),
     };
@@ -484,6 +529,18 @@ class PenerimaanBarang {
       return null;
     } catch (e) {
       debugPrint('Error parsing stock_mutation: $e');
+      return null;
+    }
+  }
+
+  static Supplier? _parseSupplier(dynamic supplier) {
+    try {
+      if (supplier is Map<String, dynamic>) {
+        return Supplier.fromMap(supplier);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error parsing supplier: $e');
       return null;
     }
   }
@@ -744,12 +801,14 @@ class PenerimaanBarangResponse {
 
 class PenerimaanBarangNonPoSubmitRequest {
   final int gudangId;
+  final int idSupplier;
   final String? catatan;
   final String? buktiFoto; // base64 string
   final List<DetailBarangNonPo> detailBarang;
 
   PenerimaanBarangNonPoSubmitRequest({
     required this.gudangId,
+    required this.idSupplier,
     this.catatan,
     this.buktiFoto,
     required this.detailBarang,
@@ -758,6 +817,7 @@ class PenerimaanBarangNonPoSubmitRequest {
   Map<String, dynamic> toMap() {
     return {
       'gudang_id': gudangId,
+      'id_supplier': idSupplier,
       'catatan': catatan,
       'bukti_foto': buktiFoto,
       'detail_barang': detailBarang.map((detail) => detail.toMap()).toList(),

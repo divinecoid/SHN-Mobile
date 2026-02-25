@@ -20,13 +20,19 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   final TextEditingController rakController = TextEditingController();
   
   // Form state
-  String _selectedOrigin = 'purchaseorder';
+  String _selectedOrigin = 'nonpo';
   int? _selectedGudangId;
   String _selectedGudangName = '';
   String _selectedGudangKode = '';
   File? _selectedImage;
   List<PenerimaanBarangDetailInput> _details = [];
   String _scannedNumber = '';
+  
+  // Supplier state
+  List<Supplier> _supplierList = [];
+  int? _selectedSupplierId;
+  String _selectedSupplierName = '';
+  bool _isLoadingSuppliers = false;
   
   // Scanned document state (from API lookup by nomor PO/Mutasi)
   ScannedDokumenResult? _scannedDokumen;
@@ -85,6 +91,12 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   List<RefGradeBarang> get gradeBarangList => _gradeBarangList;
   bool get isLoadingRefData => _isLoadingRefData;
   bool get isSearchingGroups => _isSearchingGroups;
+
+  // Supplier Getters
+  List<Supplier> get supplierList => _supplierList;
+  int? get selectedSupplierId => _selectedSupplierId;
+  String get selectedSupplierName => _selectedSupplierName;
+  bool get isLoadingSuppliers => _isLoadingSuppliers;
 
   @override
   void dispose() {
@@ -151,6 +163,44 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     }
   }
 
+  Future<void> loadSupplierList() async {
+    _isLoadingSuppliers = true;
+    notifyListeners();
+
+    try {
+      final token = await _getAuthToken();
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final url = Uri.parse('$baseUrl/api/supplier');
+      
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['status'] == 'success' || jsonData['success'] == true) {
+          final List data = jsonData['data'] ?? [];
+          _supplierList = data.map((e) => Supplier.fromMap(e)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading suppliers: $e');
+    } finally {
+      _isLoadingSuppliers = false;
+      notifyListeners();
+    }
+  }
+
+  void selectSupplier(Supplier supplier) {
+    _selectedSupplierId = supplier.id;
+    _selectedSupplierName = supplier.nama;
+    notifyListeners();
+  }
+
   void selectGudang(Gudang gudang) {
     _selectedGudangId = gudang.id;
     _selectedGudangName = gudang.namaGudang;
@@ -164,8 +214,9 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     _scannedNumber = ''; 
     _scannedDokumen = null;
     _scannedItems = [];
-    if (origin == 'nonpo' && _jenisBarangList.isEmpty) {
-      fetchReferenceData();
+    if (origin == 'nonpo') {
+      if (_jenisBarangList.isEmpty) fetchReferenceData();
+      if (_supplierList.isEmpty) loadSupplierList();
     }
     notifyListeners();
   }
@@ -457,6 +508,7 @@ class InputPenerimaanBarangController extends ChangeNotifier {
       if (_scannedNumber.isEmpty) return 'Scan Nomor PO/Mutasi terlebih dahulu';
       if (_selectedRakId == null) return 'Scan RAK terlebih dahulu';
     } else {
+      if (_selectedSupplierId == null) return 'Pilih supplier terlebih dahulu';
       if (_nonPoDetails.isEmpty) return 'Tambah minimal satu detail barang';
     }
     return null;
@@ -499,6 +551,7 @@ class InputPenerimaanBarangController extends ChangeNotifier {
         url = Uri.parse('$baseUrl/api/penerimaan-barang/non-po');
         final request = PenerimaanBarangNonPoSubmitRequest(
           gudangId: _selectedGudangId!,
+          idSupplier: _selectedSupplierId!,
           catatan: catatanController.text.trim(),
           buktiFoto: base64Image,
           detailBarang: _nonPoDetails,
@@ -587,6 +640,8 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     _selectedRakKode = '';
     _selectedRakNama = '';
     _nonPoDetails.clear();
+    _selectedSupplierId = null;
+    _selectedSupplierName = '';
     catatanController.clear();
     _gudangError = null;
     notifyListeners();

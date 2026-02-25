@@ -1199,21 +1199,54 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'NON-PO',
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'NON-PO',
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (penerimaanBarang.supplier != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[900]?.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.orange[700]!, width: 0.5),
+                  ),
+                  child: Text(
+                    penerimaanBarang.supplier!.kode,
+                    style: const TextStyle(
+                      color: Colors.orange,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 8),
-          const Text(
-            'PENERIMAAN BARANG NON-PO (TANPA REFERENSI PO/MUTASI)',
+          if (penerimaanBarang.supplier != null) ...[
+            Text(
+              penerimaanBarang.supplier!.nama.toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+          ],
+          Text(
+            'PENERIMAAN BARANG NON-PO',
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+              color: Colors.grey[400],
+              fontSize: 11,
+              fontStyle: FontStyle.italic,
             ),
           ),
         ],
