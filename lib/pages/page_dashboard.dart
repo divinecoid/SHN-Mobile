@@ -112,6 +112,16 @@ class _DashboardPageState extends State<DashboardPage> {
       }
     }
 
+    // Selalu tambahkan pengaturan printer di akhir menu agar bisa diakses semua user
+    availableMenus.add(
+      DashboardMenuItem(
+        title: 'Pengaturan Printer',
+        menuCode: 'PRINTER_SETTINGS',
+        icon: Icons.print_rounded,
+        page: const PageSettingsPrinter(),
+      ),
+    );
+
     setState(() {
       _availableMenuItems = availableMenus;
       _isLoading = false;
