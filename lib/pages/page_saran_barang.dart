@@ -152,9 +152,23 @@ class _PageSaranBarangState extends State<PageSaranBarang> {
     );
   }
 
+  void _clearAllDimensionFields() {
+    _tebalCtrl.clear();
+    _panjangCtrl.clear();
+    _lebarCtrl.clear();
+    _diameterLuarCtrl.clear();
+    _diameterDalamCtrl.clear();
+    _diameterCtrl.clear();
+    _sisi1Ctrl.clear();
+    _sisi2Ctrl.clear();
+  }
+
   void _onSearchSaran() {
-    // Collect all inputs
-    double? parseText(String val) => double.tryParse(val.replaceAll(',', '.'));
+    // Collect all inputs, defaulting to 0.0 if empty
+    double parseText(String val) {
+      final parsed = double.tryParse(val.replaceAll(',', '.'));
+      return parsed ?? 0.0;
+    }
     
     _controller.updateRequest(
       tebal: parseText(_tebalCtrl.text),
@@ -265,7 +279,10 @@ class _PageSaranBarangState extends State<PageSaranBarang> {
                   label: 'Bentuk',
                   value: controller.request.bentukBarangId,
                   items: controller.bentukBarangList,
-                  onChanged: (value) => controller.updateRequest(bentukBarangId: value),
+                  onChanged: (value) {
+                    _clearAllDimensionFields();
+                    controller.updateRequest(bentukBarangId: value);
+                  },
                   itemBuilder: (item) => item.namaBentuk,
                 ),
               ),
