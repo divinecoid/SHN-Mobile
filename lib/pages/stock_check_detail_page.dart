@@ -160,7 +160,7 @@ class _StockCheckDetailPageState extends State<StockCheckDetailPage> {
                 child: _buildDetailItem('Gudang', widget.item.gudang.namaGudang),
               ),
               Expanded(
-                child: _buildDetailItem('Jenis', widget.item.jenisBarang.namaJenis),
+                child: _buildDetailItem('Rak', widget.item.rak?.namaRak ?? '-'),
               ),
             ],
           ),
@@ -168,8 +168,16 @@ class _StockCheckDetailPageState extends State<StockCheckDetailPage> {
           Row(
             children: [
               Expanded(
+                child: _buildDetailItem('Jenis', widget.item.jenisBarang.namaJenis),
+              ),
+              Expanded(
                 child: _buildDetailItem('Bentuk', widget.item.bentukBarang.namaBentuk),
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
               Expanded(
                 child: _buildDetailItem('Grade', widget.item.gradeBarang.nama),
               ),

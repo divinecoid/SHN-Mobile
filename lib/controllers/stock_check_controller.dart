@@ -8,6 +8,7 @@ import '../models/ref_gudang_model.dart';
 import '../models/ref_jenis_barang_model.dart';
 import '../models/ref_bentuk_barang_model.dart';
 import '../models/ref_grade_barang_model.dart';
+import '../models/ref_rak_model.dart';
 import '../utils/auth_helper.dart';
 
 class StockCheckController extends ChangeNotifier {
@@ -16,6 +17,7 @@ class StockCheckController extends ChangeNotifier {
   List<RefJenisBarang> _jenisBarangList = [];
   List<RefBentukBarang> _bentukBarangList = [];
   List<RefGradeBarang> _gradeBarangList = [];
+  List<RefRak> _rakList = [];
   
   bool _isLoading = false;
   bool _isLoadingMore = false;
@@ -29,6 +31,7 @@ class StockCheckController extends ChangeNotifier {
   
   // Filter values
   int? _selectedGudangId;
+  int? _selectedRakId;
   int? _selectedJenisBarangId;
   int? _selectedBentukBarangId;
   int? _selectedGradeBarangId;
@@ -39,6 +42,7 @@ class StockCheckController extends ChangeNotifier {
   // Getters
   List<StockCheckItem> get stockItems => _stockItems;
   List<RefGudang> get gudangList => _gudangList;
+  List<RefRak> get rakList => _rakList;
   List<RefJenisBarang> get jenisBarangList => _jenisBarangList;
   List<RefBentukBarang> get bentukBarangList => _bentukBarangList;
   List<RefGradeBarang> get gradeBarangList => _gradeBarangList;
@@ -53,6 +57,7 @@ class StockCheckController extends ChangeNotifier {
   bool get hasMoreData => _currentPage < _lastPage;
   
   int? get selectedGudangId => _selectedGudangId;
+  int? get selectedRakId => _selectedRakId;
   int? get selectedJenisBarangId => _selectedJenisBarangId;
   int? get selectedBentukBarangId => _selectedBentukBarangId;
   int? get selectedGradeBarangId => _selectedGradeBarangId;
@@ -62,7 +67,19 @@ class StockCheckController extends ChangeNotifier {
 
   // Setters for filters
   void setSelectedGudangId(int? value) {
-    _selectedGudangId = value;
+    if (_selectedGudangId != value) {
+      _selectedGudangId = value;
+      _selectedRakId = null; // reset rak when gudang changes
+      _rakList = [];
+      if (value != null) {
+        _loadRakList(value);
+      }
+      notifyListeners();
+    }
+  }
+
+  void setSelectedRakId(int? value) {
+    _selectedRakId = value;
     notifyListeners();
   }
 
@@ -98,6 +115,8 @@ class StockCheckController extends ChangeNotifier {
 
   void clearFilters() {
     _selectedGudangId = null;
+    _selectedRakId = null;
+    _rakList = [];
     _selectedJenisBarangId = null;
     _selectedBentukBarangId = null;
     _selectedGradeBarangId = null;
@@ -170,6 +189,87 @@ class StockCheckController extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Error loading gudang list: $e');
+    }
+  }
+
+  Future<void> _loadRakList(int gudangId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://10.232.105.4:8000';
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/gudang/$gudangId'), // API returns related raks inside gudang details probably or there's a specific endpoint
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+           final gudangData = data['data'];
+           
+           // Extract Rak relation if present inside Gudang detail 
+           if (gudangData is Map<String, dynamic>) {
+               if (gudangData['rak'] != null && gudangData['rak'] is List) {
+                 _rakList = (gudangData['rak'] as List)
+                    .map((item) => RefRak.fromJson(item as Map<String, dynamic>))
+                    .toList();
+               } else if (gudangData['raks'] != null && gudangData['raks'] is List) {
+                 _rakList = (gudangData['raks'] as List)
+                    .map((item) => RefRak.fromJson(item as Map<String, dynamic>))
+                    .toList();
+               }
+           } else if (gudangData is List && gudangData.isNotEmpty) {
+               // Sometimes API returns array for show endpoint implicitly 
+               final firstGudang = gudangData.first;
+               if (firstGudang is Map<String, dynamic>) {
+                   if (firstGudang['rak'] != null && firstGudang['rak'] is List) {
+                     _rakList = (firstGudang['rak'] as List)
+                        .map((item) => RefRak.fromJson(item as Map<String, dynamic>))
+                        .toList();
+                   } else if (firstGudang['raks'] != null && firstGudang['raks'] is List) {
+                     _rakList = (firstGudang['raks'] as List)
+                        .map((item) => RefRak.fromJson(item as Map<String, dynamic>))
+                        .toList();
+                   }
+               }
+           }
+           
+           if (_rakList.isEmpty) {
+             // Fallback: fetch from `/api/rak` assuming standard filter
+             final resRak = await http.get(
+               Uri.parse('$baseUrl/api/rak?gudang_id=$gudangId'),
+               headers: {
+                 'Authorization': 'Bearer $token',
+                 'Content-Type': 'application/json',
+               },
+             );
+             if (resRak.statusCode == 200) {
+                final dRak = json.decode(resRak.body);
+                if (dRak['success'] == true && dRak['data'] != null) {
+                  final rakData = dRak['data'];
+                  // Check if paginated (having 'data' array inside 'data' object)
+                  final actualList = (rakData is Map<String, dynamic> && rakData.containsKey('data'))
+                      ? rakData['data'] 
+                      : rakData;
+                      
+                  if (actualList is List) {
+                    _rakList = actualList
+                        .where((item) => item is Map<String, dynamic>)
+                        .map((item) => RefRak.fromJson(item as Map<String, dynamic>))
+                        .toList();
+                  }
+                }
+             }
+           }
+           notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading rak list: $e');
     }
   }
 
@@ -288,6 +388,9 @@ class StockCheckController extends ChangeNotifier {
       // Filter parameters
       if (_selectedGudangId != null) {
         queryParams['gudang_id'] = _selectedGudangId.toString();
+      }
+      if (_selectedRakId != null) {
+        queryParams['id_rak'] = _selectedRakId.toString();
       }
       if (_selectedJenisBarangId != null) {
         queryParams['jenis_barang_id'] = _selectedJenisBarangId.toString();

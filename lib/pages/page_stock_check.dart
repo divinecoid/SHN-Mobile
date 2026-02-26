@@ -207,6 +207,16 @@ class _StockCheckPageState extends State<StockCheckPage>
         ),
         const SizedBox(height: 12),
         
+        // Rak Filter (only enabled if Gudang is selected)
+        _buildDropdownFilter(
+          label: 'Rak',
+          value: controller.selectedRakId,
+          items: controller.rakList,
+          onChanged: (value) => controller.setSelectedRakId(value),
+          itemBuilder: (item) => '${item.kode} - ${item.namaRak}',
+        ),
+        const SizedBox(height: 12),
+        
         // Jenis Barang Filter
         _buildDropdownFilter(
           label: 'Jenis Barang',
@@ -621,7 +631,7 @@ class _StockCheckPageState extends State<StockCheckPage>
                 child: _buildDetailItem('Gudang', item.gudang.namaGudang),
               ),
               Expanded(
-                child: _buildDetailItem('Jenis', item.jenisBarang.namaJenis),
+                child: _buildDetailItem('Rak', item.rak?.namaRak ?? '-'),
               ),
             ],
           ),
@@ -629,8 +639,16 @@ class _StockCheckPageState extends State<StockCheckPage>
           Row(
             children: [
               Expanded(
+                child: _buildDetailItem('Jenis', item.jenisBarang.namaJenis),
+              ),
+              Expanded(
                 child: _buildDetailItem('Bentuk', item.bentukBarang.namaBentuk),
               ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
               Expanded(
                 child: _buildDetailItem('Grade', item.gradeBarang.nama),
               ),

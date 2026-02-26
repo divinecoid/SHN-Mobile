@@ -2,6 +2,7 @@ import 'ref_gudang_model.dart';
 import 'ref_jenis_barang_model.dart';
 import 'ref_bentuk_barang_model.dart';
 import 'ref_grade_barang_model.dart';
+import 'ref_rak_model.dart';
 
 class StockCheckItem {
   final int id;
@@ -18,12 +19,14 @@ class StockCheckItem {
   final bool isOnprogressPo;
   final int userId;
   final int gudangId;
+  final int? rakId;
   final int jenisBarangId;
   final int bentukBarangId;
   final int gradeBarangId;
   final String createdAt;
   final String updatedAt;
   final RefGudang gudang;
+  final RefRak? rak;
   final RefJenisBarang jenisBarang;
   final RefBentukBarang bentukBarang;
   final RefGradeBarang gradeBarang;
@@ -43,12 +46,14 @@ class StockCheckItem {
     required this.isOnprogressPo,
     required this.userId,
     required this.gudangId,
+    this.rakId,
     required this.jenisBarangId,
     required this.bentukBarangId,
     required this.gradeBarangId,
     required this.createdAt,
     required this.updatedAt,
     required this.gudang,
+    this.rak,
     required this.jenisBarang,
     required this.bentukBarang,
     required this.gradeBarang,
@@ -70,12 +75,14 @@ class StockCheckItem {
       isOnprogressPo: _parseBool(json['is_onprogress_po']),
       userId: _parseInt(json['user_id']),
       gudangId: _parseInt(json['gudang_id']),
+      rakId: json['id_rak'] != null ? _parseInt(json['id_rak']) : null,
       jenisBarangId: _parseInt(json['jenis_barang_id']),
       bentukBarangId: _parseInt(json['bentuk_barang_id']),
       gradeBarangId: _parseInt(json['grade_barang_id']),
       createdAt: json['created_at'] ?? '',
       updatedAt: json['updated_at'] ?? '',
       gudang: RefGudang.fromJson(json['gudang'] ?? {}),
+      rak: json['rak'] != null ? RefRak.fromJson(json['rak']) : null,
       jenisBarang: RefJenisBarang.fromJson(json['jenis_barang'] ?? {}),
       bentukBarang: RefBentukBarang.fromJson(json['bentuk_barang'] ?? {}),
       gradeBarang: RefGradeBarang.fromJson(json['grade_barang'] ?? {}),
@@ -137,12 +144,14 @@ class StockCheckItem {
       'is_onprogress_po': isOnprogressPo,
       'user_id': userId,
       'gudang_id': gudangId,
+      'id_rak': rakId,
       'jenis_barang_id': jenisBarangId,
       'bentuk_barang_id': bentukBarangId,
       'grade_barang_id': gradeBarangId,
       'created_at': createdAt,
       'updated_at': updatedAt,
       'gudang': gudang.toJson(),
+      'rak': rak?.toJson(),
       'jenis_barang': jenisBarang.toJson(),
       'bentuk_barang': bentukBarang.toJson(),
       'grade_barang': gradeBarang.toJson(),
