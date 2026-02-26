@@ -836,6 +836,31 @@ class _PenerimaanBarangListPageState extends State<PenerimaanBarangListPage>
                   ),
                 ],
               ),
+              if (penerimaanBarang.origin.toLowerCase() == 'nonpo' && penerimaanBarang.supplier != null) ...[
+                const SizedBox(height: 4),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.local_shipping,
+                      color: Colors.grey[400],
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'Supplier: ${penerimaanBarang.supplier!.nama}',
+                        style: TextStyle(
+                          color: Colors.grey[300],
+                          fontSize: 12,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 8),
               // Catatan
               if (penerimaanBarang.catatan.isNotEmpty) ...[

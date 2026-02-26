@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:shn_mobile/pages/page_login.dart';
 import 'package:shn_mobile/pages/page_dashboard.dart';
 import 'package:shn_mobile/controllers/stock_check_controller.dart';
+import 'package:shn_mobile/controllers/proses_nonpo_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +26,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => StockCheckController()),
+        ChangeNotifierProvider(create: (_) => ProsesNonPoController()),
       ],
       child: MaterialApp(
         title: 'SHN Mobile',

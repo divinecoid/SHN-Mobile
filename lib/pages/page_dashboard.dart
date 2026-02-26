@@ -15,6 +15,7 @@ import 'page_stock_check.dart';
 import '../utils/auth_helper.dart';
 import '../controllers/stock_check_controller.dart';
 import '../services/permission_service.dart';
+import 'proses_nonpo_list_page.dart';
 
 class DashboardMenuItem {
   final String title;
@@ -62,6 +63,12 @@ class _DashboardPageState extends State<DashboardPage> {
       menuCode: 'TERIMA_BARANG',
       icon: Icons.inventory,
       page: const TerimaBarangMainPage(),
+    ),
+    DashboardMenuItem(
+      title: 'Proses Non-PO',
+      menuCode: 'PROSES_NON_PO',
+      icon: Icons.price_check,
+      page: const ProsesNonPoListPage(),
     ),
     DashboardMenuItem(
       title: 'Stock Opname',

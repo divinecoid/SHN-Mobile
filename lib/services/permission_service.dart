@@ -10,6 +10,7 @@ class PermissionService {
     'DASHBOARD',
     'CEK_STOK',
     'TERIMA_BARANG',
+    'PROSES_NON_PO',
     'STOCK_OPNAME',
     'WORK_ORDER',
   ];

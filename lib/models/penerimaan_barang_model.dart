@@ -241,6 +241,7 @@ class PenerimaanBarangDetail {
   final Rak? rak;
   final ItemBarangGroup? itemBarangGroup;
   final String? tipeTerima;
+  final PenerimaanBarang? penerimaanBarang;
 
   PenerimaanBarangDetail({
     required this.id,
@@ -254,6 +255,7 @@ class PenerimaanBarangDetail {
     this.rak,
     this.itemBarangGroup,
     this.tipeTerima,
+    this.penerimaanBarang,
   });
 
   factory PenerimaanBarangDetail.fromMap(Map<String, dynamic> map) {
@@ -269,6 +271,7 @@ class PenerimaanBarangDetail {
       rak: _parseRak(map['rak']),
       itemBarangGroup: _parseItemBarangGroup(map['item_barang_group']),
       tipeTerima: map['tipe_terima'],
+      penerimaanBarang: _parsePenerimaanBarang(map['penerimaan_barang']),
     );
   }
 
@@ -285,6 +288,7 @@ class PenerimaanBarangDetail {
       'rak': rak?.toMap(),
       'item_barang_group': itemBarangGroup?.toJson(),
       'tipe_terima': tipeTerima,
+      'penerimaan_barang': penerimaanBarang?.toMap(),
     };
   }
 
@@ -320,6 +324,18 @@ class PenerimaanBarangDetail {
       return null;
     } catch (e) {
       debugPrint('Error parsing item_barang_group: $e');
+      return null;
+    }
+  }
+
+  static PenerimaanBarang? _parsePenerimaanBarang(dynamic pb) {
+    try {
+      if (pb is Map<String, dynamic>) {
+        return PenerimaanBarang.fromMap(pb);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error parsing penerimaan_barang: $e');
       return null;
     }
   }
