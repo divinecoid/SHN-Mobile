@@ -145,7 +145,7 @@ class PrinterService {
     final dateStr = DateFormat('dd-MM-yyyy HH:mm:ss').format(DateTime.now());
 
     try {
-      bluetooth.printCustom("PT SURYA LOGAM JAYA", 1, 1);
+      bluetooth.printCustom("PT SURYA HARSA NAGARA", 1, 1);
       bluetooth.printNewLine();
 
       // Render QR Code 
@@ -221,7 +221,7 @@ class PrinterService {
         final String dimensi = _buildDimensiItem(detail);
         final dateStr = DateFormat('dd-MM-yyyy HH:mm:ss').format(DateTime.now());
 
-        bluetooth.printCustom("PT SURYA LOGAM JAYA", 1, 1);
+        bluetooth.printCustom("PT SURYA HARSA NAGARA", 1, 1);
         bluetooth.printNewLine();
 
         bluetooth.printQRcode(payloadJson, 250, 250, 1);
