@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/saran_barang_controller.dart';
-import '../models/saran_barang_model.dart';
+
 
 class PageSaranBarang extends StatefulWidget {
   const PageSaranBarang({super.key});
@@ -105,6 +105,52 @@ class _PageSaranBarangState extends State<PageSaranBarang> {
                   );
                 }),
               ],
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStaticDropdownFilter({
+    required String label,
+    required String value,
+    required List<Map<String, String>> items,
+    required Function(String?) onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[800]!),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              isExpanded: true,
+              value: value,
+              dropdownColor: Colors.grey[900],
+              icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+              style: const TextStyle(color: Colors.white),
+              items: items.map((item) {
+                return DropdownMenuItem<String>(
+                  value: item['value'],
+                  child: Text(item['label']!),
+                );
+              }).toList(),
               onChanged: onChanged,
             ),
           ),
@@ -297,6 +343,22 @@ class _PageSaranBarangState extends State<PageSaranBarang> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          
+          _buildStaticDropdownFilter(
+            label: 'Jenis Potongan',
+            value: controller.request.jenisPotongan ?? 'all',
+            items: const [
+              {'value': 'all', 'label': 'Semua'},
+              {'value': 'utuh', 'label': 'Utuh'},
+              {'value': 'potongan', 'label': 'Potongan'},
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                controller.updateRequest(jenisPotongan: value);
+              }
+            },
           ),
           const SizedBox(height: 12),
 

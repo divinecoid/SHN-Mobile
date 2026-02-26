@@ -4,6 +4,7 @@ class SaranBarangRequest {
   int? bentukBarangId;
   int? gradeBarangId;
   int? itemBarangGroupId;
+  String? jenisPotongan;
   double? tebal;
   double? panjang;
   double? lebar;
@@ -20,6 +21,7 @@ class SaranBarangRequest {
     this.bentukBarangId,
     this.gradeBarangId,
     this.itemBarangGroupId,
+    this.jenisPotongan = 'all',
     this.tebal,
     this.panjang,
     this.lebar,
@@ -42,6 +44,7 @@ class SaranBarangRequest {
     if (bentukBarangId != null) data['bentuk_barang_id'] = '$bentukBarangId';
     if (gradeBarangId != null) data['grade_barang_id'] = '$gradeBarangId';
     if (itemBarangGroupId != null) data['item_barang_group_id'] = itemBarangGroupId;
+    if (jenisPotongan != null) data['jenis_potongan'] = jenisPotongan;
     
     if (tebal != null) data['tebal'] = tebal;
     if (panjang != null) data['panjang'] = panjang;

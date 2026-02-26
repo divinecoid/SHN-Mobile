@@ -153,6 +153,7 @@ class SaranBarangController extends ChangeNotifier {
     int? jenisBarangId,
     int? bentukBarangId,
     int? gradeBarangId,
+    String? jenisPotongan,
     double? tebal,
     double? panjang,
     double? lebar,
@@ -166,6 +167,7 @@ class SaranBarangController extends ChangeNotifier {
       jenisBarangId: jenisBarangId ?? _request.jenisBarangId,
       bentukBarangId: bentukBarangId ?? _request.bentukBarangId,
       gradeBarangId: gradeBarangId ?? _request.gradeBarangId,
+      jenisPotongan: jenisPotongan ?? _request.jenisPotongan,
       tebal: tebal ?? _request.tebal,
       panjang: panjang ?? _request.panjang,
       lebar: lebar ?? _request.lebar,
@@ -196,6 +198,7 @@ class SaranBarangController extends ChangeNotifier {
           jenisBarangId: _request.jenisBarangId,
           bentukBarangId: _request.bentukBarangId,
           gradeBarangId: _request.gradeBarangId,
+          jenisPotongan: _request.jenisPotongan,
           tebal: _selectedTipeBarang!.tebal ? _request.tebal : null,
           panjang: _selectedTipeBarang!.panjang ? _request.panjang : null,
           lebar: _selectedTipeBarang!.lebar ? _request.lebar : null,
@@ -217,6 +220,7 @@ class SaranBarangController extends ChangeNotifier {
       jenisBarangId: _request.jenisBarangId,
       bentukBarangId: _request.bentukBarangId,
       gradeBarangId: _request.gradeBarangId,
+      jenisPotongan: _request.jenisPotongan,
     );
     _saranList = [];
     _currentPage = 1;
