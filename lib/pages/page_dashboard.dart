@@ -12,6 +12,7 @@ import 'page_stock_opname.dart';
 import 'stock_opname_list_page.dart';
 import 'page_work_order.dart';
 import 'page_stock_check.dart';
+import 'page_saran_barang.dart';
 import '../utils/auth_helper.dart';
 import '../controllers/stock_check_controller.dart';
 import '../services/permission_service.dart';
@@ -58,6 +59,12 @@ class _DashboardPageState extends State<DashboardPage> {
       menuCode: 'CEK_STOK',
       icon: Icons.search,
       page: const StockCheckPage(),
+    ),
+    DashboardMenuItem(
+      title: 'Saran Barang',
+      menuCode: 'CEK_STOK', // Menggunakan permission cek stok sementara
+      icon: Icons.lightbulb_outline,
+      page: const PageSaranBarang(),
     ),
     DashboardMenuItem(
       title: 'Terima Barang',
