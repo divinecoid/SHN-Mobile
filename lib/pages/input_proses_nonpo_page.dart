@@ -39,7 +39,7 @@ class _InputProsesNonPoPageState extends State<InputProsesNonPoPage> {
     final hargaModal = double.tryParse(hargaModalStr) ?? 0.0;
     final berat = double.tryParse(beratStr) ?? 0.0;
 
-    final response = await controller.submitProcessNonPo(
+    final success = await controller.submitProcessNonPo(
       widget.detail.id,
       hargaModal,
       berat,
@@ -47,10 +47,10 @@ class _InputProsesNonPoPageState extends State<InputProsesNonPoPage> {
 
     if (!mounted) return;
 
-    if (response['success'] == true) {
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(response['message']),
+        const SnackBar(
+          content: Text('Berhasil memproses item.'),
           backgroundColor: Colors.green,
         ),
       );
@@ -58,7 +58,7 @@ class _InputProsesNonPoPageState extends State<InputProsesNonPoPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(response['message']),
+          content: Text(controller.errorSubmit ?? 'Gagal memproses item'),
           backgroundColor: Colors.red,
         ),
       );
@@ -279,7 +279,7 @@ class _InputProsesNonPoPageState extends State<InputProsesNonPoPage> {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: controller.isSubmitting
+                          onPressed: controller.isSubmitLoading
                               ? null
                               : () => _submitData(controller),
                           style: ElevatedButton.styleFrom(
@@ -289,7 +289,7 @@ class _InputProsesNonPoPageState extends State<InputProsesNonPoPage> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          child: controller.isSubmitting
+                          child: controller.isSubmitLoading
                               ? const SizedBox(
                                   width: 24,
                                   height: 24,
@@ -312,7 +312,7 @@ class _InputProsesNonPoPageState extends State<InputProsesNonPoPage> {
                 ),
               ),
               
-              if (controller.isSubmitting)
+              if (controller.isSubmitLoading)
                 Container(
                   color: Colors.black.withOpacity(0.5),
                   child: const Center(

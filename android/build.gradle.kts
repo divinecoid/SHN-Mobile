@@ -55,3 +55,20 @@ subprojects {
         }
     }
 }
+
+subprojects {
+    if (name == "blue_thermal_printer") {
+        afterEvaluate {
+            if (plugins.hasPlugin("com.android.library")) {
+                try {
+                    extensions.configure<com.android.build.gradle.LibraryExtension>("android") {
+                        namespace = "id.kakzaki.blue_thermal_printer"
+                        println("Patched namespace for $name")
+                    }
+                } catch (e: Exception) {
+                    println("Could not patch namespace for $name: ${e.message}")
+                }
+            }
+        }
+    }
+}

@@ -27,6 +27,10 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
       final controller = context.read<ProsesNonPoController>();
       controller.refreshAll();
     });
+
+    _tabController.addListener(() {
+      setState(() {});
+    });
   }
 
   @override
@@ -47,6 +51,7 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
 
   Widget _buildList(
     BuildContext context, 
+    ProsesNonPoController controller,
     List<PenerimaanBarangDetail> items, 
     bool isLoading, 
     String? error, 
@@ -131,13 +136,13 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
           }
 
           final detail = items[index];
-          return _buildCard(context, detail, isPendingPanel);
+          return _buildCard(context, controller, detail, isPendingPanel);
         },
       ),
     );
   }
 
-  Widget _buildCard(BuildContext context, PenerimaanBarangDetail detail, bool isPendingPanel) {
+  Widget _buildCard(BuildContext context, ProsesNonPoController controller, PenerimaanBarangDetail detail, bool isPendingPanel) {
     final group = detail.itemBarangGroup;
     final namaItem = group?.namaGroupBarang ?? 'Unknown Item';
     final gudang = detail.penerimaanBarang?.gudang.namaGudang ?? '-';
@@ -161,6 +166,23 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (!isPendingPanel)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0, top: 4.0),
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Checkbox(
+                        value: controller.selectedProcessedIds.contains(detail.id),
+                        onChanged: (bool? val) {
+                          controller.toggleSelection(detail.id);
+                        },
+                        activeColor: Colors.blue,
+                        checkColor: Colors.white,
+                        side: const BorderSide(color: Colors.grey),
+                      ),
+                    ),
+                  ),
                 Expanded(
                   child: Text(
                     namaItem,
@@ -277,6 +299,32 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
                 ),
               )
             ],
+
+            if (!isPendingPanel) ...[
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    try {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mencetak struk QR...'), duration: Duration(seconds: 1)));
+                      await controller.printSingleQR(detail);
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey[800],
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  icon: const Icon(Icons.print, size: 16),
+                  label: const Text('Print QR'),
+                ),
+              )
+            ],
           ],
         ),
       ),
@@ -301,6 +349,26 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
             Tab(text: 'Selesai'),
           ],
         ),
+      ),
+      floatingActionButton: Consumer<ProsesNonPoController>(
+        builder: (context, controller, child) {
+          if (_tabController.index == 1 && controller.selectedProcessedIds.isNotEmpty) {
+            return FloatingActionButton.extended(
+              onPressed: () async {
+                try {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mencetak batch struk QR...'), duration: Duration(seconds: 1)));
+                  await controller.printBatchQR();
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+                }
+              },
+              backgroundColor: Colors.blue,
+              icon: const Icon(Icons.print, color: Colors.white),
+              label: Text('Print Batch (${controller.selectedProcessedIds.length})', style: const TextStyle(color: Colors.white)),
+            );
+          }
+          return const SizedBox.shrink();
+        },
       ),
       body: Consumer<ProsesNonPoController>(
         builder: (context, controller, child) {
@@ -355,6 +423,7 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
                     // Tab Pending
                     _buildList(
                       context,
+                      controller,
                       controller.pendingList,
                       controller.isLoadingPending,
                       controller.errorPending,
@@ -367,6 +436,7 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
                     // Tab Selesai
                     _buildList(
                       context,
+                      controller,
                       controller.processedList,
                       controller.isLoadingProcessed,
                       controller.errorProcessed,

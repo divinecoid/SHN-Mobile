@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../models/penerimaan_barang_model.dart';
 import '../utils/auth_helper.dart';
+import '../services/printer_service.dart';
 
 class ProsesNonPoController extends ChangeNotifier {
   BuildContext? _context;
@@ -21,7 +22,8 @@ class ProsesNonPoController extends ChangeNotifier {
   String? _errorProcessed;
 
   // Submit process state
-  bool _isSubmitting = false;
+  bool _isSubmitLoading = false;
+  String? _errorSubmit;
 
   // Pagination for Pending
   int _currentPendingPage = 1;
@@ -34,6 +36,9 @@ class ProsesNonPoController extends ChangeNotifier {
   int _lastProcessedPage = 1;
   bool _hasMoreProcessed = false;
   bool _isLoadingMoreProcessed = false;
+
+  // Selected for printing
+  final Set<int> _selectedProcessedIds = {};
 
   // Search
   String _searchQuery = '';
@@ -49,8 +54,14 @@ class ProsesNonPoController extends ChangeNotifier {
   String? get errorProcessed => _errorProcessed;
   bool get hasMoreProcessed => _hasMoreProcessed;
 
-  bool get isSubmitting => _isSubmitting;
+  bool get isSubmitLoading => _isSubmitLoading;
+  String? get errorSubmit => _errorSubmit;
   String get searchQuery => _searchQuery;
+
+  Set<int> get selectedProcessedIds => _selectedProcessedIds;
+  List<PenerimaanBarangDetail> get selectedProcessedItems {
+    return _processedList.where((item) => _selectedProcessedIds.contains(item.id)).toList();
+  }
 
   void setContext(BuildContext context) {
     _context = context;
@@ -237,14 +248,17 @@ class ProsesNonPoController extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> submitProcessNonPo(int detailId, double hargaModal, double berat) async {
-    _isSubmitting = true;
+  Future<bool> submitProcessNonPo(int detailId, double hargaModal, double berat) async {
+    _isSubmitLoading = true;
+    _errorSubmit = null;
     notifyListeners();
 
     try {
       final token = await _getAuthToken();
       if (token == null) {
-        return {'success': false, 'message': 'Sesi telah berakhir, silakan login kembali.'};
+        _errorSubmit = 'Sesi telah berakhir, silakan login kembali.';
+        notifyListeners();
+        return false;
       }
 
       final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
@@ -270,18 +284,83 @@ class ProsesNonPoController extends ChangeNotifier {
       final Map<String, dynamic> responseData = json.decode(response.body);
 
       if (response.statusCode == 200 && responseData['success'] == true) {
-        return {'success': true, 'message': responseData['message'] ?? 'Berhasil memproses item.'};
+        return true;
       } else if (response.statusCode == 401) {
         _handleUnauthorized();
-        return {'success': false, 'message': 'Sesi telah berakhir, silakan login kembali.'};
+        _errorSubmit = 'Sesi telah berakhir, silakan login kembali.';
+        notifyListeners();
+        return false;
       } else {
-        return {'success': false, 'message': responseData['message'] ?? 'Gagal memproses item (Status ${response.statusCode})'};
+        _errorSubmit = responseData['message'] ?? 'Gagal memproses item (Status ${response.statusCode})';
+        notifyListeners();
+        return false;
       }
     } catch (e) {
-      return {'success': false, 'message': 'Terjadi kesalahan sistem: $e'};
-    } finally {
-      _isSubmitting = false;
+      _errorSubmit = "Terjadi kesalahan sistem: $e";
       notifyListeners();
+      return false;
+    } finally {
+      _isSubmitLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // -------------------------
+  // Selection Logic
+  // -------------------------
+
+  void toggleSelection(int id) {
+    if (_selectedProcessedIds.contains(id)) {
+      _selectedProcessedIds.remove(id);
+    } else {
+      _selectedProcessedIds.add(id);
+    }
+    notifyListeners();
+  }
+
+  void toggleAllSelection(bool isSelected) {
+    if (isSelected) {
+      _selectedProcessedIds.addAll(_processedList.map((e) => e.id));
+    } else {
+      for (var item in _processedList) {
+        _selectedProcessedIds.remove(item.id);
+      }
+    }
+    notifyListeners();
+  }
+
+  void clearSelection() {
+    _selectedProcessedIds.clear();
+    notifyListeners();
+  }
+
+  bool get isAllSelected {
+    if (_processedList.isEmpty) return false;
+    return _processedList.every((item) => _selectedProcessedIds.contains(item.id));
+  }
+
+  // -------------------------
+  // Printing Logic
+  // -------------------------
+
+  Future<void> printSingleQR(PenerimaanBarangDetail detail) async {
+    try {
+      final printer = PrinterService();
+      await printer.printItemQR(detail);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> printBatchQR() async {
+    if (_selectedProcessedIds.isEmpty) return;
+    try {
+      final itemsToPrint = selectedProcessedItems;
+      final printer = PrinterService();
+      await printer.printBatchQR(itemsToPrint);
+      clearSelection();
+    } catch (e) {
+      rethrow;
     }
   }
 
