@@ -283,65 +283,107 @@ class _PageSaranBarangState extends State<PageSaranBarang> {
           ),
           const SizedBox(height: 12),
 
-          const Divider(color: Colors.grey),
-          const Text('Dimensi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          if (controller.selectedTipeBarang != null) ...[
+            const Divider(color: Colors.grey),
+            const Text('Dimensi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
 
-          Row(
-            children: [
-              Expanded(
-                child: _buildTextField(
-                  controller: _panjangCtrl,
-                  label: 'Panjang',
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildTextField(
-                  controller: _lebarCtrl,
-                  label: 'Lebar',
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildTextField(
-                  controller: _tebalCtrl,
-                  label: 'Tebal',
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildTextField(
-                  controller: _diameterCtrl,
-                  label: 'Diameter',
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildTextField(
-                  controller: _diameterLuarCtrl,
-                  label: 'D. Luar',
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildTextField(
-                  controller: _diameterDalamCtrl,
-                  label: 'D. Dalam',
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                ),
-              ),
-            ],
-          ),
+            Row(
+              children: [
+                if (controller.selectedTipeBarang!.panjang)
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _panjangCtrl,
+                      label: 'Panjang',
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                  ),
+                if (controller.selectedTipeBarang!.panjang) const SizedBox(width: 8),
+
+                if (controller.selectedTipeBarang!.lebar)
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _lebarCtrl,
+                      label: 'Lebar',
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                  ),
+                if (controller.selectedTipeBarang!.lebar) const SizedBox(width: 8),
+
+                if (controller.selectedTipeBarang!.tebal)
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _tebalCtrl,
+                      label: 'Tebal',
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                  ),
+              ],
+            ),
+            
+            if (controller.selectedTipeBarang!.diameter || controller.selectedTipeBarang!.diameterLuar || controller.selectedTipeBarang!.diameterDalam)
+              const SizedBox(height: 12),
+            
+            Row(
+              children: [
+                if (controller.selectedTipeBarang!.diameter)
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _diameterCtrl,
+                      label: 'Diameter',
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                  ),
+                if (controller.selectedTipeBarang!.diameter) const SizedBox(width: 8),
+
+                if (controller.selectedTipeBarang!.diameterLuar)
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _diameterLuarCtrl,
+                      label: 'D. Luar',
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                  ),
+                if (controller.selectedTipeBarang!.diameterLuar) const SizedBox(width: 8),
+
+                if (controller.selectedTipeBarang!.diameterDalam)
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _diameterDalamCtrl,
+                      label: 'D. Dalam',
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                  ),
+              ],
+            ),
+            
+            if (controller.selectedTipeBarang!.sisi1 || controller.selectedTipeBarang!.sisi2)
+              const SizedBox(height: 12),
+
+            Row(
+              children: [
+                if (controller.selectedTipeBarang!.sisi1)
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _sisi1Ctrl,
+                      label: 'Sisi 1',
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                  ),
+                if (controller.selectedTipeBarang!.sisi1) const SizedBox(width: 8),
+
+                if (controller.selectedTipeBarang!.sisi2)
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _sisi2Ctrl,
+                      label: 'Sisi 2',
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+          
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () {

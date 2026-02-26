@@ -7,6 +7,7 @@ import '../models/saran_barang_model.dart';
 import '../models/ref_jenis_barang_model.dart';
 import '../models/ref_bentuk_barang_model.dart';
 import '../models/ref_grade_barang_model.dart';
+import '../models/tipe_barang_model.dart';
 import '../utils/auth_helper.dart';
 
 class SaranBarangController extends ChangeNotifier {
@@ -26,7 +27,12 @@ class SaranBarangController extends ChangeNotifier {
   int _total = 0;
 
   // Request State
-  final SaranBarangRequest request = SaranBarangRequest();
+  SaranBarangRequest _request = SaranBarangRequest();
+  SaranBarangRequest get request => _request;
+
+  // Selected TipeBarang logic
+  TipeBarang? _selectedTipeBarang;
+  TipeBarang? get selectedTipeBarang => _selectedTipeBarang;
 
   // Getters
   List<SaranBarangResponse> get saranList => _saranList;
@@ -156,33 +162,62 @@ class SaranBarangController extends ChangeNotifier {
     double? sisi1,
     double? sisi2,
   }) {
-    if (jenisBarangId != null) request.jenisBarangId = jenisBarangId;
-    if (bentukBarangId != null) request.bentukBarangId = bentukBarangId;
-    if (gradeBarangId != null) request.gradeBarangId = gradeBarangId;
-    if (tebal != null) request.tebal = tebal;
-    if (panjang != null) request.panjang = panjang;
-    if (lebar != null) request.lebar = lebar;
-    if (diameterLuar != null) request.diameterLuar = diameterLuar;
-    if (diameterDalam != null) request.diameterDalam = diameterDalam;
-    if (diameter != null) request.diameter = diameter;
-    if (sisi1 != null) request.sisi1 = sisi1;
-    if (sisi2 != null) request.sisi2 = sisi2;
+    _request = SaranBarangRequest(
+      jenisBarangId: jenisBarangId ?? _request.jenisBarangId,
+      bentukBarangId: bentukBarangId ?? _request.bentukBarangId,
+      gradeBarangId: gradeBarangId ?? _request.gradeBarangId,
+      tebal: tebal ?? _request.tebal,
+      panjang: panjang ?? _request.panjang,
+      lebar: lebar ?? _request.lebar,
+      diameterLuar: diameterLuar ?? _request.diameterLuar,
+      diameterDalam: diameterDalam ?? _request.diameterDalam,
+      diameter: diameter ?? _request.diameter,
+      sisi1: sisi1 ?? _request.sisi1,
+      sisi2: sisi2 ?? _request.sisi2,
+      page: _request.page,
+    );
+
+    if (bentukBarangId != null) {
+      _updateSelectedTipeBarang(bentukBarangId);
+    }
     notifyListeners();
   }
 
+  void _updateSelectedTipeBarang(int bentukId) {
+    try {
+      final bentuk = _bentukBarangList.firstWhere(
+        (b) => b.id == bentukId,
+      );
+      _selectedTipeBarang = bentuk.tipeBarang;
+      
+      // Reset values if they are no longer supported by this tipeBarang
+      if (_selectedTipeBarang != null) {
+        _request = SaranBarangRequest(
+          jenisBarangId: _request.jenisBarangId,
+          bentukBarangId: _request.bentukBarangId,
+          gradeBarangId: _request.gradeBarangId,
+          tebal: _selectedTipeBarang!.tebal ? _request.tebal : null,
+          panjang: _selectedTipeBarang!.panjang ? _request.panjang : null,
+          lebar: _selectedTipeBarang!.lebar ? _request.lebar : null,
+          diameter: _selectedTipeBarang!.diameter ? _request.diameter : null,
+          diameterLuar: _selectedTipeBarang!.diameterLuar ? _request.diameterLuar : null,
+          diameterDalam: _selectedTipeBarang!.diameterDalam ? _request.diameterDalam : null,
+          sisi1: _selectedTipeBarang!.sisi1 ? _request.sisi1 : null,
+          sisi2: _selectedTipeBarang!.sisi2 ? _request.sisi2 : null,
+          page: _request.page,
+        );
+      }
+    } catch (e) {
+      _selectedTipeBarang = null;
+    }
+  }
+
   void clearRequest() {
-    request.jenisBarangId = null;
-    request.bentukBarangId = null;
-    request.gradeBarangId = null;
-    request.itemBarangGroupId = null;
-    request.tebal = null;
-    request.panjang = null;
-    request.lebar = null;
-    request.diameterLuar = null;
-    request.diameterDalam = null;
-    request.diameter = null;
-    request.sisi1 = null;
-    request.sisi2 = null;
+    _request = SaranBarangRequest(
+      jenisBarangId: _request.jenisBarangId,
+      bentukBarangId: _request.bentukBarangId,
+      gradeBarangId: _request.gradeBarangId,
+    );
     _saranList = [];
     _currentPage = 1;
     _lastPage = 1;
