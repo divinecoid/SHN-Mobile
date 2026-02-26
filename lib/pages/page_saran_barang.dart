@@ -555,6 +555,13 @@ class _PageSaranBarangState extends State<PageSaranBarang> {
                       ],
                     ),
                     const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(child: _buildDetailRow('Gudang', item.gudang)),
+                        Expanded(child: _buildDetailRow('Rak', item.rak)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                     _buildDetailRow('Sisa Qty', '${item.sisaQuantity}', isImportant: true),
                   ],
                 ),

@@ -66,6 +66,8 @@ class SaranBarangResponse {
   final String ukuran;
   final double sisaLuas;
   final double sisaQuantity;
+  final String gudang;
+  final String rak;
 
   SaranBarangResponse({
     required this.id,
@@ -73,6 +75,8 @@ class SaranBarangResponse {
     required this.ukuran,
     required this.sisaLuas,
     required this.sisaQuantity,
+    required this.gudang,
+    required this.rak,
   });
 
   factory SaranBarangResponse.fromJson(Map<String, dynamic> json) {
@@ -82,6 +86,8 @@ class SaranBarangResponse {
       ukuran: json['ukuran'] ?? '-',
       sisaLuas: _parseDouble(json['sisa_luas']),
       sisaQuantity: _parseDouble(json['sisa_quantity']),
+      gudang: json['gudang'] ?? '-',
+      rak: json['rak'] ?? '-',
     );
   }
 
