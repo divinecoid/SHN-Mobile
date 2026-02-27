@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,6 +12,12 @@ import '../utils/auth_helper.dart';
 class WorkOrderDetailItemController extends ChangeNotifier {
   final TextEditingController qtyActualController = TextEditingController();
   final TextEditingController beratActualController = TextEditingController();
+  
+  // Foto bukti (base64 data URI)
+  String? _fotoBuktiBase64;
+  
+  // Foto sisa (base64 data URI)
+  String? _fotoSisaBase64;
   
   // Data item yang sedang diproses
   WorkOrderPlanningItem? _currentItem;
@@ -57,6 +65,66 @@ class WorkOrderDetailItemController extends ChangeNotifier {
       _validateAndFixAssignments();
     } catch (e) {
       // Tetap lanjutkan dengan data yang ada
+    }
+  }
+
+  // Getters untuk foto
+  String? get fotoBuktiBase64 => _fotoBuktiBase64;
+  String? get fotoSisaBase64 => _fotoSisaBase64;
+
+  // Clear methods
+  void clearFotoBukti() {
+    _fotoBuktiBase64 = null;
+    notifyListeners();
+  }
+
+  void clearFotoSisa() {
+    _fotoSisaBase64 = null;
+    notifyListeners();
+  }
+
+  // Helper: buat data URI base64 dari bytes
+  String _toDataUri(Uint8List bytes, {String mimeType = 'image/jpeg'}) {
+    final base64Str = base64Encode(bytes);
+    return 'data:$mimeType;base64,$base64Str';
+  }
+
+  // Method: ambil foto dari kamera atau galeri, lalu simpan sebagai base64 data URI
+  Future<void> pickAndSetFotoBukti(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? picked = await picker.pickImage(source: source, imageQuality: 85);
+      if (picked == null) return;
+      
+      final bytes = await picked.readAsBytes();
+      final path = picked.name.toLowerCase();
+      String mime = 'image/jpeg';
+      if (path.endsWith('.png')) mime = 'image/png';
+      else if (path.endsWith('.webp')) mime = 'image/webp';
+      
+      _fotoBuktiBase64 = _toDataUri(bytes, mimeType: mime);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error picking foto bukti: $e');
+    }
+  }
+
+  Future<void> pickAndSetFotoSisa(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? picked = await picker.pickImage(source: source, imageQuality: 85);
+      if (picked == null) return;
+      
+      final bytes = await picked.readAsBytes();
+      final path = picked.name.toLowerCase();
+      String mime = 'image/jpeg';
+      if (path.endsWith('.png')) mime = 'image/png';
+      else if (path.endsWith('.webp')) mime = 'image/webp';
+      
+      _fotoSisaBase64 = _toDataUri(bytes, mimeType: mime);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error picking foto sisa: $e');
     }
   }
   
@@ -555,6 +623,8 @@ class WorkOrderDetailItemController extends ChangeNotifier {
         'qtyActual': qtyActualController.text,
         'beratActual': beratActualController.text,
         'assignments': assignments,
+        'foto_bukti': _fotoBuktiBase64,
+        'foto_sisa_barang': _fotoSisaBase64,
         'timestamp': DateTime.now().toIso8601String(),
       };
       
@@ -592,6 +662,13 @@ class WorkOrderDetailItemController extends ChangeNotifier {
             (tempData['assignments'] as List).map((item) => Map<String, dynamic>.from(item))
           );
         }
+
+        if (tempData.containsKey('foto_bukti')) {
+          _fotoBuktiBase64 = tempData['foto_bukti'];
+        }
+        if (tempData.containsKey('foto_sisa_barang')) {
+          _fotoSisaBase64 = tempData['foto_sisa_barang'];
+        }
         
         // Update actual values berdasarkan assignments
         _updateActualValues();
@@ -623,6 +700,8 @@ class WorkOrderDetailItemController extends ChangeNotifier {
       'qtyActual': qtyActualController.text,
       'beratActual': beratActualController.text,
       'assignments': assignments,
+      'foto_bukti': _fotoBuktiBase64,
+      'foto_sisa_barang': _fotoSisaBase64,
     };
   }
 

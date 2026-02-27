@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../controllers/work_order_detail_item_controller.dart';
 import '../models/pelaksana_model.dart';
@@ -82,6 +84,10 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                   
                   // Thumbnail dan Input Section
                   _buildThumbnailAndInputSection(),
+                  const SizedBox(height: 20),
+                  
+                  // Upload Photos Section
+                  _buildUploadPhotosSection(),
                   const SizedBox(height: 20),
                   
                   // Assignment Section
@@ -596,6 +602,175 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildUploadPhotosSection() {
+    try {
+      return Consumer<WorkOrderDetailItemController>(
+        builder: (context, controller, child) {
+          try {
+            return Column(
+              children: [
+                _buildPhotoSection(
+                  title: 'Foto Bukti Pelaksanaan',
+                  subtitle: 'Upload foto bukti pengerjaan item ini',
+                  base64Data: controller.fotoBuktiBase64,
+                  onCamera: () => controller.pickAndSetFotoBukti(ImageSource.camera),
+                  onGallery: () => controller.pickAndSetFotoBukti(ImageSource.gallery),
+                  onClear: () => controller.clearFotoBukti(),
+                ),
+                const SizedBox(height: 20),
+                _buildPhotoSection(
+                  title: 'Foto Sisa Barang',
+                  subtitle: 'Upload foto sisa potongan plat (Opsional)',
+                  base64Data: controller.fotoSisaBase64,
+                  onCamera: () => controller.pickAndSetFotoSisa(ImageSource.camera),
+                  onGallery: () => controller.pickAndSetFotoSisa(ImageSource.gallery),
+                  onClear: () => controller.clearFotoSisa(),
+                ),
+              ],
+            );
+          } catch (e) {
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red[900],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red[600]!),
+              ),
+              child: Text(
+                'Error loading upload photos section: $e',
+                style: TextStyle(color: Colors.white),
+              ),
+            );
+          }
+        },
+      );
+    } catch (e) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red[900],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.red[600]!),
+        ),
+        child: Text(
+          'Error loading upload photos section: $e',
+          style: TextStyle(color: Colors.white),
+        ),
+      );
+    }
+  }
+
+  Widget _buildPhotoSection({
+    required String title,
+    required String subtitle,
+    required String? base64Data,
+    required VoidCallback onCamera,
+    required VoidCallback onGallery,
+    required VoidCallback onClear,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[800]!),
+      ),
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: Colors.grey[300],
+                fontSize: 12,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          if (base64Data != null && base64Data.isNotEmpty)
+            Stack(
+              children: [
+                Container(
+                  width: double.infinity,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[850],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[700]!),
+                    image: DecorationImage(
+                      image: MemoryImage(base64Decode(base64Data.split(',').last)),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: GestureDetector(
+                    onTap: onClear,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.close, color: Colors.white, size: 20),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: onCamera,
+                    icon: const Icon(Icons.camera_alt, size: 20),
+                    label: const Text('Kamera'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[800],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: onGallery,
+                    icon: const Icon(Icons.photo_library, size: 20),
+                    label: const Text('Galeri'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[800],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 
