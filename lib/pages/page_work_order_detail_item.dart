@@ -644,7 +644,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
   }
 
   Widget _buildUploadPhotosSection() {
-    final bool isCompleted = widget.workOrder['status'] == 'Completed';
+    final bool isCompleted = widget.workOrder['status'] == 'Completed' || widget.workOrder['status'] == 'Complete';
     try {
       return Consumer<WorkOrderDetailItemController>(
         builder: (context, controller, child) {
@@ -852,7 +852,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
   }
 
   Widget _buildAssignmentSection() {
-    final bool isCompleted = widget.workOrder['status'] == 'Completed';
+    final bool isCompleted = widget.workOrder['status'] == 'Completed' || widget.workOrder['status'] == 'Complete';
     try {
       return Consumer<WorkOrderDetailItemController>(
         builder: (context, controller, child) {
@@ -1313,30 +1313,30 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
   }
 
   Widget _buildSaveButton() {
-    final bool isCompleted = widget.workOrder['status'] == 'Completed';
-    if (isCompleted) {
-      return const SizedBox.shrink();
-    }
+    final bool isCompleted = widget.workOrder['status'] == 'Completed' || widget.workOrder['status'] == 'Complete';
     
     try {
-      return SizedBox(
-        width: double.infinity,
-        height: 50,
-        child: ElevatedButton(
-          onPressed: () => _saveItemDetail(),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green[600],
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+      return Visibility(
+        visible: !isCompleted,
+        child: SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: () => _saveItemDetail(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green[600],
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 3,
             ),
-            elevation: 3,
-          ),
-          child: const Text(
-            'Simpan Sementara',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
+            child: const Text(
+              'Simpan Sementara',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),

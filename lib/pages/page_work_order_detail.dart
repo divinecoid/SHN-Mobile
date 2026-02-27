@@ -379,36 +379,35 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
             _buildItemDetailGrid(item, index, controller),
             const SizedBox(height: 16),
             
-            // Action Button (hidden when status selesai)
-            if (!controller.isCurrentWorkOrderCompleted)
-              Center(
-                child: Container(
-                  width: double.infinity,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[850],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[700]!),
-                  ),
-                  child: TextButton(
-                    onPressed: () => _showItemDetailDialog(item, index),
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+            // Action Button
+            Center(
+              child: Container(
+                width: double.infinity,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.grey[850],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[700]!),
+                ),
+                child: TextButton(
+                  onPressed: () => _showItemDetailDialog(item, index),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Text(
-                      'Edit / Detail',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  ),
+                  child: Text(
+                    controller.isCurrentWorkOrderCompleted ? 'Detail Item' : 'Edit / Detail',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -830,27 +829,27 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
   Widget _buildSaveButton() {
     return Consumer<WorkOrderDetailController>(
       builder: (context, controller, child) {
-        if (controller.isCurrentWorkOrderCompleted) {
-          return const SizedBox.shrink();
-        }
-        return SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: ElevatedButton(
-            onPressed: _saveWorkOrder,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green[600],
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+        return Visibility(
+          visible: !controller.isCurrentWorkOrderCompleted,
+          child: SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _saveWorkOrder,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[600],
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                elevation: 3,
               ),
-              elevation: 3,
-            ),
-            child: Text(
-              controller.getSaveButtonText(widget.isEditMode),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+              child: Text(
+                controller.getSaveButtonText(widget.isEditMode),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
