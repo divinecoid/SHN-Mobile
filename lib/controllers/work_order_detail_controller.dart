@@ -23,6 +23,9 @@ class WorkOrderDetailController extends ChangeNotifier {
   bool _isLoadingPelaksana = false;
   String? _pelaksanaErrorMessage;
   
+  // Cache for dynamic actual item data parsed from JSON
+  final Map<int, Map<String, dynamic>> _actualItemDataCache = {};
+  
   // Actual work order ID
   int? _actualWorkOrderId;
 
@@ -163,9 +166,11 @@ class WorkOrderDetailController extends ChangeNotifier {
       'lebar': item.lebar,
       'tebal': item.tebal,
       'qtyPlanning': item.qty,
-      'qtyActual': null, // Akan diisi dari data actual jika ada
+      'qtyActual': _getActualQtyForCompleted(item), // Akan diisi dari data actual jika ada
       'beratPlanning': double.tryParse(item.berat) ?? 0.0,
-      'beratActual': null, // Akan diisi dari data actual jika ada
+      'beratActual': _getActualBeratForCompleted(item), // Akan diisi dari data actual jika ada
+      'foto_bukti': _getActualFotoBuktiForCompleted(item),
+      'foto_sisa_barang': _getActualFotoSisaForCompleted(item),
       'luas': luas,
       'platShaftDasar': null ?? 'N/A',
       'catatan': item.catatan ?? 'N/A',
@@ -178,7 +183,7 @@ class WorkOrderDetailController extends ChangeNotifier {
       'bentukBarangDimensi': item.bentukBarang?.dimensi ?? '',
       'gradeBarangKode': item.gradeBarang?.kode ?? '',
       // Data pelaksana untuk WorkOrderDetailItemController
-      'hasManyPelaksana': item.pelaksana.map((pelaksana) => {
+      'hasManyPelaksana': _getActualPelaksanaForCompleted(item) ?? item.pelaksana.map((pelaksana) => {
         'id': pelaksana.id,
         'wo_plan_item_id': pelaksana.woPlanItemId,
         'pelaksana_id': pelaksana.pelaksanaId,
@@ -196,6 +201,50 @@ class WorkOrderDetailController extends ChangeNotifier {
         } : null,
       }).toList(),
     };
+  }
+
+  List<dynamic>? _getActualPelaksanaForCompleted(WorkOrderPlanningItem item) {
+    if (_actualItemDataCache.containsKey(item.id)) {
+      final val = _actualItemDataCache[item.id]?['has_many_pelaksana'];
+      if (val is List) return val;
+    }
+    return null;
+  }
+
+  // Method untuk mendapatkan actual qty untuk WO yang sudah completed
+  int? _getActualQtyForCompleted(WorkOrderPlanningItem item) {
+    if (_actualItemDataCache.containsKey(item.id)) {
+      final val = _actualItemDataCache[item.id]?['qty_actual'];
+      if (val is int) return val;
+      if (val is String) return int.tryParse(val);
+    }
+    return null;
+  }
+
+  double? _getActualBeratForCompleted(WorkOrderPlanningItem item) {
+    if (_actualItemDataCache.containsKey(item.id)) {
+      final val = _actualItemDataCache[item.id]?['berat_actual'];
+      if (val is double) return val;
+      if (val is int) return val.toDouble();
+      if (val is String) return double.tryParse(val);
+    }
+    return null;
+  }
+
+  String? _getActualFotoBuktiForCompleted(WorkOrderPlanningItem item) {
+    if (_actualItemDataCache.containsKey(item.id)) {
+      final val = _actualItemDataCache[item.id]?['foto_bukti'];
+      if (val is String) return val;
+    }
+    return null; 
+  }
+
+  String? _getActualFotoSisaForCompleted(WorkOrderPlanningItem item) {
+    if (_actualItemDataCache.containsKey(item.id)) {
+      final val = _actualItemDataCache[item.id]?['foto_sisa_barang'];
+      if (val is String) return val;
+    }
+    return null; 
   }
 
   // Method untuk mendapatkan nama jenis barang berdasarkan ID
@@ -315,9 +364,38 @@ class WorkOrderDetailController extends ChangeNotifier {
           // Set actual work order ID jika ada
           if (_workOrderPlanning?.workOrderActual != null) {
             _actualWorkOrderId = _workOrderPlanning!.workOrderActual!.id;
+            _fotoBuktiBase64 = jsonData['data']?['work_order_actual']?['foto_bukti'];
             debugPrint('Actual Work Order ID set to: $_actualWorkOrderId');
+            
+            // Map actual item data from raw JSON
+            if (jsonData['data'] != null && jsonData['data']['work_order_actual'] != null) {
+              final actualItems = jsonData['data']['work_order_actual']['items'] ?? 
+                                  jsonData['data']['work_order_actual']['work_order_actual_items'];
+              if (actualItems != null && actualItems is List) {
+                 for (var actualItem in actualItems) {
+                    final planItemId = actualItem['work_order_planning_item_id'];
+                    for (var i = 0; i < _workOrderItems.length; i++) {
+                      if (_workOrderItems[i].id == planItemId) {
+                         // We store these dynamic properties in a temporary map on the controller
+                         // to avoid breaking the strongly-typed model.
+                         _actualItemDataCache[planItemId] = {
+                            'qty_actual': actualItem['qty_actual'] ?? actualItem['qty'],
+                            'berat_actual': actualItem['berat_actual'] ?? actualItem['berat'],
+                            'foto_bukti': actualItem['foto_bukti'],
+                            'foto_sisa_barang': actualItem['foto_sisa_barang'],
+                         };
+                      }
+                    }
+                 }
+              }
+            }
           } else {
             debugPrint('No actual work order found in response');
+          }
+
+          // If Actual Work Order ID is set, explicitly fetch it
+          if (_actualWorkOrderId != null) {
+            await fetchWorkOrderActualDetail(_actualWorkOrderId!, context: context);
           }
           
           _errorMessage = null;
@@ -340,6 +418,56 @@ class WorkOrderDetailController extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  // Method specifically to fetch complete actuals
+  Future<void> fetchWorkOrderActualDetail(int actualId, {BuildContext? context}) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) return;
+
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final actualEndpoint = '/api/work-order-actual';
+      
+      final url = Uri.parse('$baseUrl$actualEndpoint/$actualId');
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        
+        if (jsonData['success'] == true && jsonData['data'] != null) {
+          final actualData = jsonData['data'];
+          final actualItems = actualData['work_order_actual_items'];
+          
+          // Re-map actual payload with potentially complete relation properties
+          if (actualItems != null && actualItems is List) {
+             for (var actualItem in actualItems) {
+                final planItemId = actualItem['work_order_planning_item_id'];
+                for (var i = 0; i < _workOrderItems.length; i++) {
+                  if (_workOrderItems[i].id == planItemId) {
+                     // Upsert into our temp map on the controller so `hasManyPelaksana` mappings can load Actual assignments
+                     _actualItemDataCache[planItemId] ??= {}; 
+                     _actualItemDataCache[planItemId]!['qty_actual'] = actualItem['qty_actual'] ?? actualItem['qty'];
+                     _actualItemDataCache[planItemId]!['berat_actual'] = actualItem['berat_actual'] ?? actualItem['berat'];
+                     _actualItemDataCache[planItemId]!['foto_bukti'] = actualItem['foto_bukti'];
+                     _actualItemDataCache[planItemId]!['foto_sisa_barang'] = actualItem['foto_sisa_barang'];
+                     _actualItemDataCache[planItemId]!['has_many_pelaksana'] = actualItem['has_many_pelaksana'];
+                  }
+                }
+             }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching work order ACTUAL detail: $e');
     }
   }
 
@@ -425,7 +553,9 @@ class WorkOrderDetailController extends ChangeNotifier {
       Map<String, dynamic> itemMap = _convertItemToMap(item);
       
       // Cek data sementara secara sinkron (akan di-load di background)
-      _loadTempDataForItem(workOrderId, item.id, itemMap);
+      if (!isCurrentWorkOrderCompleted) {
+         _loadTempDataForItem(workOrderId, item.id, itemMap);
+      }
       
       items.add(itemMap);
     }
@@ -452,17 +582,19 @@ class WorkOrderDetailController extends ChangeNotifier {
     for (var item in _workOrderItems) {
       Map<String, dynamic> itemMap = _convertItemToMap(item);
       
-      // Cek apakah ada data sementara untuk item ini
-      final tempData = await loadTemporaryWorkOrderItem(workOrderId, item.id);
-      debugPrint('Loading temp data for item ${item.id}: $tempData');
-      
-      if (tempData != null) {
-        // Update dengan data sementara
-        itemMap['qtyActual'] = tempData['qtyActual'];
-        itemMap['beratActual'] = tempData['beratActual'];
-        debugPrint('Updated item ${item.id} with temp data - qtyActual: ${tempData['qtyActual']}, beratActual: ${tempData['beratActual']}');
-      } else {
-        debugPrint('No temp data found for item ${item.id}');
+      if (!isCurrentWorkOrderCompleted) {
+        // Cek apakah ada data sementara untuk item ini
+        final tempData = await loadTemporaryWorkOrderItem(workOrderId, item.id);
+        debugPrint('Loading temp data for item ${item.id}: $tempData');
+        
+        if (tempData != null) {
+          // Update dengan data sementara
+          itemMap['qtyActual'] = tempData['qtyActual'];
+          itemMap['beratActual'] = tempData['beratActual'];
+          debugPrint('Updated item ${item.id} with temp data - qtyActual: ${tempData['qtyActual']}, beratActual: ${tempData['beratActual']}');
+        } else {
+          debugPrint('No temp data found for item ${item.id}');
+        }
       }
       
       items.add(itemMap);

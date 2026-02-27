@@ -627,7 +627,7 @@ class _WorkOrderPageState extends State<WorkOrderPage>
           children: [
             Expanded(
               child: _buildDatePicker(
-                label: 'Tanggal WO Dari',
+                label: 'Dari Tanggal',
                 value: controller.tanggalWoFrom,
                 onDateSelected: (date) {
                   if (date != null) {
@@ -641,7 +641,7 @@ class _WorkOrderPageState extends State<WorkOrderPage>
             const SizedBox(width: 12),
             Expanded(
               child: _buildDatePicker(
-                label: 'Tanggal WO Sampai',
+                label: 'Sampai Tanggal',
                 value: controller.tanggalWoTo,
                 onDateSelected: (date) {
                   if (date != null) {

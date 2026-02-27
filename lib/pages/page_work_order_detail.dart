@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/auth_helper.dart';
 import '../controllers/work_order_detail_controller.dart';
 import '../models/work_order_planning_model.dart';
 import 'page_work_order_detail_item.dart';
@@ -664,15 +667,35 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
 
 
 
+  String? _buildStorageUrl(String path) {
+    if (path.isEmpty) return null;
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    
+    try {
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final base = baseUrl.replaceAll(RegExp(r'/api$'), '');
+      var normalized = path.replaceAll(RegExp(r'^/+'), '');
+      
+      // Normalize specifically matching the logic from FE detail.jsx
+      normalized = normalized.replaceAll(RegExp(r'^work-order-actual/\d+/items/'), 'work-order-actual/items/');
+      final hasStoragePrefix = RegExp(r'^storage/').hasMatch(normalized);
+      
+      return hasStoragePrefix ? '$base/$normalized' : '$base/storage/$normalized';
+    } catch (e) {
+      return null;
+    }
+  }
+
   Widget _buildUploadPhotoSection() {
     return Consumer<WorkOrderDetailController>(
       builder: (context, controller, child) {
-        if (controller.isCurrentWorkOrderCompleted) {
+        final hasPhoto = controller.fotoBuktiBase64 != null && controller.fotoBuktiBase64!.isNotEmpty;
+        if (controller.isCurrentWorkOrderCompleted && !hasPhoto) {
           return const SizedBox.shrink();
         }
-        final hasPhoto = controller.fotoBuktiBase64 != null && controller.fotoBuktiBase64!.isNotEmpty;
+        
         Uint8List? photoBytes;
-        if (hasPhoto) {
+        if (hasPhoto && controller.fotoBuktiBase64!.startsWith('data:image')) {
           try {
             final dataUri = controller.fotoBuktiBase64!;
             final base64Part = dataUri.contains(',') ? dataUri.split(',').last : dataUri;
@@ -698,7 +721,7 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
                     Icon(Icons.photo_camera, color: Colors.green[400], size: 24),
                     const SizedBox(width: 8),
                     const Text(
-                      'Upload Bukti Foto',
+                      'Bukti Foto Pelaksanaan',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -706,7 +729,7 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
                       ),
                     ),
                     const Spacer(),
-                    if (hasPhoto)
+                    if (hasPhoto && !controller.isCurrentWorkOrderCompleted)
                       TextButton(
                         onPressed: () => controller.clearFotoBukti(),
                         child: const Text('Hapus', style: TextStyle(color: Colors.redAccent)),
@@ -726,32 +749,60 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
                       width: 2,
                     ),
                   ),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: _selectPhoto,
-                    borderRadius: BorderRadius.circular(8),
-                    child: hasPhoto && photoBytes != null
-                        ? Image.memory(photoBytes, fit: BoxFit.cover, width: double.infinity, height: double.infinity)
-                        : Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.add_a_photo,
-                                color: Colors.grey[400],
-                                size: 32,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Tap untuk ambil foto',
-                                style: TextStyle(
+                    child: controller.isCurrentWorkOrderCompleted && hasPhoto && photoBytes == null
+                        ? FutureBuilder<String?>(
+                            future: SharedPreferences.getInstance().then((p) => p.getString('token')),
+                            builder: (context, snapshot) {
+                               return Image.network(
+                                  _buildStorageUrl(controller.fotoBuktiBase64!) ?? '',
+                                  headers: snapshot.hasData ? {'Authorization': 'Bearer ${snapshot.data}'} : null,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.broken_image, color: Colors.grey[600], size: 32),
+                                          const SizedBox(height: 8),
+                                          Text('Gagal memuat gambar', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                               );
+                            }
+                          )
+                        : InkWell(
+                      onTap: () {
+                         if (!controller.isCurrentWorkOrderCompleted) {
+                            _selectPhoto();
+                         }
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: hasPhoto && photoBytes != null
+                          ? Image.memory(photoBytes, fit: BoxFit.cover, width: double.infinity, height: double.infinity)
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.add_a_photo,
                                   color: Colors.grey[400],
-                                  fontSize: 14,
+                                  size: 32,
                                 ),
-                              ),
-                            ],
-                          ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Tap untuk ambil foto',
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
                   ),
-                ),
               ],
             ),
           ),

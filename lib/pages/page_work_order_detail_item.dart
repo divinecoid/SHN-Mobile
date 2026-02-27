@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/auth_helper.dart';
 import '../controllers/work_order_detail_item_controller.dart';
 import '../models/pelaksana_model.dart';
 
@@ -554,7 +557,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
     );
   }
 
-  Widget _buildAssignmentInputField(String label, String value, String suffix, Function(String) onChanged) {
+  Widget _buildAssignmentInputField(String label, String value, String suffix, Function(String) onChanged, {bool isReadOnly = false}) {
     final controller = TextEditingController(text: value);
     
     return Column(
@@ -573,7 +576,8 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
           height: 45,
           child: TextField(
             controller: controller,
-            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+            readOnly: isReadOnly,
+            style: TextStyle(color: isReadOnly ? Colors.grey[300] : Colors.white, fontSize: 14, fontWeight: isReadOnly ? FontWeight.w600 : FontWeight.w500),
             keyboardType: TextInputType.number,
             textAlign: TextAlign.center,
             onChanged: onChanged,
@@ -581,7 +585,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
               hintText: '0',
               hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
               filled: true,
-              fillColor: Colors.grey[800],
+              fillColor: isReadOnly ? Colors.grey[850] : Colors.grey[800],
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: Colors.grey[600]!),
@@ -592,7 +596,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.blue[400]!),
+                borderSide: BorderSide(color: isReadOnly ? Colors.grey[600]! : Colors.blue[400]!),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               suffixText: suffix,
@@ -605,7 +609,27 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
     );
   }
 
+  String? _buildStorageUrl(String path) {
+    if (path.isEmpty) return null;
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    
+    try {
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final base = baseUrl.replaceAll(RegExp(r'/api$'), '');
+      var normalized = path.replaceAll(RegExp(r'^/+'), '');
+      
+      // Normalize specifically matching the logic from FE
+      normalized = normalized.replaceAll(RegExp(r'^work-order-actual/\d+/items/'), 'work-order-actual/items/');
+      final hasStoragePrefix = RegExp(r'^storage/').hasMatch(normalized);
+      
+      return hasStoragePrefix ? '$base/$normalized' : '$base/storage/$normalized';
+    } catch (e) {
+      return null;
+    }
+  }
+
   Widget _buildUploadPhotosSection() {
+    final bool isCompleted = widget.workOrder['status'] == 'Completed';
     try {
       return Consumer<WorkOrderDetailItemController>(
         builder: (context, controller, child) {
@@ -614,8 +638,9 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
               children: [
                 _buildPhotoSection(
                   title: 'Foto Bukti Pelaksanaan',
-                  subtitle: 'Upload foto bukti pengerjaan item ini',
+                  subtitle: isCompleted ? '' : 'Upload foto bukti pengerjaan item ini',
                   base64Data: controller.fotoBuktiBase64,
+                  isCompleted: isCompleted,
                   onCamera: () => controller.pickAndSetFotoBukti(ImageSource.camera),
                   onGallery: () => controller.pickAndSetFotoBukti(ImageSource.gallery),
                   onClear: () => controller.clearFotoBukti(),
@@ -623,8 +648,9 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                 const SizedBox(height: 20),
                 _buildPhotoSection(
                   title: 'Foto Sisa Barang',
-                  subtitle: 'Upload foto sisa potongan plat (Opsional)',
+                  subtitle: isCompleted ? '' : 'Upload foto sisa potongan plat (Opsional)',
                   base64Data: controller.fotoSisaBase64,
+                  isCompleted: isCompleted,
                   onCamera: () => controller.pickAndSetFotoSisa(ImageSource.camera),
                   onGallery: () => controller.pickAndSetFotoSisa(ImageSource.gallery),
                   onClear: () => controller.clearFotoSisa(),
@@ -667,10 +693,14 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
     required String title,
     required String subtitle,
     required String? base64Data,
+    required bool isCompleted,
     required VoidCallback onCamera,
     required VoidCallback onGallery,
     required VoidCallback onClear,
   }) {
+    if (isCompleted && (base64Data == null || base64Data.isEmpty)) {
+      return const SizedBox.shrink();
+    }
     return Container(
       decoration: BoxDecoration(
         color: Colors.grey[900],
@@ -710,30 +740,62 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                     color: Colors.grey[850],
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.grey[700]!),
-                    image: DecorationImage(
+                    image: isCompleted && !base64Data.startsWith('data:image') 
+                       ? null 
+                       : DecorationImage(
                       image: MemoryImage(base64Decode(base64Data.split(',').last)),
                       fit: BoxFit.cover,
                     ),
                   ),
+                  child: isCompleted && !base64Data.startsWith('data:image')
+                    ? FutureBuilder<String?>(
+                        future: SharedPreferences.getInstance().then((p) => p.getString('token')),
+                        builder: (context, snapshot) {
+                            return ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                _buildStorageUrl(base64Data) ?? '',
+                                headers: snapshot.hasData ? {'Authorization': 'Bearer ${snapshot.data}'} : null,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.broken_image, color: Colors.grey[600], size: 32),
+                                        const SizedBox(height: 8),
+                                        Text('Gagal memuat gambar', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                        }
+                      )
+                    : null,
                 ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: GestureDetector(
-                    onTap: onClear,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
-                        shape: BoxShape.circle,
+                if (!isCompleted)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: GestureDetector(
+                      onTap: onClear,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.6),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close, color: Colors.white, size: 20),
                       ),
-                      child: const Icon(Icons.close, color: Colors.white, size: 20),
                     ),
                   ),
-                ),
               ],
             )
-          else
+          else if (!isCompleted)
             Row(
               children: [
                 Expanded(
@@ -775,6 +837,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
   }
 
   Widget _buildAssignmentSection() {
+    final bool isCompleted = widget.workOrder['status'] == 'Completed';
     try {
       return Consumer<WorkOrderDetailItemController>(
         builder: (context, controller, child) {
@@ -846,20 +909,21 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                         ],
                       ),
                     ),
-                    ElevatedButton.icon(
-                      onPressed: () => controller.addNewAssignment(),
-                      icon: Icon(Icons.add, size: 18),
-                      label: const Text('Tambah'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue[600],
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    if (!isCompleted)
+                      ElevatedButton.icon(
+                        onPressed: () => controller.addNewAssignment(),
+                        icon: Icon(Icons.add, size: 18),
+                        label: const Text('Tambah'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[600],
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          elevation: 2,
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        elevation: 2,
                       ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -870,7 +934,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                   final assignment = entry.value;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
-                    child: _buildAssignmentRow(assignment, index, controller),
+                    child: _buildAssignmentRow(assignment, index, controller, isCompleted),
                   );
                 }).toList(),
               ],
@@ -909,7 +973,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
     }
   }
 
-  Widget _buildAssignmentRow(Map<String, dynamic> assignment, int index, WorkOrderDetailItemController controller) {
+  Widget _buildAssignmentRow(Map<String, dynamic> assignment, int index, WorkOrderDetailItemController controller, bool isCompleted) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -923,8 +987,11 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Baris 1: Dropdown Pelaksana
-          _buildPelaksanaDropdown(assignment, index, controller),
+          // Baris 1: Dropdown/Text Pelaksana
+          if (isCompleted)
+            _buildReadOnlyPelaksana(assignment)
+          else
+            _buildPelaksanaDropdown(assignment, index, controller),
           const SizedBox(height: 20),
           
           // Baris 2: Qty dan Berat
@@ -936,6 +1003,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                   assignment['qty'].toString(),
                   'pcs',
                   (value) => controller.updateAssignmentQty(index, value),
+                  isReadOnly: isCompleted,
                 ),
               ),
               const SizedBox(width: 16),
@@ -945,6 +1013,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                   assignment['berat'].toString(),
                   'kg',
                   (value) => controller.updateAssignmentBerat(index, value),
+                  isReadOnly: isCompleted,
                 ),
               ),
             ],
@@ -955,20 +1024,19 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
           if ((assignment['status'] as String?) == 'assigned' && assignment['tanggal'] != null)
             _buildScheduleInfo(assignment),
           
-          const SizedBox(height: 20),
-          
-          // Baris 4: Action Buttons
-          Row(
-            children: [
-              Expanded(
-                child: _buildActionButton(assignment, index, controller),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildDeleteButton(index, controller),
-              ),
-            ],
-          ),
+          // Baris 4: Action Buttons (Sembunyikan jika completed)
+          if (!isCompleted)
+            Row(
+              children: [
+                Expanded(
+                  child: _buildActionButton(assignment, index, controller),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildDeleteButton(index, controller),
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -1028,6 +1096,40 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
               onChanged: (String? newValue) {
                 controller.updateAssignmentPelaksana(index, newValue);
               },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReadOnlyPelaksana(Map<String, dynamic> assignment) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Pelaksana',
+          style: TextStyle(
+            color: Colors.grey[400],
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.grey[850],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[600]!),
+          ),
+          child: Text(
+            assignment['pelaksana']?.toString() ?? 'Belum ada pelaksana',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -1178,7 +1280,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
     return Container(
       height: 45,
       child: ElevatedButton(
-        onPressed: () => controller.deleteAssignment(index),
+        onPressed: () => _deleteAssignment(index, controller),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.red[800],
           foregroundColor: Colors.white,
@@ -1196,6 +1298,11 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
   }
 
   Widget _buildSaveButton() {
+    final bool isCompleted = widget.workOrder['status'] == 'Completed';
+    if (isCompleted) {
+      return const SizedBox.shrink();
+    }
+    
     try {
       return SizedBox(
         width: double.infinity,
