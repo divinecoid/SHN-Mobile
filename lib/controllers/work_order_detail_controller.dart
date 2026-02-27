@@ -450,7 +450,7 @@ class WorkOrderDetailController extends ChangeNotifier {
           // Re-map actual payload with potentially complete relation properties
           if (actualItems != null && actualItems is List) {
              for (var actualItem in actualItems) {
-                final planItemId = actualItem['work_order_planning_item_id'];
+                final planItemId = actualItem['wo_plan_item_id'];
                 for (var i = 0; i < _workOrderItems.length; i++) {
                   if (_workOrderItems[i].id == planItemId) {
                      // Upsert into our temp map on the controller so `hasManyPelaksana` mappings can load Actual assignments
@@ -463,6 +463,8 @@ class WorkOrderDetailController extends ChangeNotifier {
                   }
                 }
              }
+             // Notify the UI that the complete Actual details have successfully mapped into the Cache buffer
+             notifyListeners();
           }
         }
       }

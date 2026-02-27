@@ -618,10 +618,25 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
       final base = baseUrl.replaceAll(RegExp(r'/api$'), '');
       var normalized = path.replaceAll(RegExp(r'^/+'), '');
       
-      // Normalize specifically matching the logic from FE
-      normalized = normalized.replaceAll(RegExp(r'^work-order-actual/\d+/items/'), 'work-order-actual/items/');
-      final hasStoragePrefix = RegExp(r'^storage/').hasMatch(normalized);
+      // Handle the item's foto_bukti specifically
+      final itemBuktiMatch = RegExp(r'^work-order-actual/\d+/items/(\d+)/foto_bukti').firstMatch(normalized);
+      if (itemBuktiMatch != null) {
+        return '$base/api/work-order-actual/item/${itemBuktiMatch.group(1)}/image';
+      }
+
+      // Handle the item's foto_sisa_barang specifically
+      final itemSisaMatch = RegExp(r'^work-order-actual/\d+/items/(\d+)/foto_sisa_barang').firstMatch(normalized);
+      if (itemSisaMatch != null) {
+        return '$base/api/work-order-actual/item/${itemSisaMatch.group(1)}/sisa-image';
+      }
+
+      // Handle the overall WO foto_bukti specifically
+      final globalBuktiMatch = RegExp(r'^work-order-actual/(\d+)/foto_bukti').firstMatch(normalized);
+      if (globalBuktiMatch != null) {
+        return '$base/api/work-order-actual/${globalBuktiMatch.group(1)}/image';
+      }
       
+      final hasStoragePrefix = RegExp(r'^storage/').hasMatch(normalized);
       return hasStoragePrefix ? '$base/$normalized' : '$base/storage/$normalized';
     } catch (e) {
       return null;
