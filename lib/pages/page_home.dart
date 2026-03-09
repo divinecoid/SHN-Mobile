@@ -4,6 +4,7 @@ import 'package:shn_mobile/pages/terima_barang_main_page.dart';
 import 'package:shn_mobile/pages/page_stock_opname.dart';
 import 'package:shn_mobile/pages/stock_opname_list_page.dart';
 import 'package:shn_mobile/pages/page_work_order.dart';
+import 'package:shn_mobile/pages/copy_qr_main_page.dart';
 import 'package:shn_mobile/services/permission_service.dart';
 
 class MenuItem {
@@ -52,6 +53,12 @@ class _HomePageState extends State<HomePage> {
       menuCode: 'WORK_ORDER',
       icon: Icons.work,
       page: const WorkOrderPage(),
+    ),
+    MenuItem(
+      title: 'Copy QR',
+      menuCode: 'COPY_QR',
+      icon: Icons.qr_code_2,
+      page: const CopyQrMainPage(),
     ),
   ];
 

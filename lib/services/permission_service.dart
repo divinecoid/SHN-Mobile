@@ -13,6 +13,7 @@ class PermissionService {
     'PROSES_NON_PO',
     'STOCK_OPNAME',
     'WORK_ORDER',
+    'COPY_QR',
   ];
 
   /// Fetch menu permissions from API

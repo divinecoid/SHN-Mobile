@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/penerimaan_barang_model.dart';
+import '../models/item_barang_model.dart' as IB;
 import 'package:intl/intl.dart';
 
 class PrinterService {
@@ -268,6 +269,100 @@ class PrinterService {
     } catch (e) {
       print("Error batch printing: $e");
       throw Exception("Gagal mencetak batch: $e");
+    }
+  }
+
+  /// Print duplicate QR for Copy QR feature
+  Future<void> printCopyItemBarangQR(IB.ItemBarang item, int copies) async {
+    bool connected = await isConnected;
+    if (!connected) {
+      connected = await autoConnect();
+      if (!connected) {
+        throw Exception("Printer belum terkoneksi. Silakan sambungkan di pengaturan.");
+      }
+    }
+
+    try {
+      final payloadMap = {
+        "id": item.id,
+        "kode": item.kodeBarang,
+        "nama": item.namaItemBarang
+      };
+      final payloadJson = jsonEncode(payloadMap);
+      
+      // Menggunakan ItemBarangGroup jika ada, kalau tidak ada fall back ke panjang/lebar/tebal
+      String dimensi = "-";
+      if (item.itemBarangGroup != null) {
+        final mockDetail = PenerimaanBarangDetail(
+          id: 0,
+          idPenerimaanBarang: 0,
+          idItemBarang: item.id,
+          idRak: 0,
+          qty: 0,
+          itemBarangGroup: item.itemBarangGroup,
+        );
+        dimensi = _buildDimensiItem(mockDetail);
+      } else {
+        // Fallback jika tidak ada group
+        List<double> dimensions = [];
+        if (item.tebal > 0) dimensions.add(item.tebal);
+        if (item.lebar > 0) dimensions.add(item.lebar);
+        if (item.panjang > 0) dimensions.add(item.panjang);
+        if (dimensions.isNotEmpty) {
+          dimensi = dimensions.map((d) => d.toStringAsFixed(d.truncateToDouble() == d ? 0 : 2)).join("x");
+        }
+      }
+
+      final dateStr = DateFormat('dd-MM-yyyy HH:mm:ss').format(DateTime.now());
+
+      for (int i = 0; i < copies; i++) {
+        bluetooth.printCustom("PT SURYA HARSA NAGARA", 1, 1);
+        bluetooth.printNewLine();
+
+        bluetooth.printQRcode(payloadJson, 250, 250, 1);
+        bluetooth.printNewLine();
+
+        bluetooth.printCustom("Kode Barang:", 0, 0);
+        bluetooth.printCustom(item.kodeBarang, 1, 0);
+        
+        bluetooth.printCustom("Nama Item:", 0, 0);
+        bluetooth.printCustom(item.namaItemBarang, 1, 0);
+        
+        bluetooth.printCustom("Jenis:", 0, 0);
+        bluetooth.printCustom(item.jenisBarang?.namaJenis ?? item.itemBarangGroup?.jenisBarang?.namaJenis ?? "-", 1, 0);
+        
+        bluetooth.printCustom("Bentuk:", 0, 0);
+        bluetooth.printCustom(item.bentukBarang?.namaBentuk ?? item.itemBarangGroup?.bentukBarang?.namaBentuk ?? "-", 1, 0);
+        
+        bluetooth.printCustom("Grade:", 0, 0);
+        bluetooth.printCustom(item.gradeBarang?.nama ?? item.itemBarangGroup?.gradeBarang?.nama ?? "-", 1, 0);
+        
+        bluetooth.printCustom("Dimensi:", 0, 0);
+        bluetooth.printCustom(dimensi, 1, 0);
+
+        bluetooth.printNewLine();
+        bluetooth.printCustom("Date Printed:", 0, 0);
+        bluetooth.printCustom(dateStr, 0, 0);
+
+        bluetooth.printNewLine();
+        bluetooth.printCustom("----------------", 1, 1);
+        bluetooth.printCustom("SHN WMS", 0, 1);
+        
+        // Pemisah antar item batch
+        if (i < copies - 1) {
+          bluetooth.printNewLine();
+          bluetooth.printCustom("- - - - - - - - -", 1, 1);
+          bluetooth.printNewLine();
+        } else {
+          // Feed paper at the end
+          bluetooth.printNewLine();
+          bluetooth.printNewLine();
+          bluetooth.printNewLine();
+        }
+      }
+    } catch (e) {
+      print("Error copy printing: $e");
+      throw Exception("Gagal mencetak copy QR: $e");
     }
   }
 }

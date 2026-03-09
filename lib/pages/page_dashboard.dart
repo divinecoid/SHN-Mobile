@@ -18,6 +18,7 @@ import '../controllers/stock_check_controller.dart';
 import '../services/permission_service.dart';
 import 'proses_nonpo_list_page.dart';
 import 'page_settings_printer.dart';
+import 'copy_qr_main_page.dart';
 
 class DashboardMenuItem {
   final String title;
@@ -89,6 +90,12 @@ class _DashboardPageState extends State<DashboardPage> {
       menuCode: 'WORK_ORDER',
       icon: Icons.work,
       page: const WorkOrderPage(),
+    ),
+    DashboardMenuItem(
+      title: 'Copy QR',
+      menuCode: 'COPY_QR',
+      icon: Icons.qr_code_2,
+      page: const CopyQrMainPage(),
     ),
   ];
 

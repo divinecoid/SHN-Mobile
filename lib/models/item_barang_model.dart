@@ -2,6 +2,7 @@ import 'ref_jenis_barang_model.dart';
 import 'ref_bentuk_barang_model.dart';
 import 'ref_grade_barang_model.dart';
 import 'gudang_model.dart';
+import 'item_barang_group_model.dart';
 
 class ItemBarang {
   final int id;
@@ -34,6 +35,7 @@ class ItemBarang {
   final RefBentukBarang? bentukBarang;
   final RefGradeBarang? gradeBarang;
   final Gudang? gudang;
+  final ItemBarangGroup? itemBarangGroup;
 
   ItemBarang({
     required this.id,
@@ -66,6 +68,7 @@ class ItemBarang {
     this.bentukBarang,
     this.gradeBarang,
     this.gudang,
+    this.itemBarangGroup,
   });
 
   factory ItemBarang.fromMap(Map<String, dynamic> map) {
@@ -108,6 +111,9 @@ class ItemBarang {
       gudang: map['gudang'] != null && map['gudang'] is Map<String, dynamic>
           ? Gudang.fromMap(map['gudang'] as Map<String, dynamic>)
           : null,
+      itemBarangGroup: map['item_barang_group'] != null && map['item_barang_group'] is Map<String, dynamic>
+          ? ItemBarangGroup.fromJson(map['item_barang_group'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -143,6 +149,7 @@ class ItemBarang {
       'bentuk_barang': bentukBarang?.toJson(),
       'grade_barang': gradeBarang?.toJson(),
       'gudang': gudang?.toMap(),
+      'item_barang_group': itemBarangGroup?.toJson(),
     };
   }
 

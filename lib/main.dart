@@ -7,6 +7,7 @@ import 'package:shn_mobile/pages/page_login.dart';
 import 'package:shn_mobile/pages/page_dashboard.dart';
 import 'package:shn_mobile/controllers/stock_check_controller.dart';
 import 'package:shn_mobile/controllers/proses_nonpo_controller.dart';
+import 'package:shn_mobile/controllers/copy_qr_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +28,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => StockCheckController()),
         ChangeNotifierProvider(create: (_) => ProsesNonPoController()),
+        ChangeNotifierProvider(create: (_) => CopyQrController()),
       ],
       child: MaterialApp(
         title: 'SHN Mobile',
