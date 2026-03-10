@@ -15,8 +15,8 @@ class WorkOrderDetailController extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   
-  // Foto bukti (base64 data URI)
-  String? _fotoBuktiBase64;
+  // Foto bukti (list of base64 data URI)
+  List<String> _fotoBuktiBase64List = [];
   
   // Data pelaksana
   List<Pelaksana> _availablePelaksana = [];
@@ -37,8 +37,11 @@ class WorkOrderDetailController extends ChangeNotifier {
   // Getter untuk actual work order ID
   int? get actualWorkOrderId => _actualWorkOrderId;
   
-  // Getter untuk foto bukti (base64 data URI)
-  String? get fotoBuktiBase64 => _fotoBuktiBase64;
+  // Getter untuk foto bukti (list of base64 data URI)
+  List<String> get fotoBuktiBase64List => _fotoBuktiBase64List;
+  
+  // Getter legacy (return first photo or null) - untuk kompatibilitas jika ada
+  String? get fotoBuktiBase64 => _fotoBuktiBase64List.isNotEmpty ? _fotoBuktiBase64List.first : null;
   
   // Method untuk set actual work order ID
   void setActualWorkOrderId(int? id) {
@@ -46,9 +49,23 @@ class WorkOrderDetailController extends ChangeNotifier {
     notifyListeners();
   }
   
-  // Method untuk menghapus foto bukti
+  // Method untuk menghapus semua foto bukti
   void clearFotoBukti() {
-    _fotoBuktiBase64 = null;
+    _fotoBuktiBase64List.clear();
+    notifyListeners();
+  }
+
+  // Method untuk menghapus satu foto bukti berdasarkan index
+  void removeFotoBukti(int index) {
+    if (index >= 0 && index < _fotoBuktiBase64List.length) {
+      _fotoBuktiBase64List.removeAt(index);
+      notifyListeners();
+    }
+  }
+
+  // Method untuk menambah foto bukti dari base64
+  void addFotoBukti(String base64) {
+    _fotoBuktiBase64List.add(base64);
     notifyListeners();
   }
   
@@ -58,8 +75,7 @@ class WorkOrderDetailController extends ChangeNotifier {
     return 'data:$mimeType;base64,$base64Str';
   }
   
-  // Method: ambil foto dari kamera atau galeri, lalu simpan sebagai base64 data URI
-  // Gunakan: await pickAndSetFotoBukti(ImageSource.camera) atau ImageSource.gallery
+  // Method: ambil foto dari kamera atau galeri, lalu tambahkan ke list
   Future<void> pickAndSetFotoBukti(ImageSource source) async {
     try {
       final picker = ImagePicker();
@@ -73,7 +89,9 @@ class WorkOrderDetailController extends ChangeNotifier {
       String mime = 'image/jpeg';
       if (path.endsWith('.png')) mime = 'image/png';
       else if (path.endsWith('.webp')) mime = 'image/webp';
-      _fotoBuktiBase64 = _toDataUri(bytes, mimeType: mime);
+      
+      final base64 = _toDataUri(bytes, mimeType: mime);
+      _fotoBuktiBase64List.add(base64);
       notifyListeners();
     } catch (e) {
       debugPrint('Error picking image: $e');
@@ -383,8 +401,14 @@ class WorkOrderDetailController extends ChangeNotifier {
           // Set actual work order ID jika ada
           if (_workOrderPlanning?.workOrderActual != null) {
             _actualWorkOrderId = _workOrderPlanning!.workOrderActual!.id;
-            _fotoBuktiBase64 = jsonData['data']?['work_order_actual']?['foto_bukti'];
-            debugPrint('Actual Work Order ID set to: $_actualWorkOrderId');
+            final rawFotoBukti = jsonData['data']?['work_order_actual']?['foto_bukti'];
+            _fotoBuktiBase64List.clear();
+            if (rawFotoBukti is List) {
+              _fotoBuktiBase64List.addAll(List<String>.from(rawFotoBukti));
+            } else if (rawFotoBukti is String && rawFotoBukti.isNotEmpty) {
+              _fotoBuktiBase64List.add(rawFotoBukti);
+            }
+            debugPrint('Actual Work Order ID set to: $_actualWorkOrderId, Photos: ${_fotoBuktiBase64List.length}');
             
             // Map actual item data from raw JSON
             if (jsonData['data'] != null && jsonData['data']['work_order_actual'] != null) {
@@ -462,9 +486,19 @@ class WorkOrderDetailController extends ChangeNotifier {
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
         
-        if (jsonData['success'] == true && jsonData['data'] != null) {
-          final actualData = jsonData['data'];
-          final actualItems = actualData['work_order_actual_items'];
+          if (jsonData['success'] == true && jsonData['data'] != null) {
+            final actualData = jsonData['data'];
+            
+            // Populasikan foto bukti header jika ada
+            final rawFotoBukti = actualData['foto_bukti'];
+            _fotoBuktiBase64List.clear();
+            if (rawFotoBukti is List) {
+              _fotoBuktiBase64List.addAll(List<String>.from(rawFotoBukti));
+            } else if (rawFotoBukti is String && rawFotoBukti.isNotEmpty) {
+              _fotoBuktiBase64List.add(rawFotoBukti);
+            }
+            
+            final actualItems = actualData['work_order_actual_items'];
           
           // Re-map actual payload with potentially complete relation properties
           if (actualItems != null && actualItems is List) {
@@ -1096,7 +1130,7 @@ class WorkOrderDetailController extends ChangeNotifier {
       // Sisipkan foto_bukti ke payload jika tersedia dan normalisasi struktur items
       final payload = {
         ...allTempData,
-        if (_fotoBuktiBase64 != null) 'foto_bukti': _fotoBuktiBase64,
+        if (_fotoBuktiBase64List.isNotEmpty) 'foto_bukti': _fotoBuktiBase64List,
       };
       
       // Normalisasi struktur items: flatten { itemData, timestamp } => {...itemData, timestamp}
@@ -1158,7 +1192,7 @@ class WorkOrderDetailController extends ChangeNotifier {
         if (jsonData['success'] == true) {
           debugPrint('Work order actual berhasil disimpan');
           // Bersihkan foto setelah sukses
-          _fotoBuktiBase64 = null;
+          _fotoBuktiBase64List.clear();
           notifyListeners();
           return true;
         } else {

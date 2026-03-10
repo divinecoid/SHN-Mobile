@@ -741,22 +741,13 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
   Widget _buildUploadPhotoSection() {
     return Consumer<WorkOrderDetailController>(
       builder: (context, controller, child) {
-        final hasPhoto = controller.fotoBuktiBase64 != null && controller.fotoBuktiBase64!.isNotEmpty;
-        if (controller.isCurrentWorkOrderCompleted && !hasPhoto) {
+        final List<String> photos = controller.fotoBuktiBase64List;
+        final hasPhotos = photos.isNotEmpty;
+        
+        if (controller.isCurrentWorkOrderCompleted && !hasPhotos) {
           return const SizedBox.shrink();
         }
         
-        Uint8List? photoBytes;
-        if (hasPhoto && controller.fotoBuktiBase64!.startsWith('data:image')) {
-          try {
-            final dataUri = controller.fotoBuktiBase64!;
-            final base64Part = dataUri.contains(',') ? dataUri.split(',').last : dataUri;
-            photoBytes = base64Decode(base64Part);
-          } catch (_) {
-            photoBytes = null;
-          }
-        }
-
         return Container(
           decoration: BoxDecoration(
             color: Colors.grey[900],
@@ -781,85 +772,122 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
                       ),
                     ),
                     const Spacer(),
-                    if (hasPhoto && !controller.isCurrentWorkOrderCompleted)
+                    if (hasPhotos && !controller.isCurrentWorkOrderCompleted)
                       TextButton(
                         onPressed: () => controller.clearFotoBukti(),
-                        child: const Text('Hapus', style: TextStyle(color: Colors.redAccent)),
+                        child: const Text('Hapus Semua', style: TextStyle(color: Colors.redAccent)),
                       ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[850],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Colors.grey[700]!,
-                      style: BorderStyle.solid,
-                      width: 2,
-                    ),
+                SizedBox(
+                  height: 120,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: (controller.isCurrentWorkOrderCompleted ? photos.length : photos.length + 1),
+                    separatorBuilder: (context, index) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) {
+                      if (!controller.isCurrentWorkOrderCompleted && index == photos.length) {
+                        return _buildAddPhotoButton();
+                      }
+                      
+                      final photo = photos[index];
+                      return _buildPhotoPreview(photo, index);
+                    },
                   ),
-                    child: controller.isCurrentWorkOrderCompleted && hasPhoto && photoBytes == null
-                        ? FutureBuilder<String?>(
-                            future: SharedPreferences.getInstance().then((p) => p.getString('token')),
-                            builder: (context, snapshot) {
-                               return Image.network(
-                                  _buildStorageUrl(controller.fotoBuktiBase64!) ?? '',
-                                  headers: snapshot.hasData ? {'Authorization': 'Bearer ${snapshot.data}'} : null,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Center(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.broken_image, color: Colors.grey[600], size: 32),
-                                          const SizedBox(height: 8),
-                                          Text('Gagal memuat gambar', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                               );
-                            }
-                          )
-                        : InkWell(
-                      onTap: () {
-                         if (!controller.isCurrentWorkOrderCompleted) {
-                            _selectPhoto();
-                         }
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: hasPhoto && photoBytes != null
-                          ? Image.memory(photoBytes, fit: BoxFit.cover, width: double.infinity, height: double.infinity)
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.add_a_photo,
-                                  color: Colors.grey[400],
-                                  size: 32,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Tap untuk ambil foto',
-                                  style: TextStyle(
-                                    color: Colors.grey[400],
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                    ),
-                  ),
+                ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAddPhotoButton() {
+    return InkWell(
+      onTap: _selectPhoto,
+      child: Container(
+        width: 100,
+        decoration: BoxDecoration(
+          color: Colors.grey[850],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: Colors.grey[700]!,
+            style: BorderStyle.solid,
+            width: 2,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_a_photo, color: Colors.grey[400], size: 24),
+            const SizedBox(height: 4),
+            Text(
+              'Tambah',
+              style: TextStyle(color: Colors.grey[400], fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoPreview(String photo, int index) {
+    final bool isBase64 = photo.startsWith('data:image');
+    Uint8List? bytes;
+    if (isBase64) {
+      try {
+        final base64Part = photo.contains(',') ? photo.split(',').last : photo;
+        bytes = base64Decode(base64Part);
+      } catch (_) {}
+    }
+
+    return Stack(
+      children: [
+        Container(
+          width: 100,
+          height: 120,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[700]!),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: isBase64 && bytes != null
+                ? Image.memory(bytes, fit: BoxFit.cover)
+                : FutureBuilder<String?>(
+                    future: SharedPreferences.getInstance().then((p) => p.getString('token')),
+                    builder: (context, snapshot) {
+                      return Image.network(
+                        _buildStorageUrl(photo) ?? '',
+                        headers: snapshot.hasData ? {'Authorization': 'Bearer ${snapshot.data}'} : null,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const Center(
+                          child: Icon(Icons.broken_image, color: Colors.grey, size: 24),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ),
+        if (!_controller.isCurrentWorkOrderCompleted)
+          Positioned(
+            top: 4,
+            right: 4,
+            child: GestureDetector(
+              onTap: () => _controller.removeFotoBukti(index),
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 16),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -1116,11 +1144,10 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
     );
   }
 
-
   void _saveWorkOrder() async {
     try {
       // Validasi wajib foto bukti
-      if (_controller.fotoBuktiBase64 == null || _controller.fotoBuktiBase64!.isEmpty) {
+      if (_controller.fotoBuktiBase64List.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Harap ambil/buat foto bukti terlebih dahulu.'),
