@@ -242,57 +242,93 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
 
   Widget _buildItemDetailGrid(WorkOrderDetailItemController controller) {
     try {
-      return Column(
+      final dynDims = controller.item?.dynamicDimensions ?? [];
+      List<Widget> rows = [
+        // Row 1: Jenis Barang, Bentuk Barang, Grade
+        Row(
+          children: [
+            Expanded(child: _buildDetailItem('Jenis Barang', widget.item['jenisBarang']?.toString() ?? '-')),
+            const SizedBox(width: 12),
+            Expanded(child: _buildDetailItem('Bentuk Barang', widget.item['bentukBarang']?.toString() ?? '-')),
+            const SizedBox(width: 12),
+            Expanded(child: _buildDetailItem('Grade', widget.item['grade']?.toString() ?? '-')),
+          ],
+        ),
+        const SizedBox(height: 12),
+      ];
+
+      // Dynamic Dimension Rows
+      if (dynDims.isNotEmpty) {
+        // Group into rows of 3
+        for (var i = 0; i < dynDims.length; i += 3) {
+          int end = (i + 3 < dynDims.length) ? i + 3 : dynDims.length;
+          List<Widget> rowChildren = [];
+          for (var j = i; j < end; j++) {
+             final dim = dynDims[j];
+             rowChildren.add(
+               Expanded(child: _buildDetailItem(dim['label'] ?? '-', dim['value']?.toString() ?? '-'))
+             );
+             if (j < end - 1) rowChildren.add(const SizedBox(width: 12));
+          }
+          // Add spacers if less than 3 items
+          if (rowChildren.length < 5) { // 3 Expanded + 2 SizedBox = 5 items max in list
+             int itemsCount = (rowChildren.length + 1) ~/ 2;
+             for (var k = 0; k < (3 - itemsCount); k++) {
+               rowChildren.add(const SizedBox(width: 12));
+               rowChildren.add(const Expanded(child: SizedBox()));
+             }
+          }
+          rows.add(Row(children: rowChildren));
+          rows.add(const SizedBox(height: 12));
+        }
+      } else {
+        // Fallback to Ukuran
+        rows.add(Row(
+          children: [
+            Expanded(child: _buildDetailItem('Ukuran (mm)', widget.item['ukuran']?.toString() ?? '-')),
+            const SizedBox(width: 12),
+            const Expanded(child: SizedBox()),
+            const SizedBox(width: 12),
+            const Expanded(child: SizedBox()),
+          ],
+        ));
+        rows.add(const SizedBox(height: 12));
+      }
+
+      // Final Rows: Qty, Berat, Luas
+      final luasValue = widget.item['luas'];
+      final showLuas = luasValue != null && luasValue != 0 && luasValue != 0.0 && luasValue != '0.0';
+
+      rows.add(Row(
         children: [
-          // Row 1: Jenis Barang, Bentuk Barang, Grade
-          Row(
-            children: [
-              Expanded(child: _buildDetailItem('Jenis Barang', widget.item['jenisBarang']?.toString() ?? '-')),
-              const SizedBox(width: 12),
-              Expanded(child: _buildDetailItem('Bentuk Barang', widget.item['bentukBarang']?.toString() ?? '-')),
-              const SizedBox(width: 12),
-              Expanded(child: _buildDetailItem('Grade', widget.item['grade']?.toString() ?? '-')),
-            ],
-          ),
-          const SizedBox(height: 12),
-          
-          // Row 2: Ukuran, Qty Planning, Qty Actual
-          Row(
-            children: [
-              Expanded(child: _buildDetailItem('Ukuran (mm)', widget.item['ukuran']?.toString() ?? '-')),
-              const SizedBox(width: 12),
-              Expanded(child: _buildDetailItem('Qty Planning', widget.item['qtyPlanning']?.toString() ?? '-')),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildDetailItem('Qty Actual', widget.item['qtyActual']?.toString() ?? '-'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          
-          // Row 3: Berat Planning, Berat Actual, Luas
-          Row(
-            children: [
-              Expanded(child: _buildDetailItem('Berat Planning (kg)', widget.item['beratPlanning']?.toString() ?? '-')),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildDetailItem('Berat Actual (kg)', widget.item['beratActual']?.toString() ?? '-'),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildDetailItem(
-                  'Luas',
-                  '${widget.item['luas']?.toString() ?? '-'}${controller.getLuasSuffix(widget.item['jenisBarang'])}',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          
-          // Row 4: Plat/Shaft Dasar
-          _buildDetailItem('Plat/Shaft Dasar', widget.item['platShaftDasar']?.toString() ?? '-'),
+          Expanded(child: _buildDetailItem('Qty Planning', widget.item['qtyPlanning']?.toString() ?? '-')),
+          const SizedBox(width: 12),
+          Expanded(child: _buildDetailItem('Qty Actual', widget.item['qtyActual']?.toString() ?? '-')),
+          if (showLuas) ...[
+            const SizedBox(width: 12),
+            Expanded(child: _buildDetailItem('Luas', '${luasValue.toString()}${controller.getLuasSuffix(widget.item['jenisBarang'])}')),
+          ] else ...[
+            const SizedBox(width: 12),
+            const Expanded(child: SizedBox()),
+          ],
         ],
-      );
+      ));
+      rows.add(const SizedBox(height: 12));
+      
+      rows.add(Row(
+        children: [
+          Expanded(child: _buildDetailItem('Berat Planning (kg)', widget.item['beratPlanning']?.toString() ?? '-')),
+          const SizedBox(width: 12),
+          Expanded(child: _buildDetailItem('Berat Actual (kg)', widget.item['beratActual']?.toString() ?? '-')),
+          const SizedBox(width: 12),
+          const Expanded(child: SizedBox()),
+        ],
+      ));
+      rows.add(const SizedBox(height: 12));
+      
+      rows.add(_buildDetailItem('Plat/Shaft Dasar', widget.item['platShaftDasar']?.toString() ?? '-'));
+
+      return Column(children: rows);
     } catch (e) {
       return Container(
         padding: const EdgeInsets.all(16),

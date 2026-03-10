@@ -146,6 +146,7 @@ class WorkOrderPlanningItem {
   final GradeBarang? gradeBarang;
   final List<PelaksanaItem> pelaksana;
   final List<dynamic>? hasManySaranPlatShaftDasar;
+  final List<Map<String, dynamic>>? dynamicDimensions;
 
   WorkOrderPlanningItem({
     required this.id,
@@ -168,6 +169,7 @@ class WorkOrderPlanningItem {
     this.gradeBarang,
     required this.pelaksana,
     this.hasManySaranPlatShaftDasar,
+    this.dynamicDimensions,
   });
 
   factory WorkOrderPlanningItem.fromMap(Map<String, dynamic> map) {
@@ -200,6 +202,12 @@ class WorkOrderPlanningItem {
           ?.map((item) => PelaksanaItem.fromMap(item))
           .toList() ?? [],
       hasManySaranPlatShaftDasar: map['hasManySaranPlatShaftDasar'] ?? map['has_many_saran_plat_shaft_dasar'] ?? map['saran_plat_dasar'],
+      dynamicDimensions: (map['dynamic_dimensions'] ?? map['dynamicDimensions']) != null
+          ? ((map['dynamic_dimensions'] ?? map['dynamicDimensions']) as List)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList()
+              .cast<Map<String, dynamic>>()
+          : null,
     );
   }
 
@@ -225,6 +233,7 @@ class WorkOrderPlanningItem {
       'grade_barang': gradeBarang?.toMap(),
       'has_many_pelaksana': pelaksana.map((item) => item.toMap()).toList(),
       'has_many_saran_plat_shaft_dasar': hasManySaranPlatShaftDasar,
+      'dynamic_dimensions': dynamicDimensions,
     };
   }
 }

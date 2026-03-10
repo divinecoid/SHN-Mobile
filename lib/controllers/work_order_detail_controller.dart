@@ -146,10 +146,27 @@ class WorkOrderDetailController extends ChangeNotifier {
   bool get isLoadingPelaksana => _isLoadingPelaksana;
   String? get pelaksanaErrorMessage => _pelaksanaErrorMessage;
 
+  // Helper specifically used for formatting dimensions: Removes floating zeroes
+  String _formatDimension(String? value) {
+    if (value == null || value.isEmpty) return '0';
+    try {
+      final val = double.parse(value);
+      if (val == val.toInt()) {
+        return val.toInt().toString();
+      }
+      return val.toString();
+    } catch (_) {
+      return value;
+    }
+  }
+
   // Method untuk mengkonversi WorkOrderPlanningItem ke Map untuk UI
   Map<String, dynamic> _convertItemToMap(WorkOrderPlanningItem item) {
-    // Hitung ukuran dari panjang, lebar, tebal
-    final ukuran = '${item.panjang} x ${item.lebar} x ${item.tebal}';
+    // Hitung ukuran dari panjang, lebar, tebal removing redundant trailing zeroes
+    final p = _formatDimension(item.panjang);
+    final l = _formatDimension(item.lebar);
+    final t = _formatDimension(item.tebal);
+    final ukuran = '$p x $l x $t';
     
     // Hitung luas dari panjang x lebar
     final luas = double.tryParse(item.panjang) != null && double.tryParse(item.lebar) != null
@@ -162,9 +179,9 @@ class WorkOrderDetailController extends ChangeNotifier {
       'bentukBarang': item.bentukBarang?.namaBentuk ?? _getBentukBarangName(item.bentukBarangId),
       'grade': item.gradeBarang?.nama ?? _getGradeBarangName(item.gradeBarangId),
       'ukuran': ukuran,
-      'panjang': item.panjang,
-      'lebar': item.lebar,
-      'tebal': item.tebal,
+      'panjang': p,
+      'lebar': l,
+      'tebal': t,
       'qtyPlanning': item.qty,
       'qtyActual': _getActualQtyForCompleted(item), // Akan diisi dari data actual jika ada
       'beratPlanning': double.tryParse(item.berat) ?? 0.0,
@@ -177,6 +194,7 @@ class WorkOrderDetailController extends ChangeNotifier {
       'satuan': item.satuan,
       'diskon': item.diskon,
       'isAssigned': item.isAssigned,
+      'dynamicDimensions': item.dynamicDimensions,
       // Data tambahan dari relasi
       'jenisBarangKode': item.jenisBarang?.kode ?? '',
       'bentukBarangKode': item.bentukBarang?.kode ?? '',
@@ -714,10 +732,23 @@ class WorkOrderDetailController extends ChangeNotifier {
     
     if (numericValue == null) return '-';
     
-    // Format dengan pemisah ribuan menggunakan regex
-    final numberString = numericValue.toStringAsFixed(0);
+    // Check if it's a whole number, to drop the .00 logic
+    if (numericValue == numericValue.toInt()) {
+      final numberString = numericValue.toInt().toString();
+      final regex = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
+      return numberString.replaceAllMapped(regex, (match) => '${match[1]}.');
+    }
+    
+    // Format dengan pemisah ribuan dan keep decimals as it originally behaved using regex
+    final numberString = numericValue.toStringAsFixed(2);
+    // remove .00 if trailing
+    final cleanString = numberString.endsWith('.00') ? numberString.substring(0, numberString.length - 3) : numberString;
+    
+    final parts = cleanString.split('.');
     final regex = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
-    return numberString.replaceAllMapped(regex, (match) => '${match[1]}.');
+    parts[0] = parts[0].replaceAllMapped(regex, (match) => '${match[1]}.');
+    
+    return parts.length > 1 ? '${parts[0]},${parts[1]}' : parts[0];
   }
 
   // Method untuk mendapatkan informasi pelaksana

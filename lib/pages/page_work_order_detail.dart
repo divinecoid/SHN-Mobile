@@ -429,18 +429,47 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
         ),
         const SizedBox(height: 12),
         
-
-        // Row 2: Panjang, Lebar, Tebal
-        Row(
-          children: [
-            Expanded(child: _buildDetailItem('Panjang (mm)', item['panjang'])),
-            const SizedBox(width: 12),
-            Expanded(child: _buildDetailItem('Lebar (mm)', item['lebar'])),
-            const SizedBox(width: 12),
-            Expanded(child: _buildDetailItem('Tebal (mm)', item['tebal'])),
-          ],
-        ),
-        const SizedBox(height: 12),
+        // Dynamic Dimension Rows
+        ...() {
+          final dynDims = item['dynamicDimensions'] as List<dynamic>? ?? [];
+          List<Widget> rows = [];
+          if (dynDims.isNotEmpty) {
+            for (var i = 0; i < dynDims.length; i += 3) {
+              int end = (i + 3 < dynDims.length) ? i + 3 : dynDims.length;
+              List<Widget> rowChildren = [];
+              for (var j = i; j < end; j++) {
+                final dim = dynDims[j];
+                rowChildren.add(
+                  Expanded(child: _buildDetailItem(dim['label'] ?? '-', dim['value']?.toString() ?? '-'))
+                );
+                if (j < end - 1) rowChildren.add(const SizedBox(width: 12));
+              }
+              // Add spacers
+              if (rowChildren.length < 5) {
+                int itemsCount = (rowChildren.length + 1) ~/ 2;
+                for (var k = 0; k < (3 - itemsCount); k++) {
+                  rowChildren.add(const SizedBox(width: 12));
+                  rowChildren.add(const Expanded(child: SizedBox()));
+                }
+              }
+              rows.add(Row(children: rowChildren));
+              rows.add(const SizedBox(height: 12));
+            }
+          } else {
+            // Fallback
+            rows.add(Row(
+              children: [
+                Expanded(child: _buildDetailItem('Panjang (mm)', item['panjang'])),
+                const SizedBox(width: 12),
+                Expanded(child: _buildDetailItem('Lebar (mm)', item['lebar'])),
+                const SizedBox(width: 12),
+                Expanded(child: _buildDetailItem('Tebal (mm)', item['tebal'])),
+              ],
+            ));
+            rows.add(const SizedBox(height: 12));
+          }
+          return rows;
+        }(),
 
         // Row 2: Ukuran, Qty Planning, Qty Actual
         Row(
@@ -459,20 +488,29 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
         const SizedBox(height: 12),
         
         // Row 3: Berat Planning, Berat Actual, Luas
-        Row(
-          children: [
-            Expanded(child: _buildDetailItem('Berat Planning (kg)', item['beratPlanning'].toString())),
-            const SizedBox(width: 12),
-            Expanded(child: _buildDetailItemWithHighlight(
-              'Berat Actual (kg)', 
-              item['beratActual']?.toString() ?? '-',
-              item['beratActual'] != null && item['beratActual'] != '-'
-            )),
-            const SizedBox(width: 12),
-            Expanded(child: _buildDetailItem('Luas', '${controller.formatNumberWithCommas(item['luas'])}${controller.getLuasSuffix(item['jenisBarang'])}')),
-          ],
-        ),
-        const SizedBox(height: 12),
+        ...() {
+          final luasValue = item['luas'];
+          final showLuas = luasValue != null && luasValue != 0 && luasValue != 0.0 && luasValue != '0.0';
+          return [
+            Row(
+              children: [
+                Expanded(child: _buildDetailItem('Berat Planning (kg)', item['beratPlanning'].toString())),
+                const SizedBox(width: 12),
+                Expanded(child: _buildDetailItemWithHighlight(
+                  'Berat Actual (kg)', 
+                  item['beratActual']?.toString() ?? '-',
+                  item['beratActual'] != null && item['beratActual'] != '-'
+                )),
+                const SizedBox(width: 12),
+                if (showLuas)
+                  Expanded(child: _buildDetailItem('Luas', '${controller.formatNumberWithCommas(luasValue)}${controller.getLuasSuffix(item['jenisBarang'])}'))
+                else
+                  const Expanded(child: SizedBox()),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ];
+        }(),
         
         // Row 4: Catatan dan Pelaksana
         Row(

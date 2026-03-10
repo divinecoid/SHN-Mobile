@@ -23,6 +23,9 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   WorkOrderPlanningItem? _currentItem;
   
   int? _planningWorkOrderId;
+  
+  // Getter for current item
+  WorkOrderPlanningItem? get item => _currentItem;
 
   // List canvas url
   List<String> canvasUrls = [];
