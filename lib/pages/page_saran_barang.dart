@@ -520,6 +520,17 @@ class _PageSaranBarangState extends State<PageSaranBarang> {
     );
   }
 
+  String _formatDouble(double value) {
+    return value.toStringAsFixed(0);
+  }
+
+  String _formatUkuran(String ukuran) {
+    // Membulatkan angka yang ada dalam string ukuran, misal '1592.00 x 1542.00 x 88.00' -> '1592 x 1542 x 88'
+    return ukuran.replaceAllMapped(RegExp(r'(\d+)\.\d+'), (match) {
+      return match.group(1) ?? '';
+    });
+  }
+
   Widget _buildSaranList(SaranBarangController controller) {
     return SliverPadding(
       padding: const EdgeInsets.only(left: 16, right: 16, bottom: 80),
@@ -550,8 +561,8 @@ class _PageSaranBarangState extends State<PageSaranBarang> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Expanded(child: _buildDetailRow('Ukuran', item.ukuran)),
-                        Expanded(child: _buildDetailRow('Selisih / Sisa Luas', '${item.sisaLuas}')),
+                        Expanded(child: _buildDetailRow('Ukuran', _formatUkuran(item.ukuran))),
+                        Expanded(child: _buildDetailRow('Selisih / Sisa Luas', _formatDouble(item.sisaLuas))),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -562,7 +573,7 @@ class _PageSaranBarangState extends State<PageSaranBarang> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    _buildDetailRow('Sisa Qty', '${item.sisaQuantity}', isImportant: true),
+                    _buildDetailRow('Sisa Qty', _formatDouble(item.sisaQuantity), isImportant: true),
                   ],
                 ),
               ),
