@@ -196,7 +196,7 @@ class WorkOrderPlanningItem {
       gradeBarang: map['grade_barang'] != null 
           ? GradeBarang.fromMap(map['grade_barang'])
           : null,
-      pelaksana: ((map['hasManyPelaksana'] ?? map['has_many_pelaksana']) as List<dynamic>?)
+      pelaksana: ((map['hasManyPelaksana'] ?? map['has_many_pelaksana'] ?? map['pelaksana']) as List<dynamic>?)
           ?.map((item) => PelaksanaItem.fromMap(item))
           .toList() ?? [],
       hasManySaranPlatShaftDasar: map['hasManySaranPlatShaftDasar'] ?? map['has_many_saran_plat_shaft_dasar'] ?? map['saran_plat_dasar'],

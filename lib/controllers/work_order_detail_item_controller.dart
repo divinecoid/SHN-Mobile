@@ -257,45 +257,58 @@ class WorkOrderDetailItemController extends ChangeNotifier {
     try {
       assignments.clear();
       
-      // Ambil data pelaksana dari hasManyPelaksana
-      final pelaksanaList = apiItem['hasManyPelaksana'] as List<dynamic>?;
+      // Ambil data pelaksana dari pelaksana (array) atau hasManyPelaksana
+      final pelaksanaList = (apiItem['pelaksana'] as List<dynamic>?) ?? (apiItem['hasManyPelaksana'] as List<dynamic>?);
       
       if (pelaksanaList != null && pelaksanaList.isNotEmpty) {
         for (var pelaksanaData in pelaksanaList) {
           try {
             // Ambil nama pelaksana dari data pelaksana yang sudah ada
-            String namaPelaksana = 'Pelaksana ${pelaksanaData['pelaksana']['nama_pelaksana']}';
-            if (pelaksanaData['pelaksana'] != null) {
-              final pelaksanaInfo = pelaksanaData['pelaksana'] as Map<String, dynamic>;
+            String namaPelaksana = 'Pelaksana';
+            int? pelaksanaId;
+            
+            // Check 'pelaksana_info' from new API response format or fallback to 'pelaksana'
+            final pelaksanaInfo = pelaksanaData['pelaksana_info'] ?? pelaksanaData['pelaksana'];
+            
+            if (pelaksanaInfo != null && pelaksanaInfo is Map<String, dynamic>) {
               namaPelaksana = pelaksanaInfo['nama_pelaksana'] ?? namaPelaksana;
+              pelaksanaId = pelaksanaInfo['id'];
               
-              // Tambahkan pelaksana ke available list jika belum ada
-              final pelaksanaId = pelaksanaData['pelaksana']['id'] as int;
-              final existingPelaksana = availablePelaksana.where((p) => p.id == pelaksanaId).isEmpty;
-              if (existingPelaksana) {
-                availablePelaksana.add(Pelaksana(
-                  id: pelaksanaId,
-                  kode: pelaksanaInfo['kode'] ?? 'PLK$pelaksanaId',
-                  namaPelaksana: namaPelaksana,
-                  level: pelaksanaInfo['level'] ?? '1',
-                ));
+              if (pelaksanaId != null) {
+                // Tambahkan pelaksana ke available list jika belum ada
+                final existingPelaksana = availablePelaksana.where((p) => p.id == pelaksanaId).isEmpty;
+                if (existingPelaksana) {
+                  availablePelaksana.add(Pelaksana(
+                    id: pelaksanaId,
+                    kode: pelaksanaInfo['kode'] ?? 'PLK$pelaksanaId',
+                    namaPelaksana: namaPelaksana,
+                    level: pelaksanaInfo['level'] ?? '1',
+                  ));
+                }
+              }
+            } else {
+              // Fallback ID from direct foreign keys
+              pelaksanaId = pelaksanaData['pelaksana_id'];
+              if (pelaksanaId != null) {
+                namaPelaksana = 'Pelaksana $pelaksanaId';
               }
             }
             
             assignments.add({
               'id': pelaksanaData['id'],
-              'qty': pelaksanaData['qty'],
+              'qty': pelaksanaData['qty'] ?? 0,
               'berat': pelaksanaData['weight'] ?? 0.0,
               'pelaksana': namaPelaksana,
-              'pelaksana_id': pelaksanaData['pelaksana_id'],
+              'pelaksana_id': pelaksanaId ?? pelaksanaData['pelaksana_id'],
               'tanggal': _formatDateFromApi(pelaksanaData['tanggal']),
-              'jamMulai': pelaksanaData['jam_mulai'],
-              'jamSelesai': pelaksanaData['jam_selesai'],
+              'jamMulai': pelaksanaData['jam_mulai'] ?? '09:00:00',
+              'jamSelesai': pelaksanaData['jam_selesai'] ?? '17:00:00',
               'catatan': pelaksanaData['catatan'],
               'status': 'assigned',
             });
           } catch (e) {
             // Skip this pelaksana and continue
+            debugPrint('Error parsing pelaksana data: $e');
           }
         }
       }
@@ -305,6 +318,7 @@ class WorkOrderDetailItemController extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       // Tetap lanjutkan dengan assignments kosong
+      debugPrint('Error loading assignments from API: $e');
       _updateActualValues();
       notifyListeners();
     }
