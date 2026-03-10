@@ -771,14 +771,24 @@ class _WorkOrderDetailPageState extends State<WorkOrderDetailPage> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const Spacer(),
-                    if (hasPhotos && !controller.isCurrentWorkOrderCompleted)
-                      TextButton(
-                        onPressed: () => controller.clearFotoBukti(),
-                        child: const Text('Hapus Semua', style: TextStyle(color: Colors.redAccent)),
-                      ),
                   ],
                 ),
+                if (hasPhotos && !controller.isCurrentWorkOrderCompleted)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () => controller.clearFotoBukti(),
+                      icon: const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent, size: 18),
+                      label: const Text('Hapus Semua', style: TextStyle(color: Colors.redAccent, fontSize: 13)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  )
+                else
+                  const SizedBox(height: 16),
                 const SizedBox(height: 16),
                 SizedBox(
                   height: 120,

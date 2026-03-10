@@ -1162,6 +1162,34 @@ class WorkOrderDetailController extends ChangeNotifier {
               debugPrint('Normalized beratActual to berat for item $key');
             }
             
+            // Normalisasi jamMulai dan jamSelesai jika dalam format ISO string agar ramah database
+            if (itemData.containsKey('assignments') && itemData['assignments'] is List) {
+              final List assignments = itemData['assignments'] as List;
+              final List<Map<String, dynamic>> normalizedAssignments = [];
+              
+              for (var i = 0; i < assignments.length; i++) {
+                if (assignments[i] is Map) {
+                  final Map<String, dynamic> assignment = Map<String, dynamic>.from(assignments[i] as Map);
+                  
+                  // Helper function to extract HH:mm from ISO
+                  String normalizeTime(String? timeStr) {
+                    if (timeStr == null || !timeStr.contains('T')) return timeStr ?? '';
+                    try {
+                      final dt = DateTime.parse(timeStr);
+                      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+                    } catch (_) {
+                      return timeStr;
+                    }
+                  }
+                  
+                  assignment['jamMulai'] = normalizeTime(assignment['jamMulai'] as String?);
+                  assignment['jamSelesai'] = normalizeTime(assignment['jamSelesai'] as String?);
+                  normalizedAssignments.add(assignment);
+                }
+              }
+              itemData['assignments'] = normalizedAssignments;
+            }
+            
             normalizedItems[key] = itemData;
           } else {
             normalizedItems[key] = value;
