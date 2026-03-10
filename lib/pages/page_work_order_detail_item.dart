@@ -34,8 +34,15 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
     super.initState();
     try {
       _controller = WorkOrderDetailItemController();
+      
+      final workOrderId = int.tryParse(widget.workOrder['id']?.toString() ?? '0');
+      
       // Gunakan method baru untuk menangani data API response yang sebenarnya
-      _controller.initializeWithApiData(widget.item, pelaksanaList: widget.availablePelaksana);
+      _controller.initializeWithApiData(
+        widget.item, 
+        pelaksanaList: widget.availablePelaksana,
+        planningWorkOrderId: (workOrderId != null && workOrderId > 0) ? workOrderId : null,
+      );
       
       // Load data sementara jika ada
       _loadTemporaryData();
@@ -47,8 +54,8 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
   // Method untuk memuat data sementara
   Future<void> _loadTemporaryData() async {
     try {
-      final workOrderId = int.tryParse(widget.workOrder['id'] ?? '0') ?? 0;
-      final itemId = widget.item['id'] as int? ?? 0;
+      final workOrderId = int.tryParse(widget.workOrder['id']?.toString() ?? '0') ?? 0;
+      final itemId = int.tryParse(widget.item['id']?.toString() ?? '0') ?? 0;
       
       if (workOrderId > 0 && itemId > 0) {
         await _controller.loadTemporaryData(workOrderId, itemId);
@@ -380,7 +387,20 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                if (controller.canvasUrls.isEmpty)
+                if (controller.isLoadingImages)
+                  Container(
+                    width: double.infinity,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[850],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[700]!),
+                    ),
+                    child: Center(
+                      child: CircularProgressIndicator(color: Colors.blue[400]),
+                    ),
+                  )
+                else if (controller.canvasUrls.isEmpty && controller.canvasImagesData.isEmpty)
                   Container(
                     width: double.infinity,
                     height: 120,
@@ -413,29 +433,58 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                     height: 120,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      itemCount: controller.canvasUrls.length,
+                      itemCount: controller.canvasImagesData.isNotEmpty 
+                        ? controller.canvasImagesData.length 
+                        : controller.canvasUrls.length,
                       separatorBuilder: (context, index) => const SizedBox(width: 12),
                       itemBuilder: (context, index) {
-                        final canvasUrl = controller.canvasUrls[index];
-                        final fullUrl = _buildStorageUrl(canvasUrl) ?? '';
-                        
-                        return Container(
-                          width: 120,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[850],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey[700]!),
-                          ),
-                          child: InkWell(
-                            onTap: () => _enlargeThumbnail(fullUrl),
-                            borderRadius: BorderRadius.circular(8),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: FutureBuilder<String?>(
+                        Widget imageWidget;
+                        String enlargeKey;
+
+                        if (controller.canvasImagesData.isNotEmpty) {
+                          final canvasData = controller.canvasImagesData[index];
+                          final base64String = canvasData['canvas_image_base64'] as String?;
+                          final pathString = canvasData['canvas_file_path'] as String?;
+
+                          if (base64String != null && base64String.isNotEmpty) {
+                            enlargeKey = base64String;
+                            try {
+                               final String base64Content = base64String.split(',').last;
+                               imageWidget = Image.memory(
+                                 base64Decode(base64Content),
+                                 fit: BoxFit.cover,
+                                 errorBuilder: (context, error, stackTrace) {
+                                      return Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.broken_image, color: Colors.grey[600], size: 24),
+                                            const SizedBox(height: 4),
+                                            Text('Gagal', style: TextStyle(color: Colors.grey[500], fontSize: 10)),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                               );
+                            } catch (e) {
+                               enlargeKey = '';
+                               imageWidget = Center(child: Icon(Icons.broken_image, color: Colors.grey[600], size: 24));
+                            }
+                          } else if (pathString != null) {
+                            final int? saranId = canvasData['saran_id'] as int?;
+                            if (saranId != null) {
+                              final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+                              final base = baseUrl.replaceAll(RegExp(r'/api$'), '');
+                              enlargeKey = '$base/api/work-order-planning/canvas-image/$saranId';
+                            } else {
+                              enlargeKey = _buildStorageUrl(pathString) ?? '';
+                            }
+                            
+                            imageWidget = FutureBuilder<String?>(
                                 future: SharedPreferences.getInstance().then((p) => p.getString('token')),
                                 builder: (context, snapshot) {
                                   return Image.network(
-                                    fullUrl,
+                                    enlargeKey,
                                     headers: snapshot.hasData ? {'Authorization': 'Bearer ${snapshot.data}'} : null,
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, error, stackTrace) {
@@ -452,7 +501,51 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                                     },
                                   );
                                 },
-                              ),
+                              );
+                          } else {
+                            enlargeKey = '';
+                            imageWidget = Center(child: Icon(Icons.broken_image, color: Colors.grey[600], size: 24));
+                          }
+                        } else {
+                          final canvasUrl = controller.canvasUrls[index];
+                          enlargeKey = _buildStorageUrl(canvasUrl) ?? '';
+                          imageWidget = FutureBuilder<String?>(
+                                future: SharedPreferences.getInstance().then((p) => p.getString('token')),
+                                builder: (context, snapshot) {
+                                  return Image.network(
+                                    enlargeKey,
+                                    headers: snapshot.hasData ? {'Authorization': 'Bearer ${snapshot.data}'} : null,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.broken_image, color: Colors.grey[600], size: 24),
+                                            const SizedBox(height: 4),
+                                            Text('Gagal', style: TextStyle(color: Colors.grey[500], fontSize: 10)),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              );
+                        }
+                        
+                        return Container(
+                          width: 120,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[850],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[700]!),
+                          ),
+                          child: InkWell(
+                            onTap: () => enlargeKey.isNotEmpty ? _enlargeThumbnail(enlargeKey) : null,
+                            borderRadius: BorderRadius.circular(8),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: imageWidget,
                             ),
                           ),
                         );
@@ -683,6 +776,9 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
       if (globalBuktiMatch != null) {
         return '$base/api/work-order-actual/${globalBuktiMatch.group(1)}/image';
       }
+
+      // Note: Canvas images (canvas_woitem) should be handled via saran_id in the UI
+      // to avoid potential mismatches between path numbers and primary keys.
       
       final hasStoragePrefix = RegExp(r'^storage/').hasMatch(normalized);
       return hasStoragePrefix ? '$base/$normalized' : '$base/storage/$normalized';
@@ -1423,30 +1519,49 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
               boundaryMargin: const EdgeInsets.all(20),
               minScale: 0.5,
               maxScale: 4.0,
-              child: FutureBuilder<String?>(
-                future: SharedPreferences.getInstance().then((p) => p.getString('token')),
-                builder: (context, snapshot) {
-                  return Image.network(
-                    imageUrl,
-                    headers: snapshot.hasData ? {'Authorization': 'Bearer ${snapshot.data}'} : null,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey[900],
-                        padding: const EdgeInsets.all(32),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.broken_image, color: Colors.grey[600], size: 64),
-                            const SizedBox(height: 16),
-                            Text('Gagal memuat gambar', style: TextStyle(color: Colors.grey[400], fontSize: 16)),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+              child: imageUrl.startsWith('data:image') || !imageUrl.startsWith('http')
+                  ? Image.memory(
+                      base64Decode(imageUrl.contains(',') ? imageUrl.split(',').last : imageUrl),
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey[900],
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.broken_image, color: Colors.grey[600], size: 64),
+                              const SizedBox(height: 16),
+                              Text('Gagal memuat gambar', style: TextStyle(color: Colors.grey[400], fontSize: 16)),
+                            ],
+                          ),
+                        );
+                      },
+                    )
+                  : FutureBuilder<String?>(
+                      future: SharedPreferences.getInstance().then((p) => p.getString('token')),
+                      builder: (context, snapshot) {
+                        return Image.network(
+                          imageUrl,
+                          headers: snapshot.hasData ? {'Authorization': 'Bearer ${snapshot.data}'} : null,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[900],
+                              padding: const EdgeInsets.all(32),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.broken_image, color: Colors.grey[600], size: 64),
+                                  const SizedBox(height: 16),
+                                  Text('Gagal memuat gambar', style: TextStyle(color: Colors.grey[400], fontSize: 16)),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
             ),
             Positioned(
               top: 16,

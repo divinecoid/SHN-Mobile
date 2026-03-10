@@ -22,6 +22,8 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   // Data item yang sedang diproses
   WorkOrderPlanningItem? _currentItem;
   
+  int? _planningWorkOrderId;
+
   // List canvas url
   List<String> canvasUrls = [];
   
@@ -48,8 +50,9 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   }
   
   // Method untuk initialize dengan data dari API response yang sebenarnya
-  void initializeWithApiData(Map<String, dynamic> apiItem, {List<Pelaksana>? pelaksanaList}) {
+  void initializeWithApiData(Map<String, dynamic> apiItem, {List<Pelaksana>? pelaksanaList, int? planningWorkOrderId}) {
     try {
+      _planningWorkOrderId = planningWorkOrderId;
       // Simpan data item untuk referensi
       _currentItem = WorkOrderPlanningItem.fromMap(apiItem);
       
@@ -69,6 +72,12 @@ class WorkOrderDetailItemController extends ChangeNotifier {
       
       // Ekstrak canvas images
       _extractCanvasImages(apiItem);
+      
+      // Coba fetch manual jika parameter lengkap
+      final itemId = int.tryParse(apiItem['id']?.toString() ?? '');
+      if (_planningWorkOrderId != null && itemId != null) {
+        fetchCanvasImages(_planningWorkOrderId!, itemId);
+      }
     } catch (e) {
       // Tetap lanjutkan dengan data yang ada
     }
@@ -135,17 +144,59 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   }
   
   // Method untuk mengekstrak data canvas images dari API response
+  // Deprecated: Now we independently query /images endpoint
   void _extractCanvasImages(Map<String, dynamic> apiItem) {
+    // Keep this as fallback just in case
     canvasUrls.clear();
-    final listSaran = apiItem['hasManySaranPlatShaftDasar'] ?? apiItem['has_many_saran_plat_shaft_dasar'];
+    final listSaran = apiItem['hasManySaranPlatShaftDasar'] ?? apiItem['has_many_saran_plat_shaft_dasar'] ?? apiItem['saran_plat_dasar'];
     if (listSaran != null && listSaran is List) {
       for (var saran in listSaran) {
         if (saran['canvas_file'] != null && saran['canvas_file'].toString().isNotEmpty) {
-          canvasUrls.add(saran['canvas_file'].toString());
+           canvasUrls.add(saran['canvas_file'].toString());
         }
       }
     }
+  }
+
+  // List to hold complete canvas image maps (contains base64)
+  List<Map<String, dynamic>> _canvasImagesData = [];
+  List<Map<String, dynamic>> get canvasImagesData => _canvasImagesData;
+  bool _isLoadingImages = false;
+  bool get isLoadingImages => _isLoadingImages;
+
+  Future<void> fetchCanvasImages(int planningWorkOrderId, int itemId) async {
+    _isLoadingImages = true;
     notifyListeners();
+    try {
+      final token = await _getAuthToken();
+      if (token == null) return;
+
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final url = Uri.parse('$baseUrl/api/work-order-planning/$planningWorkOrderId/images');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        if (jsonData['success'] == true && jsonData['data'] != null && jsonData['data']['images'] != null) {
+          final allImages = jsonData['data']['images'] as List<dynamic>;
+          _canvasImagesData = allImages.where((img) {
+            return img['wo_item_id'] == itemId || img['wo_item_unique_id'] == itemId || img['work_order_planning_item_id'] == itemId;
+          }).map((e) => e as Map<String, dynamic>).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching canvas images: $e');
+    } finally {
+      _isLoadingImages = false;
+      notifyListeners();
+    }
   }
   
   // Method untuk mengekstrak data pelaksana dari API response
