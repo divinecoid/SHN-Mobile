@@ -209,7 +209,7 @@ class _PageSaranBarangState extends State<PageSaranBarang> {
     _sisi2Ctrl.clear();
   }
 
-  void _onSearchSaran() {
+  void _onSearchSaran() async {
     // Collect all inputs, defaulting to 0.0 if empty
     double parseText(String val) {
       final parsed = double.tryParse(val.replaceAll(',', '.'));
@@ -227,7 +227,58 @@ class _PageSaranBarangState extends State<PageSaranBarang> {
       sisi2: parseText(_sisi2Ctrl.text),
     );
 
-    _controller.fetchSaranBarang(context, loadMore: false);
+    await _controller.fetchSaranBarang(context, loadMore: false);
+
+    if (mounted && _controller.saranList.isNotEmpty) {
+      _showSummaryPopup();
+    }
+  }
+
+  void _showSummaryPopup() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Hasil Pencarian', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Ditemukan ${_controller.total} items yang sesuai dengan kriteria.',
+              style: const TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Total Sisa Qty:',
+              style: TextStyle(color: Colors.white, fontSize: 14),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _formatDouble(_controller.totalSisaQuantity),
+              style: const TextStyle(
+                color: Colors.green,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tutup', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

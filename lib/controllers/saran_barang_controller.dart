@@ -25,6 +25,7 @@ class SaranBarangController extends ChangeNotifier {
   int _lastPage = 1;
   int _perPage = 10;
   int _total = 0;
+  double _totalSisaQuantity = 0.0;
 
   // Request State
   SaranBarangRequest _request = SaranBarangRequest();
@@ -47,6 +48,7 @@ class SaranBarangController extends ChangeNotifier {
   int get currentPage => _currentPage;
   int get lastPage => _lastPage;
   int get total => _total;
+  double get totalSisaQuantity => _totalSisaQuantity;
   bool get hasMoreData => _currentPage < _lastPage;
 
   Future<void> loadReferenceData() async {
@@ -291,6 +293,12 @@ class SaranBarangController extends ChangeNotifier {
               _currentPage = 1;
               _lastPage = 1;
               _total = newItems.length;
+            }
+
+            if (data['summary'] != null) {
+              _totalSisaQuantity = SaranBarangResponse.parseDouble(data['summary']['total_sisa_quantity']);
+            } else {
+              _totalSisaQuantity = 0.0;
             }
           }
         } else {

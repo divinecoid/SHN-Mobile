@@ -84,14 +84,14 @@ class SaranBarangResponse {
       id: _parseInt(json['id']),
       nama: json['nama'] ?? '-',
       ukuran: json['ukuran'] ?? '-',
-      sisaLuas: _parseDouble(json['sisa_luas']),
-      sisaQuantity: _parseDouble(json['sisa_quantity']),
+      sisaLuas: parseDouble(json['sisa_luas']),
+      sisaQuantity: parseDouble(json['sisa_quantity']),
       gudang: json['gudang'] ?? '-',
       rak: json['rak'] ?? '-',
     );
   }
 
-  static double _parseDouble(dynamic value) {
+  static double parseDouble(dynamic value) {
     if (value == null) return 0.0;
     if (value is double) return value;
     if (value is int) return value.toDouble();
