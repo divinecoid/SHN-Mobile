@@ -380,28 +380,26 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[850],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[700]!),
-                  ),
-                  child: InkWell(
-                    onTap: _enlargeThumbnail,
-                    borderRadius: BorderRadius.circular(8),
+                if (controller.canvasUrls.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[850],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[700]!),
+                    ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.add_photo_alternate,
-                          color: Colors.grey[400],
+                          Icons.image_not_supported,
+                          color: Colors.grey[500],
                           size: 32,
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Placeholder thumbnail',
+                          'Tidak ada gambar canvas',
                           style: TextStyle(
                             color: Colors.grey[400],
                             fontSize: 14,
@@ -409,8 +407,58 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                         ),
                       ],
                     ),
+                  )
+                else
+                  SizedBox(
+                    height: 120,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: controller.canvasUrls.length,
+                      separatorBuilder: (context, index) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        final canvasUrl = controller.canvasUrls[index];
+                        final fullUrl = _buildStorageUrl(canvasUrl) ?? '';
+                        
+                        return Container(
+                          width: 120,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[850],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[700]!),
+                          ),
+                          child: InkWell(
+                            onTap: () => _enlargeThumbnail(fullUrl),
+                            borderRadius: BorderRadius.circular(8),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: FutureBuilder<String?>(
+                                future: SharedPreferences.getInstance().then((p) => p.getString('token')),
+                                builder: (context, snapshot) {
+                                  return Image.network(
+                                    fullUrl,
+                                    headers: snapshot.hasData ? {'Authorization': 'Bearer ${snapshot.data}'} : null,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.broken_image, color: Colors.grey[600], size: 24),
+                                            const SizedBox(height: 4),
+                                            Text('Gagal', style: TextStyle(color: Colors.grey[500], fontSize: 10)),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
                 const SizedBox(height: 20),
                 
                 // Input Fields
@@ -1359,8 +1407,65 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
 
 
 
-  void _enlargeThumbnail() {
-    // Implementasi untuk enlarge thumbnail
+  void _enlargeThumbnail(String imageUrl) {
+    if (imageUrl.isEmpty) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(8),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            InteractiveViewer(
+              panEnabled: true,
+              boundaryMargin: const EdgeInsets.all(20),
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: FutureBuilder<String?>(
+                future: SharedPreferences.getInstance().then((p) => p.getString('token')),
+                builder: (context, snapshot) {
+                  return Image.network(
+                    imageUrl,
+                    headers: snapshot.hasData ? {'Authorization': 'Bearer ${snapshot.data}'} : null,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey[900],
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.broken_image, color: Colors.grey[600], size: 64),
+                            const SizedBox(height: 16),
+                            Text('Gagal memuat gambar', style: TextStyle(color: Colors.grey[400], fontSize: 16)),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+            Positioned(
+              top: 16,
+              right: 16,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _deleteAssignment(int index, WorkOrderDetailItemController controller) {

@@ -200,6 +200,7 @@ class WorkOrderDetailController extends ChangeNotifier {
           'level': pelaksana.pelaksana!.level,
         } : null,
       }).toList(),
+      'has_many_saran_plat_shaft_dasar': item.hasManySaranPlatShaftDasar,
     };
   }
 

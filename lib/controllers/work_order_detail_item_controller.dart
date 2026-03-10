@@ -22,6 +22,9 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   // Data item yang sedang diproses
   WorkOrderPlanningItem? _currentItem;
   
+  // List canvas url
+  List<String> canvasUrls = [];
+  
   // Data untuk assignment pelaksana (akan diisi dari data asli)
   List<Map<String, dynamic>> assignments = [];
 
@@ -63,6 +66,9 @@ class WorkOrderDetailItemController extends ChangeNotifier {
       
       // Validasi dan perbaiki assignment yang sudah ada
       _validateAndFixAssignments();
+      
+      // Ekstrak canvas images
+      _extractCanvasImages(apiItem);
     } catch (e) {
       // Tetap lanjutkan dengan data yang ada
     }
@@ -126,6 +132,20 @@ class WorkOrderDetailItemController extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error picking foto sisa: $e');
     }
+  }
+  
+  // Method untuk mengekstrak data canvas images dari API response
+  void _extractCanvasImages(Map<String, dynamic> apiItem) {
+    canvasUrls.clear();
+    final listSaran = apiItem['hasManySaranPlatShaftDasar'] ?? apiItem['has_many_saran_plat_shaft_dasar'];
+    if (listSaran != null && listSaran is List) {
+      for (var saran in listSaran) {
+        if (saran['canvas_file'] != null && saran['canvas_file'].toString().isNotEmpty) {
+          canvasUrls.add(saran['canvas_file'].toString());
+        }
+      }
+    }
+    notifyListeners();
   }
   
   // Method untuk mengekstrak data pelaksana dari API response
