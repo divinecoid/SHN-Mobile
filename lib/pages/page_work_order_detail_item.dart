@@ -430,7 +430,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                   )
                 else
                   SizedBox(
-                    height: 120,
+                    height: 200,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: controller.canvasImagesData.isNotEmpty 
@@ -534,7 +534,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                         }
                         
                         return Container(
-                          width: 120,
+                          width: 160,
                           decoration: BoxDecoration(
                             color: Colors.grey[850],
                             borderRadius: BorderRadius.circular(8),
@@ -543,9 +543,52 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                           child: InkWell(
                             onTap: () => enlargeKey.isNotEmpty ? _enlargeThumbnail(enlargeKey) : null,
                             borderRadius: BorderRadius.circular(8),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: imageWidget,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(
+                                  child: ClipRRect(
+                                    borderRadius: controller.canvasImagesData.isNotEmpty 
+                                      ? const BorderRadius.vertical(top: Radius.circular(8))
+                                      : BorderRadius.circular(8),
+                                    child: imageWidget,
+                                  ),
+                                ),
+                                if (controller.canvasImagesData.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[900],
+                                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          '${controller.canvasImagesData[index]['bentuk_barang'] ?? ''} ${controller.canvasImagesData[index]['jenis_barang'] ?? ''} ${controller.canvasImagesData[index]['grade_barang'] ?? '-'}',
+                                          style: TextStyle(color: Colors.grey[400], fontSize: 9),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${controller.canvasImagesData[index]['kode_barang'] ?? controller.canvasImagesData[index]['item_barang_name'] ?? '-'}',
+                                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Qty: ${double.tryParse(controller.canvasImagesData[index]['quantity']?.toString() ?? '0')?.toStringAsFixed(0) ?? '-'}',
+                                          style: TextStyle(color: Colors.blue[300], fontSize: 10, fontWeight: FontWeight.w600),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         );
