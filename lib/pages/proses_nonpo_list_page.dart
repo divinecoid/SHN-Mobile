@@ -49,6 +49,58 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
     }
   }
 
+  Future<int?> _showPrintCopiesDialog() async {
+    final TextEditingController copiesController = TextEditingController(text: '1');
+    
+    return showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text('Jumlah Cetak', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Masukkan jumlah copy yang ingin dicetak:', style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: copiesController,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.white),
+              autofocus: true,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.grey[800],
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                hintText: 'Misal: 3',
+                hintStyle: const TextStyle(color: Colors.grey),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final val = int.tryParse(copiesController.text);
+              if (val != null && val > 0) {
+                Navigator.pop(context, val);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Masukkan angka yang valid'), backgroundColor: Colors.orange),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+            child: const Text('Cetak', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildList(
     BuildContext context, 
     ProsesNonPoController controller,
@@ -306,9 +358,12 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
                 alignment: Alignment.centerRight,
                 child: ElevatedButton.icon(
                   onPressed: () async {
+                    final copies = await _showPrintCopiesDialog();
+                    if (copies == null) return;
+                    
                     try {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mencetak struk QR...'), duration: Duration(seconds: 1)));
-                      await controller.printSingleQR(detail);
+                      await controller.printSingleQR(detail, copies);
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
                     }
@@ -355,9 +410,12 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
           if (_tabController.index == 1 && controller.selectedProcessedIds.isNotEmpty) {
             return FloatingActionButton.extended(
               onPressed: () async {
+                final copies = await _showPrintCopiesDialog();
+                if (copies == null) return;
+
                 try {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mencetak batch struk QR...'), duration: Duration(seconds: 1)));
-                  await controller.printBatchQR();
+                  await controller.printBatchQR(copies);
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
                 }

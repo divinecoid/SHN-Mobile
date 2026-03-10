@@ -343,21 +343,21 @@ class ProsesNonPoController extends ChangeNotifier {
   // Printing Logic
   // -------------------------
 
-  Future<void> printSingleQR(PenerimaanBarangDetail detail) async {
+  Future<void> printSingleQR(PenerimaanBarangDetail detail, int copies) async {
     try {
       final printer = PrinterService();
-      await printer.printItemQR(detail);
+      await printer.printItemQR(detail, copies: copies);
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<void> printBatchQR() async {
+  Future<void> printBatchQR(int copies) async {
     if (_selectedProcessedIds.isEmpty) return;
     try {
       final itemsToPrint = selectedProcessedItems;
       final printer = PrinterService();
-      await printer.printBatchQR(itemsToPrint);
+      await printer.printBatchQR(itemsToPrint, copies: copies);
       clearSelection();
     } catch (e) {
       rethrow;

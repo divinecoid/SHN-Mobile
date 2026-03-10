@@ -116,7 +116,7 @@ class PrinterService {
   }
 
   /// Print single item QR
-  Future<void> printItemQR(PenerimaanBarangDetail detail) async {
+  Future<void> printItemQR(PenerimaanBarangDetail detail, {int copies = 1}) async {
     bool connected = await isConnected;
     if (!connected) {
       connected = await autoConnect();
@@ -146,47 +146,55 @@ class PrinterService {
     final dateStr = DateFormat('dd-MM-yyyy HH:mm:ss').format(DateTime.now());
 
     try {
-      bluetooth.printCustom("PT SURYA HARSA NAGARA", 1, 1);
-      bluetooth.printNewLine();
+      for (int i = 0; i < copies; i++) {
+        bluetooth.printCustom("PT SURYA HARSA NAGARA", 1, 1);
+        bluetooth.printNewLine();
 
-      // Render QR Code 
-      // width and height usually around 200-300 for 58mm printer to look decent
-      bluetooth.printQRcode(payloadJson, 250, 250, 1);
-      bluetooth.printNewLine();
+        // Render QR Code 
+        // width and height usually around 200-300 for 58mm printer to look decent
+        bluetooth.printQRcode(payloadJson, 250, 250, 1);
+        bluetooth.printNewLine();
 
-      // Item Information
-      // Size 0 = Normal, 1 = Normal Bold, 2 = Large
-      // Align 0 = kiri, 1 = tengah, 2 = kanan
-      bluetooth.printCustom("Kode Barang:", 0, 0);
-      bluetooth.printCustom(item.kodeBarang, 1, 0);
-      
-      bluetooth.printCustom("Nama Item:", 0, 0);
-      bluetooth.printCustom(item.namaItemBarang, 1, 0);
-      
-      bluetooth.printCustom("Jenis:", 0, 0);
-      bluetooth.printCustom(group?.jenisBarang?.namaJenis ?? "-", 1, 0);
-      
-      bluetooth.printCustom("Bentuk:", 0, 0);
-      bluetooth.printCustom(group?.bentukBarang?.namaBentuk ?? "-", 1, 0);
-      
-      bluetooth.printCustom("Grade:", 0, 0);
-      bluetooth.printCustom(group?.gradeBarang?.nama ?? "-", 1, 0);
-      
-      bluetooth.printCustom("Dimensi:", 0, 0);
-      bluetooth.printCustom(dimensi, 1, 0);
+        // Item Information
+        // Size 0 = Normal, 1 = Normal Bold, 2 = Large
+        // Align 0 = kiri, 1 = tengah, 2 = kanan
+        bluetooth.printCustom("Kode Barang:", 0, 0);
+        bluetooth.printCustom(item.kodeBarang, 1, 0);
+        
+        bluetooth.printCustom("Nama Item:", 0, 0);
+        bluetooth.printCustom(item.namaItemBarang, 1, 0);
+        
+        bluetooth.printCustom("Jenis:", 0, 0);
+        bluetooth.printCustom(group?.jenisBarang?.namaJenis ?? "-", 1, 0);
+        
+        bluetooth.printCustom("Bentuk:", 0, 0);
+        bluetooth.printCustom(group?.bentukBarang?.namaBentuk ?? "-", 1, 0);
+        
+        bluetooth.printCustom("Grade:", 0, 0);
+        bluetooth.printCustom(group?.gradeBarang?.nama ?? "-", 1, 0);
+        
+        bluetooth.printCustom("Dimensi:", 0, 0);
+        bluetooth.printCustom(dimensi, 1, 0);
 
-      bluetooth.printNewLine();
-      bluetooth.printCustom("Date Printed:", 0, 0);
-      bluetooth.printCustom(dateStr, 0, 0);
+        bluetooth.printNewLine();
+        bluetooth.printCustom("Date Printed:", 0, 0);
+        bluetooth.printCustom(dateStr, 0, 0);
 
-      bluetooth.printNewLine();
-      bluetooth.printCustom("----------------", 1, 1);
-      bluetooth.printCustom("SHN WMS", 0, 1);
-      
-      // Feed paper to make room for tearing
-      bluetooth.printNewLine();
-      bluetooth.printNewLine();
-      bluetooth.printNewLine();
+        bluetooth.printNewLine();
+        bluetooth.printCustom("----------------", 1, 1);
+        bluetooth.printCustom("SHN WMS", 0, 1);
+        
+        // Feed paper to make room for tearing
+        if (i < copies - 1) {
+          bluetooth.printNewLine();
+          bluetooth.printCustom("- - - - - - - - -", 1, 1);
+          bluetooth.printNewLine();
+        } else {
+          bluetooth.printNewLine();
+          bluetooth.printNewLine();
+          bluetooth.printNewLine();
+        }
+      }
     } catch (e) {
       print("Error printing: $e");
       throw Exception("Gagal mencetak: $e");
@@ -194,7 +202,7 @@ class PrinterService {
   }
 
   /// Print batch items QR
-  Future<void> printBatchQR(List<PenerimaanBarangDetail> items) async {
+  Future<void> printBatchQR(List<PenerimaanBarangDetail> items, {int copies = 1}) async {
     bool connected = await isConnected;
     if (!connected) {
       connected = await autoConnect();
@@ -222,48 +230,50 @@ class PrinterService {
         final String dimensi = _buildDimensiItem(detail);
         final dateStr = DateFormat('dd-MM-yyyy HH:mm:ss').format(DateTime.now());
 
-        bluetooth.printCustom("PT SURYA HARSA NAGARA", 1, 1);
-        bluetooth.printNewLine();
+        for (int j = 0; j < copies; j++) {
+          bluetooth.printCustom("PT SURYA HARSA NAGARA", 1, 1);
+          bluetooth.printNewLine();
 
-        bluetooth.printQRcode(payloadJson, 250, 250, 1);
-        bluetooth.printNewLine();
+          bluetooth.printQRcode(payloadJson, 250, 250, 1);
+          bluetooth.printNewLine();
 
-        bluetooth.printCustom("Kode Barang:", 0, 0);
-        bluetooth.printCustom(item.kodeBarang, 1, 0);
-        
-        bluetooth.printCustom("Nama Item:", 0, 0);
-        bluetooth.printCustom(item.namaItemBarang, 1, 0);
-        
-        bluetooth.printCustom("Jenis:", 0, 0);
-        bluetooth.printCustom(group?.jenisBarang?.namaJenis ?? "-", 1, 0);
-        
-        bluetooth.printCustom("Bentuk:", 0, 0);
-        bluetooth.printCustom(group?.bentukBarang?.namaBentuk ?? "-", 1, 0);
-        
-        bluetooth.printCustom("Grade:", 0, 0);
-        bluetooth.printCustom(group?.gradeBarang?.nama ?? "-", 1, 0);
-        
-        bluetooth.printCustom("Dimensi:", 0, 0);
-        bluetooth.printCustom(dimensi, 1, 0);
+          bluetooth.printCustom("Kode Barang:", 0, 0);
+          bluetooth.printCustom(item.kodeBarang, 1, 0);
+          
+          bluetooth.printCustom("Nama Item:", 0, 0);
+          bluetooth.printCustom(item.namaItemBarang, 1, 0);
+          
+          bluetooth.printCustom("Jenis:", 0, 0);
+          bluetooth.printCustom(group?.jenisBarang?.namaJenis ?? "-", 1, 0);
+          
+          bluetooth.printCustom("Bentuk:", 0, 0);
+          bluetooth.printCustom(group?.bentukBarang?.namaBentuk ?? "-", 1, 0);
+          
+          bluetooth.printCustom("Grade:", 0, 0);
+          bluetooth.printCustom(group?.gradeBarang?.nama ?? "-", 1, 0);
+          
+          bluetooth.printCustom("Dimensi:", 0, 0);
+          bluetooth.printCustom(dimensi, 1, 0);
 
-        bluetooth.printNewLine();
-        bluetooth.printCustom("Date Printed:", 0, 0);
-        bluetooth.printCustom(dateStr, 0, 0);
+          bluetooth.printNewLine();
+          bluetooth.printCustom("Date Printed:", 0, 0);
+          bluetooth.printCustom(dateStr, 0, 0);
 
-        bluetooth.printNewLine();
-        bluetooth.printCustom("----------------", 1, 1);
-        bluetooth.printCustom("SHN WMS", 0, 1);
-        
-        // Pemisah antar item batch
-        if (i < items.length - 1) {
           bluetooth.printNewLine();
-          bluetooth.printCustom("- - - - - - - - -", 1, 1);
-          bluetooth.printNewLine();
-        } else {
-          // Feed paper at the end
-          bluetooth.printNewLine();
-          bluetooth.printNewLine();
-          bluetooth.printNewLine();
+          bluetooth.printCustom("----------------", 1, 1);
+          bluetooth.printCustom("SHN WMS", 0, 1);
+          
+          // Pemisah antar label (bisa antar item atau antar copy item yang sama)
+          if (i < items.length - 1 || j < copies - 1) {
+            bluetooth.printNewLine();
+            bluetooth.printCustom("- - - - - - - - -", 1, 1);
+            bluetooth.printNewLine();
+          } else {
+            // Feed paper at the very end
+            bluetooth.printNewLine();
+            bluetooth.printNewLine();
+            bluetooth.printNewLine();
+          }
         }
       }
     } catch (e) {
