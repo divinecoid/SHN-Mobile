@@ -6,7 +6,10 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:async';
 import 'page_login.dart';
+import '../models/notification_model.dart';
+import '../services/notification_service.dart';
 import 'terima_barang_main_page.dart';
 import 'page_stock_opname.dart';
 import 'stock_opname_list_page.dart';
@@ -46,6 +49,9 @@ class _DashboardPageState extends State<DashboardPage> {
   int selectedIndex = 0;
   bool _isLoading = true;
   List<DashboardMenuItem> _availableMenuItems = [];
+  Timer? _pollingTimer;
+  int _unreadCount = 0;
+  List<NotificationItem> _notifications = [];
 
   // Semua menu yang tersedia di dashboard
   final List<DashboardMenuItem> _allMenuItems = [
@@ -104,6 +110,151 @@ class _DashboardPageState extends State<DashboardPage> {
     super.initState();
     _loadUserData();
     _loadAvailableMenus();
+    _fetchNotifications();
+    _startPolling();
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startPolling() {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
+      _fetchNotifications();
+    });
+  }
+
+  Future<void> _fetchNotifications() async {
+    final unread = await NotificationService.fetchMyNotifications(unreadOnly: true);
+    if (mounted) {
+      setState(() {
+        _unreadCount = unread.length;
+      });
+    }
+  }
+
+  Future<void> _showNotificationBottomSheet() async {
+    // Fetch all notifications before showing
+    final allNotifs = await NotificationService.fetchMyNotifications();
+    setState(() {
+      _notifications = allNotifs;
+      _unreadCount = allNotifs.where((n) => !n.isRead).length;
+    });
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.7,
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: Colors.grey[800]!)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Notifikasi',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: _notifications.isEmpty
+                        ? const Center(
+                            child: Text('Belum ada notifikasi', style: TextStyle(color: Colors.grey)),
+                          )
+                        : ListView.builder(
+                            itemCount: _notifications.length,
+                            itemBuilder: (context, index) {
+                              final notif = _notifications[index];
+                              return ListTile(
+                                tileColor: notif.isRead ? Colors.transparent : Colors.blue.withOpacity(0.1),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                title: Row(
+                                  children: [
+                                    if (!notif.isRead)
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        margin: const EdgeInsets.only(right: 8),
+                                        decoration: const BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.blue,
+                                        ),
+                                      ),
+                                    Expanded(
+                                      child: Text(
+                                        notif.title,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: notif.isRead ? FontWeight.normal : FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      notif.message,
+                                      style: TextStyle(color: Colors.grey[400]),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      notif.createdAt != null
+                                          ? DateFormat('dd MMM yyyy HH:mm').format(notif.createdAt!)
+                                          : '',
+                                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                                onTap: () async {
+                                  if (!notif.isRead) {
+                                    final success = await NotificationService.markAsRead(notif.id);
+                                    if (success) {
+                                      setModalState(() {
+                                        notif.isRead = true;
+                                      });
+                                      setState(() {
+                                        _unreadCount = _notifications.where((n) => !n.isRead).length;
+                                      });
+                                    }
+                                  }
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _loadUserData() async {
@@ -228,16 +379,41 @@ class _DashboardPageState extends State<DashboardPage> {
           backgroundColor: Colors.black,
           foregroundColor: Colors.white,
           actions: [
-            IconButton(
-              icon: const Icon(Icons.notifications),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Belum ada notifikasi baru')),
-                );
-              },
-              tooltip: 'Notifikasi',
-            ),
-          ],
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications),
+                onPressed: _showNotificationBottomSheet,
+                tooltip: 'Notifikasi',
+              ),
+              if (_unreadCount > 0)
+                Positioned(
+                  right: 11,
+                  top: 11,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 12,
+                      minHeight: 12,
+                    ),
+                    child: Text(
+                      '$_unreadCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
         ),
         body: const Center(
           child: Text(
@@ -252,14 +428,39 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: AppBar(
         title: Text(_availableMenuItems[selectedIndex].title),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Belum ada notifikasi baru')),
-              );
-            },
-            tooltip: 'Notifikasi',
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications),
+                onPressed: _showNotificationBottomSheet,
+                tooltip: 'Notifikasi',
+              ),
+              if (_unreadCount > 0)
+                Positioned(
+                  right: 11,
+                  top: 11,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 12,
+                      minHeight: 12,
+                    ),
+                    child: Text(
+                      '$_unreadCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
