@@ -29,8 +29,8 @@ class NotificationService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null && data['data']['data'] != null) {
-          final List<dynamic> items = data['data']['data'];
+        if (data['success'] == true && data['data'] != null) {
+          final List<dynamic> items = data['data'];
           return items.map((json) => NotificationItem.fromJson(json)).toList();
         }
       } else if (AuthHelper.isUnauthorizedResponse(response.statusCode)) {
