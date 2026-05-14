@@ -7,7 +7,14 @@ import '../models/penerimaan_barang_model.dart';
 import 'input_proses_nonpo_page.dart';
 
 class ProsesNonPoListPage extends StatefulWidget {
-  const ProsesNonPoListPage({super.key});
+  final int initialTabIndex;
+  final String? initialSearchQuery;
+
+  const ProsesNonPoListPage({
+    super.key, 
+    this.initialTabIndex = 0,
+    this.initialSearchQuery,
+  });
 
   @override
   State<ProsesNonPoListPage> createState() => _ProsesNonPoListPageState();
@@ -20,7 +27,15 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTabIndex);
+    
+    if (widget.initialSearchQuery != null) {
+      _searchController.text = widget.initialSearchQuery!;
+      // Need to notify the controller about the search query
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<ProsesNonPoController>().setSearchQuery(widget.initialSearchQuery!);
+      });
+    }
     
     // Initial fetch when page loads
     WidgetsBinding.instance.addPostFrameCallback((_) {

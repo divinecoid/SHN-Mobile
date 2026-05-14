@@ -243,6 +243,39 @@ class _DashboardPageState extends State<DashboardPage> {
                                       });
                                     }
                                   }
+                                  
+                                  // Navigate based on type
+                                  if (notif.type == 'print_barcode') {
+                                    Navigator.pop(context); // Close bottom sheet
+                                    
+                                    // Parse item name from message if possible
+                                    // Format: "Item Non-PO {namaItemBarang} sebanyak..."
+                                    String? searchQuery;
+                                    final match = RegExp(r'Item Non-PO (.*?) sebanyak').firstMatch(notif.message);
+                                    if (match != null && match.groupCount >= 1) {
+                                      searchQuery = match.group(1);
+                                    }
+                                    
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ProsesNonPoListPage(
+                                          initialTabIndex: 1, // Selesai tab
+                                          initialSearchQuery: searchQuery,
+                                        ),
+                                      ),
+                                    );
+                                  } else if (notif.type == 'penerimaan_barang_non_po') {
+                                    Navigator.pop(context); // Close bottom sheet
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const ProsesNonPoListPage(
+                                          initialTabIndex: 0, // Pending tab
+                                        ),
+                                      ),
+                                    );
+                                  }
                                 },
                               );
                             },
