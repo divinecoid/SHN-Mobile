@@ -229,9 +229,13 @@ class _DashboardPageState extends State<DashboardPage> {
           foregroundColor: Colors.white,
           actions: [
             IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: _logout,
-              tooltip: 'Logout',
+              icon: const Icon(Icons.notifications),
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Belum ada notifikasi baru')),
+                );
+              },
+              tooltip: 'Notifikasi',
             ),
           ],
         ),
@@ -249,9 +253,13 @@ class _DashboardPageState extends State<DashboardPage> {
         title: Text(_availableMenuItems[selectedIndex].title),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-            tooltip: 'Logout',
+            icon: const Icon(Icons.notifications),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Belum ada notifikasi baru')),
+              );
+            },
+            tooltip: 'Notifikasi',
           ),
         ],
       ),
@@ -343,6 +351,25 @@ class _DashboardPageState extends State<DashboardPage> {
                       },
                     ),
                   );
+                },
+              ),
+            ),
+            // Bottom Logout Button
+            Divider(color: Colors.grey[800], height: 1),
+            SafeArea(
+              top: false,
+              child: ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text(
+                  'Logout',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context); // Close drawer
+                  _logout();
                 },
               ),
             ),
