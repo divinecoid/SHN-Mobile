@@ -895,7 +895,9 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    '${detail.qty} PCS',
+                                    detail.tipeTerima == 'bundle' && detail.qtyPerIkat != null
+                                        ? '${detail.qty} Ikat'
+                                        : '${detail.qty} PCS',
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 13,
@@ -904,13 +906,48 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                                   ),
                                 ),
                                 if (detail.tipeTerima != null) ...[
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: detail.tipeTerima == 'bundle'
+                                          ? Colors.purple[900]?.withOpacity(0.5)
+                                          : Colors.teal[900]?.withOpacity(0.5),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: detail.tipeTerima == 'bundle'
+                                            ? Colors.purple[400]!
+                                            : Colors.teal[400]!,
+                                        width: 0.5,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      detail.tipeTerima!.toUpperCase(),
+                                      style: TextStyle(
+                                        color: detail.tipeTerima == 'bundle'
+                                            ? Colors.purple[300]
+                                            : Colors.teal[300],
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                if (detail.tipeTerima == 'bundle' && detail.qtyPerIkat != null) ...[
                                   const SizedBox(height: 4),
                                   Text(
-                                    detail.tipeTerima!.toUpperCase(),
+                                    '${detail.qtyPerIkat} pcs/ikat',
+                                    style: TextStyle(
+                                      color: Colors.purple[300],
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Total: ${detail.qty * detail.qtyPerIkat!} pcs',
                                     style: TextStyle(
                                       color: Colors.grey[400],
                                       fontSize: 10,
-                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ],

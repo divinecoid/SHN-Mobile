@@ -235,6 +235,7 @@ class PenerimaanBarangDetail {
   final int idItemBarang;
   final int idRak;
   final int qty;
+  final int? qtyPerIkat;
   final int? idPurchaseOrderItem;
   final int? idStockMutationDetail;
   final ItemBarang? itemBarang;
@@ -249,6 +250,7 @@ class PenerimaanBarangDetail {
     required this.idItemBarang,
     required this.idRak,
     required this.qty,
+    this.qtyPerIkat,
     this.idPurchaseOrderItem,
     this.idStockMutationDetail,
     this.itemBarang,
@@ -265,6 +267,7 @@ class PenerimaanBarangDetail {
       idItemBarang: _parseToInt(map['id_item_barang']),
       idRak: _parseToInt(map['id_rak']),
       qty: _parseToInt(map['qty']),
+      qtyPerIkat: map['qty_per_ikat'] != null ? _parseToInt(map['qty_per_ikat']) : null,
       idPurchaseOrderItem: map['id_purchase_order_item'] != null ? _parseToInt(map['id_purchase_order_item']) : null,
       idStockMutationDetail: map['id_stock_mutation_detail'] != null ? _parseToInt(map['id_stock_mutation_detail']) : null,
       itemBarang: _parseItemBarang(map['item_barang']),
@@ -282,6 +285,7 @@ class PenerimaanBarangDetail {
       'id_item_barang': idItemBarang,
       'id_rak': idRak,
       'qty': qty,
+      'qty_per_ikat': qtyPerIkat,
       'id_purchase_order_item': idPurchaseOrderItem,
       'id_stock_mutation_detail': idStockMutationDetail,
       'item_barang': itemBarang?.toMap(),
@@ -855,6 +859,7 @@ class DetailBarangNonPo {
   final String? sisi1;
   final String? sisi2;
   final int qty;
+  final int? qtyPerIkat; // Qty per bundle when tipeTerima is "bundle"
   final String tipeTerima; // "bundle" or "satuan"
   final int idRak;
   final String? itemBarangGroupName; // Optional for UI display
@@ -874,6 +879,7 @@ class DetailBarangNonPo {
     this.sisi1,
     this.sisi2,
     required this.qty,
+    this.qtyPerIkat,
     required this.tipeTerima,
     required this.idRak,
     this.itemBarangGroupName,
@@ -884,6 +890,7 @@ class DetailBarangNonPo {
     final map = {
       'item_barang_group_id': itemBarangGroupId,
       'qty': qty,
+      'qty_per_ikat': qtyPerIkat,
       'tipe_terima': tipeTerima,
       'id_rak': idRak,
     };

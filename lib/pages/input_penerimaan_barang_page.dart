@@ -1830,7 +1830,12 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Qty: ${item.qty} (${item.tipeTerima})', style: const TextStyle(color: Colors.grey)),
+                        Text(
+                          item.tipeTerima == 'bundle' && item.qtyPerIkat != null
+                              ? 'Qty: ${item.qty} Ikat × ${item.qtyPerIkat} pcs = ${item.qty * item.qtyPerIkat!} pcs (Bundle)'
+                              : 'Qty: ${item.qty} pcs (Satuan)',
+                          style: const TextStyle(color: Colors.grey),
+                        ),
                         Text('Rak: ${item.rakKode ?? item.idRak}', style: const TextStyle(color: Colors.grey)),
                       ],
                     ),
@@ -1964,6 +1969,7 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
 
   // Common
   final TextEditingController _qtyController = TextEditingController(text: '1');
+  final TextEditingController _qtyPerIkatController = TextEditingController();
   String _tipeTerima = 'satuan';
   
 
@@ -1972,6 +1978,7 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
     _searchDebounce?.cancel();
     _dimControllers.values.forEach((c) => c.dispose());
     _qtyController.dispose();
+    _qtyPerIkatController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -2009,6 +2016,11 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
       return;
     }
 
+    if (_tipeTerima == 'bundle' && (_qtyPerIkatController.text.isEmpty || int.tryParse(_qtyPerIkatController.text) == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Qty / Ikat tidak valid')));
+      return;
+    }
+
     if (widget.controller.selectedRakId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih Rak di halaman utama terlebih dahulu')));
       return;
@@ -2028,6 +2040,7 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
       sisi1: _isManual ? _dimControllers['sisi1']!.text : null,
       sisi2: _isManual ? _dimControllers['sisi2']!.text : null,
       qty: int.parse(_qtyController.text),
+      qtyPerIkat: _tipeTerima == 'bundle' ? int.tryParse(_qtyPerIkatController.text) : null,
       tipeTerima: _tipeTerima,
       idRak: widget.controller.selectedRakId!,
       itemBarangGroupName: _isManual ? null : _selectedGroup?.namaGroupBarang,
@@ -2106,6 +2119,22 @@ class _AddNonPoItemModalState extends State<_AddNonPoItemModal> {
             const SizedBox(height: 8),
             Row(
               children: [
+                if (_tipeTerima == 'bundle') ...[
+                  Expanded(
+                    flex: 2,
+                    child: TextFormField(
+                      controller: _qtyPerIkatController,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'Qty / Ikat',
+                        labelStyle: TextStyle(color: Colors.grey),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
                 Expanded(
                   flex: 2,
                   child: TextFormField(

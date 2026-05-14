@@ -292,7 +292,9 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
                 Icon(Icons.category, size: 16, color: Colors.grey[400]),
                 const SizedBox(width: 8),
                 Text(
-                  'Tipe: ${detail.tipeTerima ?? '-'}',
+                  detail.tipeTerima == 'bundle'
+                      ? 'Tipe: Bundle${detail.qtyPerIkat != null ? ' (${detail.qtyPerIkat} pcs/ikat)' : ''}'
+                      : 'Tipe: ${detail.tipeTerima ?? '-'}',
                   style: TextStyle(color: Colors.grey[300], fontSize: 13),
                 ),
               ],
@@ -305,7 +307,9 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
                 Icon(Icons.numbers, size: 16, color: Colors.blue[400]),
                 const SizedBox(width: 8),
                 Text(
-                  'Qty: ${detail.qty}',
+                  detail.tipeTerima == 'bundle' && detail.qtyPerIkat != null
+                      ? 'Qty: ${detail.qty} Ikat (Total: ${detail.qty * detail.qtyPerIkat!} pcs)'
+                      : 'Qty: ${detail.qty} pcs',
                   style: TextStyle(
                     color: Colors.blue[300], 
                     fontSize: 14, 

@@ -159,8 +159,20 @@ class _InputProsesNonPoPageState extends State<InputProsesNonPoPage> {
                             ),
                             const SizedBox(height: 16),
                             _buildInfoRow('Nama Item', namaItem, Icons.inventory),
-                            _buildInfoRow('QTY', '${widget.detail.qty}', Icons.numbers),
-                            _buildInfoRow('Tipe Terima', widget.detail.tipeTerima ?? '-', Icons.category),
+                            _buildInfoRow(
+                              'QTY',
+                              widget.detail.tipeTerima == 'bundle' && widget.detail.qtyPerIkat != null
+                                  ? '${widget.detail.qty} Ikat × ${widget.detail.qtyPerIkat} pcs = ${widget.detail.qty * widget.detail.qtyPerIkat!} pcs'
+                                  : '${widget.detail.qty} pcs',
+                              Icons.numbers,
+                            ),
+                            _buildInfoRow(
+                              'Tipe Terima',
+                              widget.detail.tipeTerima == 'bundle'
+                                  ? 'Bundle${widget.detail.qtyPerIkat != null ? ' (${widget.detail.qtyPerIkat} pcs/ikat)' : ''}'
+                                  : widget.detail.tipeTerima ?? '-',
+                              Icons.category,
+                            ),
                             _buildInfoRow('Rak', rakName, Icons.shelves),
                           ],
                         ),
