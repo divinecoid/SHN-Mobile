@@ -549,8 +549,8 @@ class WorkOrderDetailItemController extends ChangeNotifier {
   void addNewAssignment() {
     assignments.add({
       'id': null, // ID akan di-generate saat save
-      'qty': 0,
-      'berat': 0.0,
+      'qty': null,
+      'berat': null,
       'pelaksana': null,
       'pelaksana_id': null,
       'tanggal': DateTime.now().toIso8601String().split('T')[0], // Format YYYY-MM-DD
@@ -587,14 +587,14 @@ class WorkOrderDetailItemController extends ChangeNotifier {
 
   // Method untuk update qty assignment
   void updateAssignmentQty(int index, String value) {
-    assignments[index]['qty'] = int.tryParse(value) ?? 0;
+    assignments[index]['qty'] = value.isEmpty ? null : (int.tryParse(value));
     _updateActualValues();
     notifyListeners();
   }
 
   // Method untuk update berat assignment
   void updateAssignmentBerat(int index, String value) {
-    assignments[index]['berat'] = double.tryParse(value) ?? 0.0;
+    assignments[index]['berat'] = value.isEmpty ? null : (double.tryParse(value));
     _updateActualValues();
     notifyListeners();
   }

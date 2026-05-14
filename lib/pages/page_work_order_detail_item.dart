@@ -778,54 +778,12 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
   }
 
   Widget _buildAssignmentInputField(String label, String value, String suffix, Function(String) onChanged, {bool isReadOnly = false}) {
-    final controller = TextEditingController(text: value);
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey[400],
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          height: 45,
-          child: TextField(
-            controller: controller,
-            readOnly: isReadOnly,
-            style: TextStyle(color: isReadOnly ? Colors.grey[300] : Colors.white, fontSize: 14, fontWeight: isReadOnly ? FontWeight.w600 : FontWeight.w500),
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            onChanged: onChanged,
-            decoration: InputDecoration(
-              hintText: '0',
-              hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-              filled: true,
-              fillColor: isReadOnly ? Colors.grey[850] : Colors.grey[800],
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.grey[600]!),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.grey[600]!),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: isReadOnly ? Colors.grey[600]! : Colors.blue[400]!),
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              suffixText: suffix,
-              suffixStyle: TextStyle(color: Colors.grey[400], fontSize: 12, fontWeight: FontWeight.w500),
-              isDense: false,
-            ),
-          ),
-        ),
-      ],
+    return _AssignmentInputField(
+      label: label,
+      value: value,
+      suffix: suffix,
+      onChanged: onChanged,
+      isReadOnly: isReadOnly,
     );
   }
 
@@ -1238,7 +1196,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
               Expanded(
                 child: _buildAssignmentInputField(
                   'Qty',
-                  assignment['qty'].toString(),
+                  assignment['qty']?.toString() ?? '',
                   'pcs',
                   (value) => controller.updateAssignmentQty(index, value),
                   isReadOnly: isCompleted,
@@ -1248,7 +1206,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
               Expanded(
                 child: _buildAssignmentInputField(
                   'Berat',
-                  assignment['berat'].toString(),
+                  assignment['berat']?.toString() ?? '',
                   'kg',
                   (value) => controller.updateAssignmentBerat(index, value),
                   isReadOnly: isCompleted,
@@ -1768,5 +1726,108 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
         ),
       );
     }
+  }
+}
+
+class _AssignmentInputField extends StatefulWidget {
+  final String label;
+  final String value;
+  final String suffix;
+  final Function(String) onChanged;
+  final bool isReadOnly;
+
+  const _AssignmentInputField({
+    required this.label,
+    required this.value,
+    required this.suffix,
+    required this.onChanged,
+    this.isReadOnly = false,
+  });
+
+  @override
+  State<_AssignmentInputField> createState() => _AssignmentInputFieldState();
+}
+
+class _AssignmentInputFieldState extends State<_AssignmentInputField> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value);
+  }
+
+  @override
+  void didUpdateWidget(_AssignmentInputField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sync controller only when parent value changes and is different from current edit
+    if (widget.value != oldWidget.value && widget.value != _controller.text) {
+      _controller.text = widget.value;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.label,
+          style: TextStyle(
+            color: Colors.grey[400],
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 45,
+          child: TextField(
+            controller: _controller,
+            readOnly: widget.isReadOnly,
+            style: TextStyle(
+              color: widget.isReadOnly ? Colors.grey[300] : Colors.white, 
+              fontSize: 14, 
+              fontWeight: widget.isReadOnly ? FontWeight.w600 : FontWeight.w500
+            ),
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            onChanged: widget.onChanged,
+            onTap: widget.isReadOnly ? null : () {
+              _controller.clear();
+              widget.onChanged('');
+            },
+            decoration: InputDecoration(
+              hintText: '0',
+              hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+              filled: true,
+              fillColor: widget.isReadOnly ? Colors.grey[850] : widget.isReadOnly ? Colors.grey[850] : Colors.grey[800],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey[600]!),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey[600]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: widget.isReadOnly ? Colors.grey[600]! : Colors.blue[400]!),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              suffixText: widget.suffix,
+              suffixStyle: TextStyle(color: Colors.grey[400], fontSize: 12, fontWeight: FontWeight.w500),
+              isDense: false,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
