@@ -268,7 +268,14 @@ class _DashboardPageState extends State<DashboardPage> {
         child: Column(
           children: [
             // Drawer Header
-            DrawerHeader(
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 20,
+                bottom: 20,
+                left: 20,
+                right: 20,
+              ),
               decoration: BoxDecoration(
                 color: Colors.black,
                 border: Border(
@@ -280,7 +287,6 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   const Text(
                     'SHN Mobile',
@@ -315,41 +321,33 @@ class _DashboardPageState extends State<DashboardPage> {
                 itemCount: _availableMenuItems.length,
                 itemBuilder: (context, index) {
                   final menuItem = _availableMenuItems[index];
-                  return Container(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+                    selected: selectedIndex == index,
+                    selectedTileColor: Colors.grey[900],
+                    leading: Icon(
+                      menuItem.icon,
+                      color: selectedIndex == index
+                          ? Colors.white
+                          : Colors.grey[400],
                     ),
-                    child: ListTile(
-                      selected: selectedIndex == index,
-                      selectedTileColor: Colors.grey[800],
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      leading: Icon(
-                        menuItem.icon,
+                    title: Text(
+                      menuItem.title,
+                      style: TextStyle(
                         color: selectedIndex == index
                             ? Colors.white
                             : Colors.grey[400],
+                        fontWeight: selectedIndex == index
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
-                      title: Text(
-                        menuItem.title,
-                        style: TextStyle(
-                          color: selectedIndex == index
-                              ? Colors.white
-                              : Colors.grey[400],
-                          fontWeight: selectedIndex == index
-                              ? FontWeight.w600
-                              : FontWeight.normal,
-                        ),
-                      ),
-                      onTap: () {
-                        setState(() {
-                          selectedIndex = index;
-                        });
-                        Navigator.pop(context); // Close drawer
-                      },
                     ),
+                    onTap: () {
+                      setState(() {
+                        selectedIndex = index;
+                      });
+                      Navigator.pop(context); // Close drawer
+                    },
                   );
                 },
               ),
