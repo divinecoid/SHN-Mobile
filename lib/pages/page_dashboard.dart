@@ -253,13 +253,11 @@ class _DashboardPageState extends State<DashboardPage> {
                                       ? int.tryParse(notif.data!['penerimaan_barang_id'].toString()) 
                                       : null;
 
-                                    // Fallback to item name from message for old notifications
+                                    // Parse item name from message for visual confirmation in search bar
                                     String? searchQuery;
-                                    if (pbId == null) {
-                                      final match = RegExp(r'Item Non-PO (.*?) sebanyak').firstMatch(notif.message);
-                                      if (match != null && match.groupCount >= 1) {
-                                        searchQuery = match.group(1);
-                                      }
+                                    final match = RegExp(r'Item Non-PO (.*?) sebanyak').firstMatch(notif.message);
+                                    if (match != null && match.groupCount >= 1) {
+                                      searchQuery = match.group(1);
                                     }
                                     
                                     Navigator.push(
