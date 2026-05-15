@@ -40,8 +40,9 @@ class ProsesNonPoController extends ChangeNotifier {
   // Selected for printing
   final Set<int> _selectedProcessedIds = {};
 
-  // Search
+  // Search and Filter
   String _searchQuery = '';
+  int? _penerimaanBarangId;
 
   // Getters
   List<PenerimaanBarangDetail> get pendingList => _pendingList;
@@ -57,6 +58,7 @@ class ProsesNonPoController extends ChangeNotifier {
   bool get isSubmitLoading => _isSubmitLoading;
   String? get errorSubmit => _errorSubmit;
   String get searchQuery => _searchQuery;
+  int? get penerimaanBarangId => _penerimaanBarangId;
 
   Set<int> get selectedProcessedIds => _selectedProcessedIds;
   List<PenerimaanBarangDetail> get selectedProcessedItems {
@@ -69,6 +71,11 @@ class ProsesNonPoController extends ChangeNotifier {
 
   void setSearchQuery(String query) {
     _searchQuery = query;
+    notifyListeners();
+  }
+
+  void setPenerimaanBarangId(int? id) {
+    _penerimaanBarangId = id;
     notifyListeners();
   }
 
@@ -118,6 +125,10 @@ class ProsesNonPoController extends ChangeNotifier {
       
       if (_searchQuery.isNotEmpty) {
         queryParams['search'] = _searchQuery;
+      }
+      
+      if (_penerimaanBarangId != null) {
+        queryParams['penerimaan_barang_id'] = _penerimaanBarangId.toString();
       }
 
       final uri = Uri.parse('$baseUrl$apiPath/pending-nonpo').replace(queryParameters: queryParams);
@@ -198,6 +209,10 @@ class ProsesNonPoController extends ChangeNotifier {
       
       if (_searchQuery.isNotEmpty) {
         queryParams['search'] = _searchQuery;
+      }
+      
+      if (_penerimaanBarangId != null) {
+        queryParams['penerimaan_barang_id'] = _penerimaanBarangId.toString();
       }
 
       final uri = Uri.parse('$baseUrl$apiPath/processed-nonpo').replace(queryParameters: queryParams);
@@ -347,6 +362,17 @@ class ProsesNonPoController extends ChangeNotifier {
     try {
       final printer = PrinterService();
       await printer.printItemQR(detail, copies: copies);
+      
+      // Update printed status in backend
+      if (detail.itemBarang != null) {
+        await markAsPrinted(detail.itemBarang!.id);
+        // Refresh the item in the list if it's there
+        final index = _processedList.indexWhere((e) => e.id == detail.id);
+        if (index != -1) {
+          // We can either refetch or update locally. Refetching is safer.
+          loadProcessedList(refresh: true);
+        }
+      }
     } catch (e) {
       rethrow;
     }
@@ -358,9 +384,43 @@ class ProsesNonPoController extends ChangeNotifier {
       final itemsToPrint = selectedProcessedItems;
       final printer = PrinterService();
       await printer.printBatchQR(itemsToPrint, copies: copies);
+      
+      // Update printed status for all items in batch
+      for (var detail in itemsToPrint) {
+        if (detail.itemBarang != null) {
+          await markAsPrinted(detail.itemBarang!.id);
+        }
+      }
+      
       clearSelection();
+      loadProcessedList(refresh: true);
     } catch (e) {
       rethrow;
+    }
+  }
+
+  Future<bool> markAsPrinted(int itemBarangId) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) return false;
+
+      final baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:8000';
+      final uri = Uri.parse('$baseUrl/api/item-barang/$itemBarangId/qrcode-status');
+
+      final response = await http.patch(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode({'is_qrcode_printed': true}),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error marking as printed: $e');
+      return false;
     }
   }
 

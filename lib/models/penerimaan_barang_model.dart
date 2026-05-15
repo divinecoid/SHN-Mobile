@@ -28,6 +28,7 @@ class ItemBarang {
   final String? mergeDate;
   final int? gudangId;
   final int? idRak;
+  final bool? isQrcodePrinted;
   final String? frozenAt;
   final int? frozenBy;
   final String? createdAt;
@@ -59,6 +60,7 @@ class ItemBarang {
     this.mergeDate,
     this.gudangId,
     this.idRak,
+    this.isQrcodePrinted,
     this.frozenAt,
     this.frozenBy,
     this.createdAt,
@@ -92,6 +94,7 @@ class ItemBarang {
       mergeDate: map['merge_date'],
       gudangId: map['gudang_id'] != null ? _parseToInt(map['gudang_id']) : null,
       idRak: map['id_rak'] != null ? _parseToInt(map['id_rak']) : null,
+      isQrcodePrinted: map['is_qrcode_printed'] as bool?,
       frozenAt: map['frozen_at'],
       frozenBy: map['frozen_by'] != null ? _parseToInt(map['frozen_by']) : null,
       createdAt: map['created_at'],
@@ -126,6 +129,7 @@ class ItemBarang {
       'merge_date': mergeDate,
       'gudang_id': gudangId,
       'id_rak': idRak,
+      'is_qrcode_printed': isQrcodePrinted,
       'frozen_at': frozenAt,
       'frozen_by': frozenBy,
       'created_at': createdAt,

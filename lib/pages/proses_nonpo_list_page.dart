@@ -9,11 +9,13 @@ import 'input_proses_nonpo_page.dart';
 class ProsesNonPoListPage extends StatefulWidget {
   final int initialTabIndex;
   final String? initialSearchQuery;
+  final int? initialPenerimaanBarangId;
 
   const ProsesNonPoListPage({
     super.key, 
     this.initialTabIndex = 0,
     this.initialSearchQuery,
+    this.initialPenerimaanBarangId,
   });
 
   @override
@@ -34,6 +36,12 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
       // Need to notify the controller about the search query
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.read<ProsesNonPoController>().setSearchQuery(widget.initialSearchQuery!);
+      });
+    }
+
+    if (widget.initialPenerimaanBarangId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<ProsesNonPoController>().setPenerimaanBarangId(widget.initialPenerimaanBarangId);
       });
     }
     
@@ -251,13 +259,63 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
                     ),
                   ),
                 Expanded(
-                  child: Text(
-                    namaItem,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        namaItem,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (!isPendingPanel) ...[
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: (detail.itemBarang?.isQrcodePrinted ?? false)
+                                ? Colors.green.withOpacity(0.1)
+                                : Colors.orange.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: (detail.itemBarang?.isQrcodePrinted ?? false)
+                                  ? Colors.green.withOpacity(0.5)
+                                  : Colors.orange.withOpacity(0.5),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                (detail.itemBarang?.isQrcodePrinted ?? false)
+                                    ? Icons.check_circle_outline
+                                    : Icons.print_disabled_outlined,
+                                size: 12,
+                                color: (detail.itemBarang?.isQrcodePrinted ?? false)
+                                    ? Colors.green
+                                    : Colors.orange,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                (detail.itemBarang?.isQrcodePrinted ?? false)
+                                    ? 'Printed'
+                                    : 'Belum Cetak',
+                                style: TextStyle(
+                                  color: (detail.itemBarang?.isQrcodePrinted ?? false)
+                                      ? Colors.green
+                                      : Colors.orange,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 if (!isPendingPanel)
@@ -295,48 +353,72 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
             const SizedBox(height: 6),
             
             // Info Row 2: Rak & Tipe Terima
-            Row(
+            Wrap(
+              spacing: 16,
+              runSpacing: 4,
               children: [
-                Icon(Icons.shelves, size: 16, color: Colors.grey[400]),
-                const SizedBox(width: 8),
-                Text(
-                  'Rak: ${detail.rak?.namaRak ?? '-'}',
-                  style: TextStyle(color: Colors.grey[300], fontSize: 13),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.shelves, size: 16, color: Colors.grey[400]),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Rak: ${detail.rak?.namaRak ?? '-'}',
+                      style: TextStyle(color: Colors.grey[300], fontSize: 13),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                Icon(Icons.category, size: 16, color: Colors.grey[400]),
-                const SizedBox(width: 8),
-                Text(
-                  detail.tipeTerima == 'bundle'
-                      ? 'Tipe: Bundle${detail.qtyPerIkat != null ? ' (${detail.qtyPerIkat} pcs/ikat)' : ''}'
-                      : 'Tipe: ${detail.tipeTerima ?? '-'}',
-                  style: TextStyle(color: Colors.grey[300], fontSize: 13),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.category, size: 16, color: Colors.grey[400]),
+                    const SizedBox(width: 8),
+                    Text(
+                      detail.tipeTerima == 'bundle'
+                          ? 'Tipe: Bundle${detail.qtyPerIkat != null ? ' (${detail.qtyPerIkat} pcs/ikat)' : ''}'
+                          : 'Tipe: ${detail.tipeTerima ?? '-'}',
+                      style: TextStyle(color: Colors.grey[300], fontSize: 13),
+                    ),
+                  ],
                 ),
               ],
             ),
             const SizedBox(height: 6),
             
             // Info Row 3: Qty & Date
-            Row(
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
               children: [
-                Icon(Icons.numbers, size: 16, color: Colors.blue[400]),
-                const SizedBox(width: 8),
-                Text(
-                  detail.tipeTerima == 'bundle' && detail.qtyPerIkat != null
-                      ? 'Qty: ${detail.qty} Ikat (Total: ${detail.qty * detail.qtyPerIkat!} pcs)'
-                      : 'Qty: ${detail.qty} pcs',
-                  style: TextStyle(
-                    color: Colors.blue[300], 
-                    fontSize: 14, 
-                    fontWeight: FontWeight.bold
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.numbers, size: 16, color: Colors.blue[400]),
+                    const SizedBox(width: 8),
+                    Text(
+                      detail.tipeTerima == 'bundle' && detail.qtyPerIkat != null
+                          ? 'Qty: ${detail.qty} Ikat (Total: ${detail.qty * detail.qtyPerIkat!} pcs)'
+                          : 'Qty: ${detail.qty} pcs',
+                      style: TextStyle(
+                        color: Colors.blue[300], 
+                        fontSize: 14, 
+                        fontWeight: FontWeight.bold
+                      ),
+                    ),
+                  ],
                 ),
-                const Spacer(),
-                Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
-                const SizedBox(width: 4),
-                Text(
-                  isPendingPanel ? 'Masuk: $formattedDate' : 'Diproses: $formattedDate',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
+                    const SizedBox(width: 4),
+                    Text(
+                      isPendingPanel ? 'Masuk: $formattedDate' : 'Diproses: $formattedDate',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -491,6 +573,41 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
                   },
                 ),
               ),
+              
+              // Filter Indicator
+              if (controller.penerimaanBarangId != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  color: Colors.blue.withOpacity(0.1),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, size: 16, color: Colors.blue),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Filtered from notification batch',
+                          style: TextStyle(color: Colors.blue, fontSize: 13),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          controller.setPenerimaanBarangId(null);
+                          controller.refreshAll();
+                        },
+                        icon: const Icon(Icons.clear, size: 14, color: Colors.blue),
+                        label: const Text(
+                          'Clear',
+                          style: TextStyle(color: Colors.blue, fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               
               // Tab Views
               Expanded(

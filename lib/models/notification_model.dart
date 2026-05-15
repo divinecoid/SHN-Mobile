@@ -7,6 +7,7 @@ class NotificationItem {
   final DateTime? createdAt;
   bool isRead;
   final DateTime? readAt;
+  final Map<String, dynamic>? data;
 
   NotificationItem({
     required this.id,
@@ -17,6 +18,7 @@ class NotificationItem {
     this.createdAt,
     this.isRead = false,
     this.readAt,
+    this.data,
   });
 
   factory NotificationItem.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,7 @@ class NotificationItem {
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
       isRead: json['is_read'] == true || json['is_read'] == 1,
       readAt: json['read_at'] != null ? DateTime.parse(json['read_at']) : null,
+      data: json['data'] is Map<String, dynamic> ? json['data'] : null,
     );
   }
 }

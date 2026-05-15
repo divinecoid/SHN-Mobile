@@ -248,12 +248,18 @@ class _DashboardPageState extends State<DashboardPage> {
                                   if (notif.type == 'print_barcode') {
                                     Navigator.pop(context); // Close bottom sheet
                                     
-                                    // Parse item name from message if possible
-                                    // Format: "Item Non-PO {namaItemBarang} sebanyak..."
+                                    // Use penerimaan_barang_id from data if available
+                                    final int? pbId = notif.data?['penerimaan_barang_id'] != null 
+                                      ? int.tryParse(notif.data!['penerimaan_barang_id'].toString()) 
+                                      : null;
+
+                                    // Fallback to item name from message for old notifications
                                     String? searchQuery;
-                                    final match = RegExp(r'Item Non-PO (.*?) sebanyak').firstMatch(notif.message);
-                                    if (match != null && match.groupCount >= 1) {
-                                      searchQuery = match.group(1);
+                                    if (pbId == null) {
+                                      final match = RegExp(r'Item Non-PO (.*?) sebanyak').firstMatch(notif.message);
+                                      if (match != null && match.groupCount >= 1) {
+                                        searchQuery = match.group(1);
+                                      }
                                     }
                                     
                                     Navigator.push(
@@ -262,6 +268,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                         builder: (context) => ProsesNonPoListPage(
                                           initialTabIndex: 1, // Selesai tab
                                           initialSearchQuery: searchQuery,
+                                          initialPenerimaanBarangId: pbId,
                                         ),
                                       ),
                                     );
