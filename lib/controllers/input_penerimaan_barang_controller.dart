@@ -205,6 +205,7 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     _selectedGudangId = gudang.id;
     _selectedGudangName = gudang.namaGudang;
     _selectedGudangKode = gudang.kode;
+    clearRak();
     notifyListeners();
   }
 
@@ -487,6 +488,17 @@ class InputPenerimaanBarangController extends ChangeNotifier {
         final jsonData = json.decode(response.body);
         if (jsonData['success'] == true) {
           final rakData = jsonData['data'];
+          
+          if (_selectedGudangId != null) {
+            final rakGudangId = rakData['gudang_id'];
+            if (rakGudangId != null && rakGudangId.toString() != _selectedGudangId.toString()) {
+               final rakGudangName = (rakData['gudang'] != null && rakData['gudang']['nama_gudang'] != null) 
+                   ? rakData['gudang']['nama_gudang'] 
+                   : 'gudang lain';
+               throw Exception('Rak ini milik $rakGudangName, tidak sesuai dengan gudang yang dipilih.');
+            }
+          }
+
           setRak(rakData['id'], rakData['kode'] ?? '', rakData['nama_rak'] ?? '');
         } else {
           throw Exception(jsonData['message'] ?? 'Rak tidak ditemukan');
