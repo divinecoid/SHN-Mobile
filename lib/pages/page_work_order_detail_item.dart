@@ -826,6 +826,7 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
 
   Widget _buildUploadPhotosSection() {
     final bool isCompleted = widget.workOrder['status'] == 'Completed' || widget.workOrder['status'] == 'Complete';
+    final bool isUtuh = (widget.item['jenis_potongan'] ?? widget.item['jenisPotongan'] ?? '').toString().toLowerCase() == 'utuh';
     try {
       return Consumer<WorkOrderDetailItemController>(
         builder: (context, controller, child) {
@@ -841,16 +842,18 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                   onGallery: () => controller.pickAndSetFotoBukti(ImageSource.gallery),
                   onClear: () => controller.clearFotoBukti(),
                 ),
-                const SizedBox(height: 20),
-                _buildPhotoSection(
-                  title: 'Foto Sisa Barang',
-                  subtitle: isCompleted ? '' : 'Upload foto sisa potongan plat (Opsional)',
-                  base64Data: controller.fotoSisaBase64,
-                  isCompleted: isCompleted,
-                  onCamera: () => controller.pickAndSetFotoSisa(ImageSource.camera),
-                  onGallery: () => controller.pickAndSetFotoSisa(ImageSource.gallery),
-                  onClear: () => controller.clearFotoSisa(),
-                ),
+                if (!isUtuh) ...[
+                  const SizedBox(height: 20),
+                  _buildPhotoSection(
+                    title: 'Foto Sisa Barang',
+                    subtitle: isCompleted ? '' : 'Upload foto sisa potongan plat (Opsional)',
+                    base64Data: controller.fotoSisaBase64,
+                    isCompleted: isCompleted,
+                    onCamera: () => controller.pickAndSetFotoSisa(ImageSource.camera),
+                    onGallery: () => controller.pickAndSetFotoSisa(ImageSource.gallery),
+                    onClear: () => controller.clearFotoSisa(),
+                  ),
+                ],
               ],
             );
           } catch (e) {
