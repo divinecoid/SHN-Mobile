@@ -826,10 +826,10 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
 
   Widget _buildUploadPhotosSection() {
     final bool isCompleted = widget.workOrder['status'] == 'Completed' || widget.workOrder['status'] == 'Complete';
-    final bool isUtuh = (widget.item['jenis_potongan'] ?? widget.item['jenisPotongan'] ?? '').toString().toLowerCase() == 'utuh';
     try {
       return Consumer<WorkOrderDetailItemController>(
         builder: (context, controller, child) {
+          final bool isUtuh = (controller.item?.jenisPotongan ?? widget.item['jenis_potongan'] ?? widget.item['jenisPotongan'] ?? '').toString().toLowerCase() == 'utuh';
           try {
             return Column(
               children: [

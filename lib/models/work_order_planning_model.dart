@@ -141,6 +141,7 @@ class WorkOrderPlanningItem {
   final String? catatan;
   final bool isAssigned;
   final int workOrderPlanningId;
+  final String? jenisPotongan;
   final JenisBarang? jenisBarang;
   final BentukBarang? bentukBarang;
   final GradeBarang? gradeBarang;
@@ -164,6 +165,7 @@ class WorkOrderPlanningItem {
     this.catatan,
     required this.isAssigned,
     required this.workOrderPlanningId,
+    this.jenisPotongan,
     this.jenisBarang,
     this.bentukBarang,
     this.gradeBarang,
@@ -189,6 +191,7 @@ class WorkOrderPlanningItem {
       catatan: map['catatan']?.toString(),
       isAssigned: _parseBool(map['is_assigned']) ?? false,
       workOrderPlanningId: _parseInt(map['work_order_planning_id']) ?? 0,
+      jenisPotongan: (map['jenis_potongan'] ?? map['jenisPotongan'])?.toString(),
       jenisBarang: map['jenis_barang'] != null 
           ? JenisBarang.fromMap(map['jenis_barang'])
           : null,
@@ -228,6 +231,7 @@ class WorkOrderPlanningItem {
       'catatan': catatan,
       'is_assigned': isAssigned,
       'work_order_planning_id': workOrderPlanningId,
+      'jenis_potongan': jenisPotongan,
       'jenis_barang': jenisBarang?.toMap(),
       'bentuk_barang': bentukBarang?.toMap(),
       'grade_barang': gradeBarang?.toMap(),

@@ -206,6 +206,7 @@ class WorkOrderDetailController extends ChangeNotifier {
       'beratActual': _getActualBeratForCompleted(item), // Akan diisi dari data actual jika ada
       'foto_bukti': _getActualFotoBuktiForCompleted(item),
       'foto_sisa_barang': _getActualFotoSisaForCompleted(item),
+      'jenis_potongan': item.jenisPotongan,
       'luas': luas,
       'platShaftDasar': null ?? 'N/A',
       'catatan': item.catatan ?? 'N/A',
