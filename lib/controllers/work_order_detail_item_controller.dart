@@ -145,6 +145,34 @@ class WorkOrderDetailItemController extends ChangeNotifier {
       debugPrint('Error picking foto sisa: $e');
     }
   }
+
+  // Plate-specific sisa photos
+  final Map<int, String> _plateSisaBase64 = {};
+  Map<int, String> get plateSisaBase64 => _plateSisaBase64;
+
+  void clearPlateFotoSisa(int saranId) {
+    _plateSisaBase64.remove(saranId);
+    notifyListeners();
+  }
+
+  Future<void> pickAndSetPlateFotoSisa(int saranId, ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? picked = await picker.pickImage(source: source, imageQuality: 85);
+      if (picked == null) return;
+      
+      final bytes = await picked.readAsBytes();
+      final path = picked.name.toLowerCase();
+      String mime = 'image/jpeg';
+      if (path.endsWith('.png')) mime = 'image/png';
+      else if (path.endsWith('.webp')) mime = 'image/webp';
+      
+      _plateSisaBase64[saranId] = _toDataUri(bytes, mimeType: mime);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error picking plate sisa: $e');
+    }
+  }
   
   // Method untuk mengekstrak data canvas images dari API response
   // Deprecated: Now we independently query /images endpoint
@@ -713,6 +741,7 @@ class WorkOrderDetailItemController extends ChangeNotifier {
         'assignments': assignments,
         'foto_bukti': _fotoBuktiBase64,
         'foto_sisa_barang': _fotoSisaBase64,
+        'sisa_plates': _plateSisaBase64.map((key, value) => MapEntry(key.toString(), value)),
         'timestamp': DateTime.now().toIso8601String(),
       };
       
@@ -757,6 +786,16 @@ class WorkOrderDetailItemController extends ChangeNotifier {
         if (tempData.containsKey('foto_sisa_barang')) {
           _fotoSisaBase64 = tempData['foto_sisa_barang'];
         }
+        if (tempData.containsKey('sisa_plates') && tempData['sisa_plates'] != null) {
+          final sisaPlatesMap = tempData['sisa_plates'] as Map<String, dynamic>;
+          _plateSisaBase64.clear();
+          sisaPlatesMap.forEach((key, value) {
+            final parsedKey = int.tryParse(key);
+            if (parsedKey != null && value is String) {
+              _plateSisaBase64[parsedKey] = value;
+            }
+          });
+        }
         
         // Update actual values berdasarkan assignments
         _updateActualValues();
@@ -790,6 +829,7 @@ class WorkOrderDetailItemController extends ChangeNotifier {
       'assignments': assignments,
       'foto_bukti': _fotoBuktiBase64,
       'foto_sisa_barang': _fotoSisaBase64,
+      'sisa_plates': _plateSisaBase64.map((key, value) => MapEntry(key.toString(), value)),
     };
   }
 

@@ -844,15 +844,35 @@ class _WorkOrderDetailItemPageState extends State<WorkOrderDetailItemPage> {
                 ),
                 if (!isUtuh) ...[
                   const SizedBox(height: 20),
-                  _buildPhotoSection(
-                    title: 'Foto Sisa Barang',
-                    subtitle: isCompleted ? '' : 'Upload foto sisa potongan plat (Opsional)',
-                    base64Data: controller.fotoSisaBase64,
-                    isCompleted: isCompleted,
-                    onCamera: () => controller.pickAndSetFotoSisa(ImageSource.camera),
-                    onGallery: () => controller.pickAndSetFotoSisa(ImageSource.gallery),
-                    onClear: () => controller.clearFotoSisa(),
-                  ),
+                  if (controller.canvasImagesData.isNotEmpty) ...[
+                    ...controller.canvasImagesData.map((plate) {
+                      final int plateId = int.tryParse(plate['saran_id']?.toString() ?? '') ?? 0;
+                      final String plateName = plate['item_barang_name'] ?? plate['kode_barang'] ?? 'Plat #${plateId}';
+                      final String? plateBase64 = controller.plateSisaBase64[plateId];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: _buildPhotoSection(
+                          title: 'Foto Sisa $plateName',
+                          subtitle: isCompleted ? '' : 'Upload foto sisa untuk plat ini (Opsional)',
+                          base64Data: plateBase64,
+                          isCompleted: isCompleted,
+                          onCamera: () => controller.pickAndSetPlateFotoSisa(plateId, ImageSource.camera),
+                          onGallery: () => controller.pickAndSetPlateFotoSisa(plateId, ImageSource.gallery),
+                          onClear: () => controller.clearPlateFotoSisa(plateId),
+                        ),
+                      );
+                    }).toList(),
+                  ] else ...[
+                    _buildPhotoSection(
+                      title: 'Foto Sisa Barang',
+                      subtitle: isCompleted ? '' : 'Upload foto sisa potongan plat (Opsional)',
+                      base64Data: controller.fotoSisaBase64,
+                      isCompleted: isCompleted,
+                      onCamera: () => controller.pickAndSetFotoSisa(ImageSource.camera),
+                      onGallery: () => controller.pickAndSetFotoSisa(ImageSource.gallery),
+                      onClear: () => controller.clearFotoSisa(),
+                    ),
+                  ],
                 ],
               ],
             );
