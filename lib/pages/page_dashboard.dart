@@ -172,9 +172,25 @@ class _DashboardPageState extends State<DashboardPage> {
                           'Notifikasi',
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white),
-                          onPressed: () => Navigator.pop(context),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.refresh, color: Colors.white),
+                              tooltip: 'Refresh',
+                              onPressed: () async {
+                                final allNotifs = await NotificationService.fetchMyNotifications();
+                                setState(() {
+                                  _notifications = allNotifs;
+                                  _unreadCount = allNotifs.where((n) => !n.isRead).length;
+                                });
+                                setModalState(() {});
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.white),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
                         ),
                       ],
                     ),
