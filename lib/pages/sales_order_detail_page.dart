@@ -70,9 +70,9 @@ class _SalesOrderDetailPageState extends State<SalesOrderDetailPage> {
   }
 
   String _formatDimensions(Map<String, dynamic> item) {
-    final tebal = item['tebal'] ?? 0;
-    final lebar = item['lebar'] ?? 0;
-    final panjang = item['panjang'] ?? 0;
+    final double tebal = double.tryParse((item['tebal'] ?? 0).toString()) ?? 0;
+    final double lebar = double.tryParse((item['lebar'] ?? 0).toString()) ?? 0;
+    final double panjang = double.tryParse((item['panjang'] ?? 0).toString()) ?? 0;
     
     final List<String> parts = [];
     if (tebal > 0) parts.add('${tebal.toString().replaceAll(RegExp(r'\.0$'), '')} thk');
