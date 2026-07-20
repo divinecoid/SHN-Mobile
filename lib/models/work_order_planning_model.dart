@@ -320,6 +320,8 @@ class SalesOrder {
   final DateTime? deleteApprovedAt;
   final String? deleteReason;
   final String? deleteRejectionReason;
+  final Pelanggan? pelanggan;
+  final Gudang? gudang;
 
   SalesOrder({
     required this.id,
@@ -341,6 +343,8 @@ class SalesOrder {
     this.deleteApprovedAt,
     this.deleteReason,
     this.deleteRejectionReason,
+    this.pelanggan,
+    this.gudang,
   });
 
   factory SalesOrder.fromMap(Map<String, dynamic> map) {
@@ -357,7 +361,7 @@ class SalesOrder {
       ppnPercent: map['ppn_percent']?.toString() ?? '0.00',
       ppnAmount: map['ppn_amount']?.toString() ?? '0.00',
       totalHargaSo: map['total_harga_so']?.toString() ?? '0.00',
-      status: map['status']?.toString() ?? '',
+      status: (map['process_status'] ?? map['status'])?.toString() ?? '',
       deleteRequestedBy: map['delete_requested_by']?.toString(),
       deleteRequestedAt: map['delete_requested_at'] != null 
           ? DateTime.tryParse(map['delete_requested_at']?.toString() ?? '')
@@ -368,6 +372,8 @@ class SalesOrder {
           : null,
       deleteReason: map['delete_reason']?.toString(),
       deleteRejectionReason: map['delete_rejection_reason']?.toString(),
+      pelanggan: map['pelanggan'] != null ? Pelanggan.fromMap(map['pelanggan']) : null,
+      gudang: map['gudang'] != null ? Gudang.fromMap(map['gudang']) : null,
     );
   }
 
@@ -392,6 +398,8 @@ class SalesOrder {
       'delete_approved_at': deleteApprovedAt?.toIso8601String(),
       'delete_reason': deleteReason,
       'delete_rejection_reason': deleteRejectionReason,
+      'pelanggan': pelanggan?.toMap(),
+      'gudang': gudang?.toMap(),
     };
   }
 }

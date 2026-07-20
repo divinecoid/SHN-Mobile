@@ -8,6 +8,7 @@ class PermissionService {
   // Menu codes yang perlu dicek untuk mobile app
   static const List<String> mobileMenuCodes = [
     'DASHBOARD',
+    'SALES_ORDER',
     'CEK_STOK',
     'TERIMA_BARANG',
     'PROSES_NON_PO',

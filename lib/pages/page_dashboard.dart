@@ -22,6 +22,7 @@ import '../services/permission_service.dart';
 import 'proses_nonpo_list_page.dart';
 import 'page_settings_printer.dart';
 import 'copy_qr_main_page.dart';
+import 'sales_order_list_page.dart';
 
 class DashboardMenuItem {
   final String title;
@@ -60,6 +61,12 @@ class _DashboardPageState extends State<DashboardPage> {
       menuCode: 'DASHBOARD',
       icon: Icons.dashboard,
       page: const DashboardContent(),
+    ),
+    DashboardMenuItem(
+      title: 'Sales Order',
+      menuCode: 'SALES_ORDER',
+      icon: Icons.receipt_long,
+      page: const SalesOrderListPage(),
     ),
     DashboardMenuItem(
       title: 'Cek Stok',
