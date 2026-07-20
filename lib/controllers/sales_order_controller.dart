@@ -19,6 +19,8 @@ class SalesOrderController extends ChangeNotifier {
   String? _selectedStatus; // 'pending', 'partial_wo', 'full_wo'
   DateTime? _startDate = DateTime.now();
   DateTime? _endDate = DateTime.now();
+  double _totalNilai = 0.0;
+  int _totalSo = 0;
 
   // Detail page states
   SalesOrder? _selectedSalesOrder;
@@ -35,6 +37,8 @@ class SalesOrderController extends ChangeNotifier {
   String? get selectedStatus => _selectedStatus;
   DateTime? get startDate => _startDate;
   DateTime? get endDate => _endDate;
+  double get totalNilai => _totalNilai;
+  int get totalSo => _totalSo;
 
   // Getters for Detail Page
   SalesOrder? get selectedSalesOrder => _selectedSalesOrder;
@@ -64,6 +68,8 @@ class SalesOrderController extends ChangeNotifier {
     _selectedStatus = null;
     _startDate = DateTime.now();
     _endDate = DateTime.now();
+    _totalNilai = 0.0;
+    _totalSo = 0;
     _selectedSalesOrder = null;
     _selectedSalesOrderItems = [];
     _errorDetail = null;
@@ -187,6 +193,15 @@ class SalesOrderController extends ChangeNotifier {
         if (responseData['success'] == true) {
           final data = responseData['data'];
           
+          final summary = responseData['summary'];
+          if (summary != null) {
+            _totalNilai = double.tryParse((summary['total_nilai'] ?? 0).toString()) ?? 0.0;
+            _totalSo = int.tryParse((summary['total_so'] ?? 0).toString()) ?? 0;
+          } else {
+            _totalNilai = 0.0;
+            _totalSo = 0;
+          }
+          
           List<dynamic> itemsList = [];
           if (data is Map<String, dynamic> && data['data'] != null) {
             itemsList = data['data'] as List<dynamic>;
@@ -202,6 +217,8 @@ class SalesOrderController extends ChangeNotifier {
             _salesOrders.addAll(itemsList.map((x) => SalesOrder.fromMap(x as Map<String, dynamic>)).toList());
           }
         } else {
+          _totalNilai = 0.0;
+          _totalSo = 0;
           _errorMessage = responseData['message'] ?? 'Gagal mengambil data Sales Order';
         }
       } else if (response.statusCode == 401) {
