@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../controllers/invoice_pod_controller.dart';
 import '../models/invoice_pod_model.dart';
+import 'surat_jalan_detail_page.dart';
 
 class SuratJalanListPage extends StatefulWidget {
   const SuratJalanListPage({super.key});
@@ -272,12 +273,22 @@ class _SuratJalanListPageState extends State<SuratJalanListPage> {
       color: Colors.grey[900],
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SuratJalanDetailPage(pod: pod),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
@@ -312,7 +323,8 @@ class _SuratJalanListPageState extends State<SuratJalanListPage> {
             _buildDetailRow(Icons.receipt_long, 'No. SO', pod.nomorSo),
             _buildDetailRow(Icons.assignment, 'No. WO', pod.nomorWo),
             _buildDetailRow(Icons.calendar_today, 'Tgl Cetak POD', _formatDate(pod.tanggalCetakPod)),
-          ],
+            ],
+          ),
         ),
       ),
     );

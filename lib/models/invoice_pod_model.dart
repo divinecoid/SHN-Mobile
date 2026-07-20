@@ -11,6 +11,7 @@ class InvoicePodModel {
   final String sisaBayar;
   final String statusBayar;
   final String statusPod;
+  final List<dynamic> invoicePodItems;
   
   // Relations mapped flatly for easy UI usage
   final String nomorSo;
@@ -31,6 +32,7 @@ class InvoicePodModel {
     required this.sisaBayar,
     required this.statusBayar,
     required this.statusPod,
+    required this.invoicePodItems,
     required this.nomorSo,
     required this.nomorWo,
     required this.namaPelanggan,
@@ -43,6 +45,7 @@ class InvoicePodModel {
     final pelanggan = so['pelanggan'] ?? so['customer'] ?? {};
     final wo = map['work_order_planning'] ?? map['workOrderPlanning'] ?? {};
     final gudang = wo['gudang'] ?? wo['warehouse'] ?? {};
+    final itemsList = map['invoice_pod_items'] ?? map['invoicePodItems'] ?? [];
 
     return InvoicePodModel(
       id: map['id'] ?? 0,
@@ -61,6 +64,7 @@ class InvoicePodModel {
       sisaBayar: (map['sisa_bayar'] ?? map['sisaBayar'] ?? '0').toString(),
       statusBayar: (map['status_bayar'] ?? map['statusBayar'] ?? '').toString(),
       statusPod: (map['status_pod'] ?? map['statusPod'] ?? '').toString(),
+      invoicePodItems: itemsList as List<dynamic>,
       nomorSo: (so['nomor_so'] ?? so['nomorSo'] ?? wo['nomor_so'] ?? '').toString(),
       nomorWo: (wo['nomor_wo'] ?? wo['nomorWo'] ?? map['nomor_wo'] ?? '').toString(),
       namaPelanggan: (pelanggan['nama_pelanggan'] ?? pelanggan['namaPelanggan'] ?? pelanggan['nama'] ?? 'ID: ${so['pelanggan_id']}').toString(),
