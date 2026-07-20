@@ -151,8 +151,6 @@ class PrinterService {
     try {
       for (int i = 0; i < copies; i++) {
         bluetooth.printCustom("PT SURYA HARSA NAGARA", 1, 1);
-        bluetooth.printNewLine();
-
         if (printType == 'Barcode') {
           // Render Barcode as image to ensure compatibility with 58mm thermal printers
           final barcodeImg = img.Image(width: 384, height: 90);
@@ -164,36 +162,12 @@ class PrinterService {
           // Render QR Code 
           bluetooth.printQRcode(payloadJson, 250, 250, 1);
         }
-        bluetooth.printNewLine();
 
         // Item Information
-        // Size 0 = Normal, 1 = Normal Bold, 2 = Large
-        // Align 0 = kiri, 1 = tengah, 2 = kanan
         bluetooth.printCustom("Kode Barang:", 0, 0);
         bluetooth.printCustom(item.kodeBarang, 1, 0);
-        
-        bluetooth.printCustom("Nama Item:", 0, 0);
-        bluetooth.printCustom(item.namaItemBarang, 1, 0);
-        
-        bluetooth.printCustom("Jenis:", 0, 0);
-        bluetooth.printCustom(group?.jenisBarang?.namaJenis ?? "-", 1, 0);
-        
-        bluetooth.printCustom("Bentuk:", 0, 0);
-        bluetooth.printCustom(group?.bentukBarang?.namaBentuk ?? "-", 1, 0);
-        
-        bluetooth.printCustom("Grade:", 0, 0);
-        bluetooth.printCustom(group?.gradeBarang?.nama ?? "-", 1, 0);
-        
-        bluetooth.printCustom("Dimensi:", 0, 0);
-        bluetooth.printCustom(dimensi, 1, 0);
 
-        bluetooth.printNewLine();
-        bluetooth.printCustom("Date Printed:", 0, 0);
-        bluetooth.printCustom(dateStr, 0, 0);
 
-        bluetooth.printNewLine();
-        bluetooth.printCustom("----------------", 1, 1);
-        bluetooth.printCustom("SHN WMS", 0, 1);
         
         // Feed paper to make room for tearing
         if (i < copies - 1) {
@@ -243,8 +217,6 @@ class PrinterService {
 
         for (int j = 0; j < copies; j++) {
           bluetooth.printCustom("PT SURYA HARSA NAGARA", 1, 1);
-          bluetooth.printNewLine();
-
           if (printType == 'Barcode') {
             // Render Barcode as image to ensure compatibility with 58mm thermal printers
             final barcodeImg = img.Image(width: 384, height: 90);
@@ -255,33 +227,11 @@ class PrinterService {
           } else {
             bluetooth.printQRcode(payloadJson, 250, 250, 1);
           }
-          bluetooth.printNewLine();
 
-          bluetooth.printCustom("Kode Barang:", 0, 0);
-          bluetooth.printCustom(item.kodeBarang, 1, 0);
-          
-          bluetooth.printCustom("Nama Item:", 0, 0);
-          bluetooth.printCustom(item.namaItemBarang, 1, 0);
-          
-          bluetooth.printCustom("Jenis:", 0, 0);
-          bluetooth.printCustom(group?.jenisBarang?.namaJenis ?? "-", 1, 0);
-          
-          bluetooth.printCustom("Bentuk:", 0, 0);
-          bluetooth.printCustom(group?.bentukBarang?.namaBentuk ?? "-", 1, 0);
-          
-          bluetooth.printCustom("Grade:", 0, 0);
-          bluetooth.printCustom(group?.gradeBarang?.nama ?? "-", 1, 0);
-          
-          bluetooth.printCustom("Dimensi:", 0, 0);
-          bluetooth.printCustom(dimensi, 1, 0);
+           bluetooth.printCustom("Kode Barang:", 0, 0);
+           bluetooth.printCustom(item.kodeBarang, 1, 0);
 
-          bluetooth.printNewLine();
-          bluetooth.printCustom("Date Printed:", 0, 0);
-          bluetooth.printCustom(dateStr, 0, 0);
 
-          bluetooth.printNewLine();
-          bluetooth.printCustom("----------------", 1, 1);
-          bluetooth.printCustom("SHN WMS", 0, 1);
           
           // Pemisah antar item batch
           if (i < items.length - 1 || j < copies - 1) {
@@ -347,36 +297,12 @@ class PrinterService {
 
       for (int i = 0; i < copies; i++) {
         bluetooth.printCustom("PT SURYA HARSA NAGARA", 1, 1);
-        bluetooth.printNewLine();
-
         bluetooth.printQRcode(payloadJson, 250, 250, 1);
-        bluetooth.printNewLine();
 
         bluetooth.printCustom("Kode Barang:", 0, 0);
         bluetooth.printCustom(item.kodeBarang, 1, 0);
-        
-        bluetooth.printCustom("Nama Item:", 0, 0);
-        bluetooth.printCustom(item.namaItemBarang, 1, 0);
-        
-        bluetooth.printCustom("Jenis:", 0, 0);
-        bluetooth.printCustom(item.jenisBarang?.namaJenis ?? item.itemBarangGroup?.jenisBarang?.namaJenis ?? "-", 1, 0);
-        
-        bluetooth.printCustom("Bentuk:", 0, 0);
-        bluetooth.printCustom(item.bentukBarang?.namaBentuk ?? item.itemBarangGroup?.bentukBarang?.namaBentuk ?? "-", 1, 0);
-        
-        bluetooth.printCustom("Grade:", 0, 0);
-        bluetooth.printCustom(item.gradeBarang?.nama ?? item.itemBarangGroup?.gradeBarang?.nama ?? "-", 1, 0);
-        
-        bluetooth.printCustom("Dimensi:", 0, 0);
-        bluetooth.printCustom(dimensi, 1, 0);
 
-        bluetooth.printNewLine();
-        bluetooth.printCustom("Date Printed:", 0, 0);
-        bluetooth.printCustom(dateStr, 0, 0);
 
-        bluetooth.printNewLine();
-        bluetooth.printCustom("----------------", 1, 1);
-        bluetooth.printCustom("SHN WMS", 0, 1);
         
         // Pemisah antar item batch
         if (i < copies - 1) {
