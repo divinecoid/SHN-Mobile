@@ -28,6 +28,8 @@ class SalesOrderController extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   List<SalesOrder> get salesOrders => _salesOrders;
   Pagination? get pagination => _pagination;
+  String get searchQuery => _searchQuery;
+  String? get selectedStatus => _selectedStatus;
 
   // Getters for Detail Page
   SalesOrder? get selectedSalesOrder => _selectedSalesOrder;
