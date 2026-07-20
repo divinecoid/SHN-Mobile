@@ -189,99 +189,104 @@ class _CopyQrMainPageState extends State<CopyQrMainPage> {
       backgroundColor: Colors.black,
       body: Consumer<CopyQrController>(
         builder: (context, controller, child) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.qr_code_scanner,
-                  size: 100,
-                  color: Colors.blue,
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Copy QR Label Barang',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Scan QR Code barang untuk mencetak\nsalinan label dengan mudah.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 48),
-                if (controller.isLoading)
-                  const CircularProgressIndicator(color: Colors.blue)
-                else ...[
-                  ElevatedButton.icon(
-                    onPressed: _onScanQR,
-                    icon: const Icon(Icons.camera_alt),
-                    label: const Text('SCAN SEKARANG'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                      textStyle: const TextStyle(
-                        fontSize: 16,
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 48),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.qr_code_scanner,
+                      size: 100,
+                      color: Colors.blue,
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Copy QR Label Barang',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Scan QR Code barang untuk mencetak\nsalinan label dengan mudah.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 32),
-                  const Text(
-                    'Atau input manual kode barang:',
-                    style: TextStyle(color: Colors.grey, fontSize: 14),
-                  ),
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _kodeController,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: InputDecoration(
-                              hintText: 'Masukkan Kode Barang',
-                              hintStyle: const TextStyle(color: Colors.grey),
-                              filled: true,
-                              fillColor: Colors.grey[900],
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide.none,
+                    const SizedBox(height: 48),
+                    if (controller.isLoading)
+                      const CircularProgressIndicator(color: Colors.blue)
+                    else ...[
+                      ElevatedButton.icon(
+                        onPressed: _onScanQR,
+                        icon: const Icon(Icons.camera_alt),
+                        label: const Text('SCAN SEKARANG'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      const Text(
+                        'Atau input manual kode barang:',
+                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _kodeController,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: InputDecoration(
+                                  hintText: 'Masukkan Kode Barang',
+                                  hintStyle: const TextStyle(color: Colors.grey),
+                                  filled: true,
+                                  fillColor: Colors.grey[900],
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                ),
+                                onSubmitted: (value) => _processKode(value),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                             ),
-                            onSubmitted: (value) => _processKode(value),
-                          ),
+                            const SizedBox(width: 12),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: IconButton(
+                                icon: const Icon(Icons.search, color: Colors.white),
+                                onPressed: () => _processKode(_kodeController.text),
+                                padding: const EdgeInsets.all(16),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.blue,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: IconButton(
-                            icon: const Icon(Icons.search, color: Colors.white),
-                            onPressed: () => _processKode(_kodeController.text),
-                            padding: const EdgeInsets.all(16),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
           );
         },
