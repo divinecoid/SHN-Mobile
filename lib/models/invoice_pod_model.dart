@@ -6,6 +6,7 @@ class InvoicePodModel {
   final DateTime? tanggalCetakPod;
   final String totalHargaInvoice;
   final String discountInvoice;
+  final String ppnInvoice;
   final String grandTotal;
   final String uangMuka;
   final String sisaBayar;
@@ -27,6 +28,7 @@ class InvoicePodModel {
     this.tanggalCetakPod,
     required this.totalHargaInvoice,
     required this.discountInvoice,
+    required this.ppnInvoice,
     required this.grandTotal,
     required this.uangMuka,
     required this.sisaBayar,
@@ -59,6 +61,7 @@ class InvoicePodModel {
           : null,
       totalHargaInvoice: (map['total_harga_invoice'] ?? map['totalHargaInvoice'] ?? '0').toString(),
       discountInvoice: (map['discount_invoice'] ?? map['discountInvoice'] ?? '0').toString(),
+      ppnInvoice: (map['ppn_invoice'] ?? map['ppnInvoice'] ?? '0').toString(),
       grandTotal: (map['grand_total'] ?? map['grandTotal'] ?? '0').toString(),
       uangMuka: (map['uang_muka'] ?? map['uangMuka'] ?? '0').toString(),
       sisaBayar: (map['sisa_bayar'] ?? map['sisaBayar'] ?? '0').toString(),
