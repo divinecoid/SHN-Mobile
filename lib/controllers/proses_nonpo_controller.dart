@@ -358,10 +358,10 @@ class ProsesNonPoController extends ChangeNotifier {
   // Printing Logic
   // -------------------------
 
-  Future<void> printSingleQR(PenerimaanBarangDetail detail, int copies) async {
+  Future<void> printSingleItem(PenerimaanBarangDetail detail, int copies, String printType) async {
     try {
       final printer = PrinterService();
-      await printer.printItemQR(detail, copies: copies);
+      await printer.printItem(detail, copies: copies, printType: printType);
       
       // Update printed status in backend
       if (detail.itemBarang != null) {
@@ -378,12 +378,12 @@ class ProsesNonPoController extends ChangeNotifier {
     }
   }
 
-  Future<void> printBatchQR(int copies) async {
+  Future<void> printBatchItem(int copies, String printType) async {
     if (_selectedProcessedIds.isEmpty) return;
     try {
       final itemsToPrint = selectedProcessedItems;
       final printer = PrinterService();
-      await printer.printBatchQR(itemsToPrint, copies: copies);
+      await printer.printBatch(itemsToPrint, copies: copies, printType: printType);
       
       // Update printed status for all items in batch
       for (var detail in itemsToPrint) {

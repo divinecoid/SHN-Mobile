@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/penerimaan_barang_model.dart';
 import '../models/item_barang_model.dart' as IB;
 import 'package:intl/intl.dart';
+import 'package:image/image.dart' as img;
+import 'package:barcode_image/barcode_image.dart';
 
 class PrinterService {
   static final PrinterService _instance = PrinterService._internal();
@@ -115,8 +118,8 @@ class PrinterService {
     return dimensions.join("x");
   }
 
-  /// Print single item QR
-  Future<void> printItemQR(PenerimaanBarangDetail detail, {int copies = 1}) async {
+  /// Print single item (QR or Barcode)
+  Future<void> printItem(PenerimaanBarangDetail detail, {int copies = 1, String printType = 'QR'}) async {
     bool connected = await isConnected;
     if (!connected) {
       connected = await autoConnect();
@@ -150,9 +153,17 @@ class PrinterService {
         bluetooth.printCustom("PT SURYA HARSA NAGARA", 1, 1);
         bluetooth.printNewLine();
 
-        // Render QR Code 
-        // width and height usually around 200-300 for 58mm printer to look decent
-        bluetooth.printQRcode(payloadJson, 250, 250, 1);
+        if (printType == 'Barcode') {
+          // Render Barcode as image to ensure compatibility with 58mm thermal printers
+          final barcodeImg = img.Image(width: 384, height: 90);
+          img.fill(barcodeImg, color: img.ColorRgb8(255, 255, 255));
+          drawBarcode(barcodeImg, Barcode.code128(), item.kodeBarang);
+          final pngBytes = img.encodePng(barcodeImg);
+          await bluetooth.printImageBytes(Uint8List.fromList(pngBytes));
+        } else {
+          // Render QR Code 
+          bluetooth.printQRcode(payloadJson, 250, 250, 1);
+        }
         bluetooth.printNewLine();
 
         // Item Information
@@ -201,8 +212,8 @@ class PrinterService {
     }
   }
 
-  /// Print batch items QR
-  Future<void> printBatchQR(List<PenerimaanBarangDetail> items, {int copies = 1}) async {
+  /// Print batch items (QR or Barcode)
+  Future<void> printBatch(List<PenerimaanBarangDetail> items, {int copies = 1, String printType = 'QR'}) async {
     bool connected = await isConnected;
     if (!connected) {
       connected = await autoConnect();
@@ -234,7 +245,16 @@ class PrinterService {
           bluetooth.printCustom("PT SURYA HARSA NAGARA", 1, 1);
           bluetooth.printNewLine();
 
-          bluetooth.printQRcode(payloadJson, 250, 250, 1);
+          if (printType == 'Barcode') {
+            // Render Barcode as image to ensure compatibility with 58mm thermal printers
+            final barcodeImg = img.Image(width: 384, height: 90);
+            img.fill(barcodeImg, color: img.ColorRgb8(255, 255, 255));
+            drawBarcode(barcodeImg, Barcode.code128(), item.kodeBarang);
+            final pngBytes = img.encodePng(barcodeImg);
+            await bluetooth.printImageBytes(Uint8List.fromList(pngBytes));
+          } else {
+            bluetooth.printQRcode(payloadJson, 250, 250, 1);
+          }
           bluetooth.printNewLine();
 
           bluetooth.printCustom("Kode Barang:", 0, 0);
@@ -263,7 +283,7 @@ class PrinterService {
           bluetooth.printCustom("----------------", 1, 1);
           bluetooth.printCustom("SHN WMS", 0, 1);
           
-          // Pemisah antar label (bisa antar item atau antar copy item yang sama)
+          // Pemisah antar item batch
           if (i < items.length - 1 || j < copies - 1) {
             bluetooth.printNewLine();
             bluetooth.printCustom("- - - - - - - - -", 1, 1);

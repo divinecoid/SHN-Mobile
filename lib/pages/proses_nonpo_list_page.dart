@@ -72,54 +72,84 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
     }
   }
 
-  Future<int?> _showPrintCopiesDialog() async {
+  Future<Map<String, dynamic>?> _showPrintDialog() async {
     final TextEditingController copiesController = TextEditingController(text: '1');
+    String selectedType = 'QR'; // default
     
-    return showDialog<int>(
+    return showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text('Jumlah Cetak', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Masukkan jumlah copy yang ingin dicetak:', style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: copiesController,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white),
-              autofocus: true,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.grey[800],
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                hintText: 'Misal: 3',
-                hintStyle: const TextStyle(color: Colors.grey),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: const Text('Cetak Label', style: TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Format Cetak:', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Radio<String>(
+                    value: 'QR',
+                    groupValue: selectedType,
+                    onChanged: (val) {
+                      if (val != null) setState(() => selectedType = val);
+                    },
+                    activeColor: Colors.blue,
+                  ),
+                  const Text('QR Code', style: TextStyle(color: Colors.white)),
+                  const SizedBox(width: 24),
+                  Radio<String>(
+                    value: 'Barcode',
+                    groupValue: selectedType,
+                    onChanged: (val) {
+                      if (val != null) setState(() => selectedType = val);
+                    },
+                    activeColor: Colors.blue,
+                  ),
+                  const Text('Barcode', style: TextStyle(color: Colors.white)),
+                ],
               ),
+              const SizedBox(height: 16),
+              const Text('Masukkan jumlah copy yang ingin dicetak:', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: copiesController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                autofocus: true,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.grey[800],
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  hintText: 'Misal: 3',
+                  hintStyle: const TextStyle(color: Colors.grey),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final val = int.tryParse(copiesController.text);
+                if (val != null && val > 0) {
+                  Navigator.pop(context, {'copies': val, 'type': selectedType});
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Masukkan angka yang valid'), backgroundColor: Colors.orange),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+              child: const Text('Cetak', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final val = int.tryParse(copiesController.text);
-              if (val != null && val > 0) {
-                Navigator.pop(context, val);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Masukkan angka yang valid'), backgroundColor: Colors.orange),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-            child: const Text('Cetak', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }
@@ -459,12 +489,14 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
                 alignment: Alignment.centerRight,
                 child: ElevatedButton.icon(
                   onPressed: () async {
-                    final copies = await _showPrintCopiesDialog();
-                    if (copies == null) return;
+                    final printParams = await _showPrintDialog();
+                    if (printParams == null) return;
+                    final copies = printParams['copies'] as int;
+                    final type = printParams['type'] as String;
                     
                     try {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mencetak struk QR...'), duration: Duration(seconds: 1)));
-                      await controller.printSingleQR(detail, copies);
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Mencetak label $type...'), duration: const Duration(seconds: 1)));
+                      await controller.printSingleItem(detail, copies, type);
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
                     }
@@ -477,7 +509,7 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
                     ),
                   ),
                   icon: const Icon(Icons.print, size: 16),
-                  label: const Text('Print QR'),
+                  label: const Text('Print Label'),
                 ),
               )
             ],
@@ -511,12 +543,14 @@ class _ProsesNonPoListPageState extends State<ProsesNonPoListPage> with SingleTi
           if (_tabController.index == 1 && controller.selectedProcessedIds.isNotEmpty) {
             return FloatingActionButton.extended(
               onPressed: () async {
-                final copies = await _showPrintCopiesDialog();
-                if (copies == null) return;
+                final printParams = await _showPrintDialog();
+                if (printParams == null) return;
+                final copies = printParams['copies'] as int;
+                final type = printParams['type'] as String;
 
                 try {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mencetak batch struk QR...'), duration: Duration(seconds: 1)));
-                  await controller.printBatchQR(copies);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Mencetak batch label $type...'), duration: const Duration(seconds: 1)));
+                  await controller.printBatchItem(copies, type);
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
                 }
