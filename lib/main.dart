@@ -9,6 +9,7 @@ import 'package:shn_mobile/controllers/stock_check_controller.dart';
 import 'package:shn_mobile/controllers/proses_nonpo_controller.dart';
 import 'package:shn_mobile/controllers/copy_qr_controller.dart';
 import 'package:shn_mobile/controllers/sales_order_controller.dart';
+import 'package:shn_mobile/controllers/invoice_pod_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +32,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProsesNonPoController()),
         ChangeNotifierProvider(create: (_) => CopyQrController()),
         ChangeNotifierProvider(create: (_) => SalesOrderController()),
+        ChangeNotifierProvider(create: (_) => InvoicePodController()),
       ],
       child: MaterialApp(
         title: 'SHN Mobile',

@@ -15,6 +15,8 @@ class PermissionService {
     'STOCK_OPNAME',
     'WORK_ORDER',
     'COPY_QR',
+    'SURAT_JALAN',
+    'INVOICE',
   ];
 
   /// Fetch menu permissions from API

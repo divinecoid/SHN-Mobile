@@ -23,6 +23,8 @@ import 'proses_nonpo_list_page.dart';
 import 'page_settings_printer.dart';
 import 'copy_qr_main_page.dart';
 import 'sales_order_list_page.dart';
+import 'invoice_list_page.dart';
+import 'surat_jalan_list_page.dart';
 
 class DashboardMenuItem {
   final String title;
@@ -67,6 +69,18 @@ class _DashboardPageState extends State<DashboardPage> {
       menuCode: 'SALES_ORDER',
       icon: Icons.receipt_long,
       page: const SalesOrderListPage(),
+    ),
+    DashboardMenuItem(
+      title: 'Surat Jalan',
+      menuCode: 'SURAT_JALAN',
+      icon: Icons.local_shipping,
+      page: const SuratJalanListPage(),
+    ),
+    DashboardMenuItem(
+      title: 'Invoice',
+      menuCode: 'INVOICE',
+      icon: Icons.receipt,
+      page: const InvoiceListPage(),
     ),
     DashboardMenuItem(
       title: 'Cek Stok',
@@ -332,6 +346,10 @@ class _DashboardPageState extends State<DashboardPage> {
 
     // Check setiap menu apakah user punya akses
     for (var menuItem in _allMenuItems) {
+      if (menuItem.menuCode == 'SURAT_JALAN' || menuItem.menuCode == 'INVOICE') {
+        availableMenus.add(menuItem);
+        continue;
+      }
       final hasAccess = await PermissionService.hasMenuAccess(menuItem.menuCode);
       if (hasAccess) {
         availableMenus.add(menuItem);
