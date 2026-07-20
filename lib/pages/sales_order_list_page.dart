@@ -371,6 +371,7 @@ class _SalesOrderListPageState extends State<SalesOrderListPage> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
