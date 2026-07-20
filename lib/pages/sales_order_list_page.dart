@@ -46,6 +46,37 @@ class _SalesOrderListPageState extends State<SalesOrderListPage> {
     }
   }
 
+  Future<void> _selectDateRange(SalesOrderController controller) async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      initialDateRange: controller.startDate != null && controller.endDate != null
+          ? DateTimeRange(start: controller.startDate!, end: controller.endDate!)
+          : DateTimeRange(start: DateTime.now(), end: DateTime.now()),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.dark(
+              primary: Colors.blue,
+              onPrimary: Colors.white,
+              surface: Colors.grey[900]!,
+              onSurface: Colors.white,
+            ),
+            dialogBackgroundColor: Colors.grey[900],
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      controller.setDateRange(picked.start, picked.end);
+      _currentPage = 1;
+      controller.fetchSalesOrders(page: 1, context: context);
+    }
+  }
+
   Future<void> _onRefresh() async {
     _currentPage = 1;
     await context.read<SalesOrderController>().fetchSalesOrders(page: 1, context: context);
@@ -149,6 +180,49 @@ class _SalesOrderListPageState extends State<SalesOrderListPage> {
                             },
                           ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Date Range Picker
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => _selectDateRange(controller),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[800],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_today, size: 16, color: Colors.blue),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    controller.startDate != null && controller.endDate != null
+                                        ? '${_formatDate(controller.startDate!)} - ${_formatDate(controller.endDate!)}'
+                                        : 'Semua Tanggal',
+                                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                                  ),
+                                  const Spacer(),
+                                  const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (controller.startDate != null || controller.endDate != null) ...[
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
+                            onPressed: () {
+                              controller.setDateRange(null, null);
+                              _currentPage = 1;
+                              controller.fetchSalesOrders(page: 1, context: context);
+                            },
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 12),

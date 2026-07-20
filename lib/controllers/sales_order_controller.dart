@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:intl/intl.dart';
 import '../models/work_order_planning_model.dart';
 import '../models/gudang_model.dart' as gm;
 import '../utils/auth_helper.dart';
@@ -16,6 +17,8 @@ class SalesOrderController extends ChangeNotifier {
   // Filters
   String _searchQuery = '';
   String? _selectedStatus; // 'pending', 'partial_wo', 'full_wo'
+  DateTime? _startDate = DateTime.now();
+  DateTime? _endDate = DateTime.now();
 
   // Detail page states
   SalesOrder? _selectedSalesOrder;
@@ -30,6 +33,8 @@ class SalesOrderController extends ChangeNotifier {
   Pagination? get pagination => _pagination;
   String get searchQuery => _searchQuery;
   String? get selectedStatus => _selectedStatus;
+  DateTime? get startDate => _startDate;
+  DateTime? get endDate => _endDate;
 
   // Getters for Detail Page
   SalesOrder? get selectedSalesOrder => _selectedSalesOrder;
@@ -48,9 +53,17 @@ class SalesOrderController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setDateRange(DateTime? start, DateTime? end) {
+    _startDate = start;
+    _endDate = end;
+    notifyListeners();
+  }
+
   void clearFilters() {
     _searchQuery = '';
     _selectedStatus = null;
+    _startDate = DateTime.now();
+    _endDate = DateTime.now();
     _selectedSalesOrder = null;
     _selectedSalesOrderItems = [];
     _errorDetail = null;
@@ -146,6 +159,12 @@ class SalesOrderController extends ChangeNotifier {
       }
       if (_selectedStatus != null && _selectedStatus != 'all') {
         queryParams['process_status'] = _selectedStatus!;
+      }
+      if (_startDate != null) {
+        queryParams['date_start'] = DateFormat('yyyy-MM-dd').format(_startDate!);
+      }
+      if (_endDate != null) {
+        queryParams['date_end'] = DateFormat('yyyy-MM-dd').format(_endDate!);
       }
 
       final uri = Uri.parse('$baseUrl/api/sales-order').replace(queryParameters: queryParams);
