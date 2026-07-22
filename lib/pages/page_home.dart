@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shn_mobile/controllers/home_controller.dart';
+import 'package:shn_mobile/controllers/pindah_rak_controller.dart';
 import 'package:shn_mobile/pages/terima_barang_main_page.dart';
 import 'package:shn_mobile/pages/page_stock_opname.dart';
 import 'package:shn_mobile/pages/stock_opname_list_page.dart';
 import 'package:shn_mobile/pages/page_work_order.dart';
 import 'package:shn_mobile/pages/copy_qr_main_page.dart';
+import 'package:shn_mobile/pages/page_pindah_rak.dart';
 import 'package:shn_mobile/services/permission_service.dart';
 
 class MenuItem {
@@ -53,6 +56,15 @@ class _HomePageState extends State<HomePage> {
       menuCode: 'WORK_ORDER',
       icon: Icons.work,
       page: const WorkOrderPage(),
+    ),
+    MenuItem(
+      title: 'Pindah Rak',
+      menuCode: 'PINDAH_RAK',
+      icon: Icons.move_down,
+      page: ChangeNotifierProvider(
+        create: (_) => PindahRakController(),
+        child: const PindahRakPage(),
+      ),
     ),
     MenuItem(
       title: 'Copy QR',

@@ -3,6 +3,7 @@ import 'ref_bentuk_barang_model.dart';
 import 'ref_grade_barang_model.dart';
 import 'gudang_model.dart';
 import 'item_barang_group_model.dart';
+import 'ref_rak_model.dart';
 
 class ItemBarang {
   final int id;
@@ -26,6 +27,7 @@ class ItemBarang {
   final String? canvasImage;
   final String? convertDate;
   final int gudangId;
+  final int? rakId;
   final String? splitDate;
   final String? mergeDate;
   final String? frozenAt;
@@ -35,6 +37,7 @@ class ItemBarang {
   final RefBentukBarang? bentukBarang;
   final RefGradeBarang? gradeBarang;
   final Gudang? gudang;
+  final RefRak? rak;
   final ItemBarangGroup? itemBarangGroup;
 
   ItemBarang({
@@ -59,6 +62,7 @@ class ItemBarang {
     this.canvasImage,
     this.convertDate,
     required this.gudangId,
+    this.rakId,
     this.splitDate,
     this.mergeDate,
     this.frozenAt,
@@ -68,6 +72,7 @@ class ItemBarang {
     this.bentukBarang,
     this.gradeBarang,
     this.gudang,
+    this.rak,
     this.itemBarangGroup,
   });
 
@@ -94,6 +99,7 @@ class ItemBarang {
       canvasImage: map['canvas_image']?.toString(),
       convertDate: map['convert_date']?.toString(),
       gudangId: _parseInt(map['gudang_id']) ?? 0,
+      rakId: _parseInt(map['id_rak']),
       splitDate: map['split_date']?.toString(),
       mergeDate: map['merge_date']?.toString(),
       frozenAt: map['frozen_at']?.toString(),
@@ -110,6 +116,9 @@ class ItemBarang {
           : null,
       gudang: map['gudang'] != null && map['gudang'] is Map<String, dynamic>
           ? Gudang.fromMap(map['gudang'] as Map<String, dynamic>)
+          : null,
+      rak: map['rak'] != null && map['rak'] is Map<String, dynamic>
+          ? RefRak.fromJson(map['rak'] as Map<String, dynamic>)
           : null,
       itemBarangGroup: map['item_barang_group'] != null && map['item_barang_group'] is Map<String, dynamic>
           ? ItemBarangGroup.fromJson(map['item_barang_group'] as Map<String, dynamic>)
@@ -140,6 +149,7 @@ class ItemBarang {
       'canvas_image': canvasImage,
       'convert_date': convertDate,
       'gudang_id': gudangId,
+      'id_rak': rakId,
       'split_date': splitDate,
       'merge_date': mergeDate,
       'frozen_at': frozenAt,
@@ -149,6 +159,7 @@ class ItemBarang {
       'bentuk_barang': bentukBarang?.toJson(),
       'grade_barang': gradeBarang?.toJson(),
       'gudang': gudang?.toMap(),
+      'rak': rak?.toJson(),
       'item_barang_group': itemBarangGroup?.toJson(),
     };
   }
