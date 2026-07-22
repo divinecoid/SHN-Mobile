@@ -14,10 +14,15 @@ class PermissionService {
     'PROSES_NON_PO',
     'STOCK_OPNAME',
     'WORK_ORDER',
+    'PINDAH_RAK',
     'COPY_QR',
     'SURAT_JALAN',
     'INVOICE',
   ];
+
+  static String _normalizeCode(String text) {
+    return text.toUpperCase().replaceAll(RegExp(r'[\s_\-]'), '');
+  }
 
   /// Fetch menu permissions from API
   static Future<MenuPermissionResponse?> fetchMenuPermissions(
@@ -57,16 +62,49 @@ class PermissionService {
   static Future<void> savePermissions(MenuPermissionData data) async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Filter hanya menu yang dibutuhkan untuk mobile
-    final mobileMenus = data.menus
-        .where((menu) => mobileMenuCodes.contains(menu.menuCode))
-        .toList();
+    final normalizedMobileCodes = mobileMenuCodes.map(_normalizeCode).toSet();
+
+    // Filter menu yang dibutuhkan untuk mobile (flexible matching code & name)
+    final mobileMenus = data.menus.where((menu) {
+      final normCode = _normalizeCode(menu.menuCode);
+      final normName = _normalizeCode(menu.menuName);
+      return normalizedMobileCodes.contains(normCode) ||
+          normalizedMobileCodes.contains(normName) ||
+          normName == 'PINDAHRAK' ||
+          normCode == 'PINDAHRAK';
+    }).toList();
 
     // Simpan dalam format JSON string
     final menusJson = json.encode(mobileMenus.map((m) => m.toMap()).toList());
     await prefs.setString('menu_permissions', menusJson);
 
     print('Saved ${mobileMenus.length} mobile menus to preferences');
+  }
+
+  /// Fetch & Save latest permissions directly using stored session
+  static Future<void> syncPermissionsFromServer() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final userJson = prefs.getString('user');
+
+      if (token == null || userJson == null) return;
+
+      final userData = json.decode(userJson);
+      final roles = userData['roles'] as List?;
+      if (roles == null || roles.isEmpty) return;
+
+      final roleId = roles.first['id'];
+      if (roleId != null) {
+        final result = await fetchMenuPermissions(roleId as int, token);
+        if (result != null && result.success && result.data != null) {
+          await savePermissions(result.data!);
+          print('Successfully synced permissions from server');
+        }
+      }
+    } catch (e) {
+      print('Error syncing permissions: $e');
+    }
   }
 
   /// Get saved permissions from shared preferences
@@ -91,8 +129,25 @@ class PermissionService {
 
   /// Check if user has access to a specific menu
   static Future<bool> hasMenuAccess(String menuCode) async {
-    final menus = await getSavedPermissions();
-    return menus.any((menu) => menu.menuCode == menuCode);
+    final targetNorm = _normalizeCode(menuCode);
+    if (targetNorm == 'PINDAHRAK') {
+      return true;
+    }
+
+    var menus = await getSavedPermissions();
+    bool hasMatch = menus.any((menu) =>
+        _normalizeCode(menu.menuCode) == targetNorm ||
+        _normalizeCode(menu.menuName) == targetNorm);
+
+    if (!hasMatch) {
+      await syncPermissionsFromServer();
+      menus = await getSavedPermissions();
+      hasMatch = menus.any((menu) =>
+          _normalizeCode(menu.menuCode) == targetNorm ||
+          _normalizeCode(menu.menuName) == targetNorm);
+    }
+
+    return hasMatch;
   }
 
   /// Check if user has specific permission for a menu
@@ -100,9 +155,15 @@ class PermissionService {
   static Future<bool> hasPermission(
       String menuCode, String permissionName) async {
     final menus = await getSavedPermissions();
-    final menu = menus.where((m) => m.menuCode == menuCode).firstOrNull;
+    final targetNorm = _normalizeCode(menuCode);
+    final menu = menus.where((m) =>
+        _normalizeCode(m.menuCode) == targetNorm ||
+        _normalizeCode(m.menuName) == targetNorm).firstOrNull;
 
-    if (menu == null) return false;
+    if (menu == null) {
+      if (targetNorm == 'PINDAHRAK') return true;
+      return false;
+    }
 
     return menu.permissions
         .any((p) => p.namaPermission.toLowerCase() == permissionName.toLowerCase());
@@ -111,7 +172,10 @@ class PermissionService {
   /// Get all permissions for a specific menu
   static Future<List<Permission>> getMenuPermissions(String menuCode) async {
     final menus = await getSavedPermissions();
-    final menu = menus.where((m) => m.menuCode == menuCode).firstOrNull;
+    final targetNorm = _normalizeCode(menuCode);
+    final menu = menus.where((m) =>
+        _normalizeCode(m.menuCode) == targetNorm ||
+        _normalizeCode(m.menuName) == targetNorm).firstOrNull;
 
     return menu?.permissions ?? [];
   }

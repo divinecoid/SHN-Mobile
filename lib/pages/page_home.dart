@@ -83,6 +83,9 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadAvailableMenus() async {
     setState(() => _isLoading = true);
 
+    // Sync latest permissions from server automatically
+    await PermissionService.syncPermissionsFromServer();
+
     List<MenuItem> availableMenus = [];
 
     // Check setiap menu apakah user punya akses

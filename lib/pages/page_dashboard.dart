@@ -25,6 +25,8 @@ import 'copy_qr_main_page.dart';
 import 'sales_order_list_page.dart';
 import 'invoice_list_page.dart';
 import 'surat_jalan_list_page.dart';
+import 'page_pindah_rak.dart';
+import '../controllers/pindah_rak_controller.dart';
 
 class DashboardMenuItem {
   final String title;
@@ -117,6 +119,15 @@ class _DashboardPageState extends State<DashboardPage> {
       menuCode: 'WORK_ORDER',
       icon: Icons.work,
       page: const WorkOrderPage(),
+    ),
+    DashboardMenuItem(
+      title: 'Pindah Rak',
+      menuCode: 'PINDAH_RAK',
+      icon: Icons.move_down,
+      page: ChangeNotifierProvider(
+        create: (_) => PindahRakController(),
+        child: const PindahRakPage(),
+      ),
     ),
     DashboardMenuItem(
       title: 'Copy QR',
