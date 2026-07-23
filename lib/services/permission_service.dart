@@ -15,6 +15,7 @@ class PermissionService {
     'STOCK_OPNAME',
     'WORK_ORDER',
     'PINDAH_RAK',
+    'RETURN_TO_RAK',
     'COPY_QR',
     'SURAT_JALAN',
     'INVOICE',
@@ -130,7 +131,7 @@ class PermissionService {
   /// Check if user has access to a specific menu
   static Future<bool> hasMenuAccess(String menuCode) async {
     final targetNorm = _normalizeCode(menuCode);
-    if (targetNorm == 'PINDAHRAK') {
+    if (targetNorm == 'PINDAHRAK' || targetNorm == 'RETURNTORACK') {
       return true;
     }
 
@@ -161,7 +162,7 @@ class PermissionService {
         _normalizeCode(m.menuName) == targetNorm).firstOrNull;
 
     if (menu == null) {
-      if (targetNorm == 'PINDAHRAK') return true;
+      if (targetNorm == 'PINDAHRAK' || targetNorm == 'RETURNTORACK') return true;
       return false;
     }
 

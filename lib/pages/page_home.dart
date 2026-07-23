@@ -8,6 +8,8 @@ import 'package:shn_mobile/pages/stock_opname_list_page.dart';
 import 'package:shn_mobile/pages/page_work_order.dart';
 import 'package:shn_mobile/pages/copy_qr_main_page.dart';
 import 'package:shn_mobile/pages/page_pindah_rak.dart';
+import 'package:shn_mobile/pages/page_return_to_rack.dart';
+import 'package:shn_mobile/controllers/return_to_rack_controller.dart';
 import 'package:shn_mobile/services/permission_service.dart';
 
 class MenuItem {
@@ -64,6 +66,15 @@ class _HomePageState extends State<HomePage> {
       page: ChangeNotifierProvider(
         create: (_) => PindahRakController(),
         child: const PindahRakPage(),
+      ),
+    ),
+    MenuItem(
+      title: 'Kembalikan ke Rak',
+      menuCode: 'RETURN_TO_RAK',
+      icon: Icons.archive,
+      page: ChangeNotifierProvider(
+        create: (_) => ReturnToRackController(),
+        child: const ReturnToRackPage(),
       ),
     ),
     MenuItem(

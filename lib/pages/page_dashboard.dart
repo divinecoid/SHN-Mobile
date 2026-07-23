@@ -27,6 +27,8 @@ import 'invoice_list_page.dart';
 import 'surat_jalan_list_page.dart';
 import 'page_pindah_rak.dart';
 import '../controllers/pindah_rak_controller.dart';
+import 'page_return_to_rack.dart';
+import '../controllers/return_to_rack_controller.dart';
 
 class DashboardMenuItem {
   final String title;
@@ -127,6 +129,15 @@ class _DashboardPageState extends State<DashboardPage> {
       page: ChangeNotifierProvider(
         create: (_) => PindahRakController(),
         child: const PindahRakPage(),
+      ),
+    ),
+    DashboardMenuItem(
+      title: 'Kembalikan ke Rak',
+      menuCode: 'RETURN_TO_RAK',
+      icon: Icons.archive,
+      page: ChangeNotifierProvider(
+        create: (_) => ReturnToRackController(),
+        child: const ReturnToRackPage(),
       ),
     ),
     DashboardMenuItem(
