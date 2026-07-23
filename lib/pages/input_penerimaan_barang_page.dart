@@ -1438,6 +1438,8 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
       return _buildNonPoDetailsSection();
     }
 
+    final isPo = _controller.selectedOrigin == 'purchaseorder';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1455,10 +1457,10 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                 children: [
                   Icon(Icons.inventory, color: Colors.orange[400], size: 24),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Detail Barang',
-                      style: TextStyle(
+                      isPo ? 'Detail Item PO (Adjust Qty)' : 'Detail Barang',
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -1474,7 +1476,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: _controller.areAllItemsScanned() ? Colors.green[800] : Colors.blue[800],
+                        color: (isPo || _controller.areAllItemsScanned()) ? Colors.green[800] : Colors.blue[800],
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -1488,21 +1490,22 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                     ),
                     const SizedBox(width: 8),
                   ],
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _navigateToScanBarang,
-                      icon: const Icon(Icons.qr_code_scanner, size: 18),
-                      label: const Text('Scan Barang'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange[600],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                  if (!isPo)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _navigateToScanBarang,
+                        icon: const Icon(Icons.qr_code_scanner, size: 18),
+                        label: const Text('Scan Barang'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange[600],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ],
@@ -1515,128 +1518,160 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
               itemCount: _controller.scannedItems.length,
               itemBuilder: (context, index) {
                 final item = _controller.scannedItems[index];
-                final isScanned = _controller.isItemScanned(item.kodeBarang);
+                final isScanned = isPo || _controller.isItemScanned(item.kodeBarang);
                 return Card(
-                  color: isScanned ? Colors.green[900] : Colors.grey[850],
+                  color: isPo ? Colors.grey[850] : (isScanned ? Colors.green[900] : Colors.grey[850]),
                   margin: const EdgeInsets.only(bottom: 8),
                   child: Padding(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(12),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // Small icon in upper left
+                        // Small icon
                         Container(
-                          width: 20,
-                          height: 20,
+                          width: 28,
+                          height: 28,
                           decoration: BoxDecoration(
-                            color: isScanned ? Colors.green[600] : Colors.grey[600],
-                            borderRadius: BorderRadius.circular(10),
+                            color: Colors.purple[800],
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          child: Icon(
-                            isScanned ? Icons.check_circle : Icons.inventory_2,
+                          child: const Icon(
+                            Icons.inventory_2,
                             color: Colors.white,
-                            size: 12,
+                            size: 16,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        // Content area
+                        const SizedBox(width: 12),
+                        // Item details
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                // 'ID: ${item.itemBarangId ?? '-'} • Qty: ${item.qty ?? item.quantity ?? '-'}',
-                                'Qty: ${item.qty ?? item.quantity ?? '-'}',
-                                style: TextStyle(
-                                  color: isScanned ? Colors.green[100] : Colors.white,
-                                  fontWeight: isScanned ? FontWeight.w600 : FontWeight.normal,
-                                  fontSize: 16,
+                                item.kodeBarang != null && item.kodeBarang!.isNotEmpty
+                                    ? item.kodeBarang!
+                                    : 'Item #${item.itemBarangId ?? item.id ?? (index + 1)}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              if (item.kodeBarang != null && item.kodeBarang!.isNotEmpty) ...[
-                                Text(
-                                  'Kode:',
-                                  style: TextStyle(
-                                    color: isScanned ? Colors.green[200] : Colors.grey[400],
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 12,
-                                  ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Ukuran: ${item.panjang ?? '-'} x ${item.lebar ?? '-'} x ${item.tebal ?? '-'}',
+                                style: TextStyle(
+                                  color: Colors.grey[300],
+                                  fontSize: 12,
                                 ),
-                                Text(
-                                  item.kodeBarang!,
-                                  style: TextStyle(
-                                    color: isScanned ? Colors.green[200] : Colors.grey[400],
-                                    fontWeight: isScanned ? FontWeight.w600 : FontWeight.normal,
-                                    fontSize: 12,
-                                  ),
-                                ),
+                              ),
+                              if (item.catatan != null && item.catatan!.isNotEmpty) ...[
                                 const SizedBox(height: 2),
-                              ],
-                              Text(
-                                'Ukuran:',
-                                style: TextStyle(
-                                  color: isScanned ? Colors.green[200] : Colors.grey[400],
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              Text(
-                                '${item.panjang ?? '-'} x ${item.lebar ?? '-'} x ${item.tebal ?? '-'}',
-                                style: TextStyle(
-                                  color: isScanned ? Colors.green[200] : Colors.grey[400],
-                                  fontSize: 12,
-                                ),
-                              ),
-                              if (isScanned) ...[
-                                const SizedBox(height: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green[600],
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Text(
-                                    'TERSCAN',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                Text(
+                                  'Catatan: ${item.catatan}',
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 11,
+                                    fontStyle: FontStyle.italic,
                                   ),
                                 ),
                               ],
                             ],
                           ),
                         ),
-                        // Action buttons
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (isScanned)
+                        // Qty adjuster for PO or actions for Mutation
+                        if (isPo) ...[
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey[900],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey[700]!),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.remove, color: Colors.orange, size: 18),
+                                  onPressed: () {
+                                    setState(() {
+                                      _controller.updateItemQty(index, item.qty - 1);
+                                    });
+                                  },
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Qty Terima',
+                                        style: TextStyle(color: Colors.grey[400], fontSize: 9),
+                                      ),
+                                      Text(
+                                        '${item.qty}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.add, color: Colors.green, size: 18),
+                                  onPressed: () {
+                                    setState(() {
+                                      _controller.updateItemQty(index, item.qty + 1);
+                                    });
+                                  },
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _controller.scannedItems.removeAt(index);
+                              });
+                            },
+                            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                            tooltip: 'Hapus item',
+                          ),
+                        ] else ...[
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (isScanned)
+                                IconButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _controller.removeScannedBarcode(item.kodeBarang!);
+                                    });
+                                  },
+                                  icon: const Icon(Icons.undo, color: Colors.orange, size: 20),
+                                  tooltip: 'Batalkan scan',
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                ),
                               IconButton(
                                 onPressed: () {
                                   setState(() {
-                                    _controller.removeScannedBarcode(item.kodeBarang!);
+                                    _controller.scannedItems.removeAt(index);
                                   });
                                 },
-                                icon: const Icon(Icons.undo, color: Colors.orange, size: 20),
-                                tooltip: 'Batalkan scan',
+                                icon: const Icon(Icons.delete, color: Colors.red, size: 20),
                                 padding: const EdgeInsets.all(4),
                                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                               ),
-                            IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  _controller.scannedItems.removeAt(index);
-                                });
-                              },
-                              icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                              padding: const EdgeInsets.all(4),
-                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),

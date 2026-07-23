@@ -526,14 +526,22 @@ class InputPenerimaanBarangController extends ChangeNotifier {
     return null;
   }
 
+  void updateItemQty(int index, int newQty) {
+    if (index >= 0 && index < _scannedItems.length) {
+      _scannedItems[index].qty = newQty < 1 ? 1 : newQty;
+      notifyListeners();
+    }
+  }
+
   bool areAllItemsScanned() {
-    if (_selectedOrigin == 'nonpo') return true;
+    if (_selectedOrigin == 'nonpo' || _selectedOrigin == 'purchaseorder') return true;
     if (_scannedItems.isEmpty) return true;
     return _scannedBarcodes.length == _scannedItems.length;
   }
 
   String getScanProgress() {
     if (_selectedOrigin == 'nonpo') return '${_nonPoDetails.length} items';
+    if (_selectedOrigin == 'purchaseorder') return '${_scannedItems.length} items';
     if (_scannedItems.isEmpty) return '0/0';
     return '${_scannedBarcodes.length}/${_scannedItems.length}';
   }
@@ -572,13 +580,13 @@ class InputPenerimaanBarangController extends ChangeNotifier {
       } else {
         url = Uri.parse('$baseUrl/api/penerimaan-barang');
         final detailBarang = _scannedItems.map((item) {
-          final isScanned = _scannedBarcodes.contains(item.kodeBarang);
+          final isScanned = _selectedOrigin == 'purchaseorder' || _scannedBarcodes.contains(item.kodeBarang);
           return DetailBarangSubmit(
-            id: item.itemBarangId ?? 0,
+            id: item.itemBarangId ?? item.id ?? 0,
             kode: item.kodeBarang ?? '',
-            namaItem: 'Item ${item.itemBarangId ?? 0}',
+            namaItem: 'Item ${item.itemBarangId ?? item.id ?? 0}',
             ukuran: '${item.panjang ?? '0'} x ${item.lebar ?? '0'} x ${item.tebal ?? '0'}',
-            qty: item.qty ?? item.quantity ?? 1,
+            qty: item.qty,
             statusScan: isScanned ? 'Terscan' : 'Belum Terscan',
             idRak: _selectedRakId!, 
           );
@@ -720,7 +728,7 @@ class ScannedItem {
   final String? panjang;
   final String? lebar;
   final String? tebal;
-  final int? qty;
+  int qty;
   final int? jenisBarangId;
   final int? bentukBarangId;
   final int? gradeBarangId;
@@ -737,26 +745,28 @@ class ScannedItem {
     this.panjang,
     this.lebar,
     this.tebal,
-    this.qty,
+    int? qty,
     this.jenisBarangId,
     this.bentukBarangId,
     this.gradeBarangId,
     this.satuan,
     this.catatan,
-  });
+  }) : qty = qty ?? quantity ?? 1;
 
   factory ScannedItem.fromMap(Map<String, dynamic> map) {
+    final parsedQty = map['qty'] is int ? map['qty'] as int : int.tryParse('${map['qty']}');
+    final parsedQuantity = map['quantity'] is int ? map['quantity'] as int : int.tryParse('${map['quantity']}');
     return ScannedItem(
       id: map['id'] is int ? map['id'] as int : int.tryParse('${map['id']}'),
       itemBarangId: map['item_barang_id'] is int ? map['item_barang_id'] as int : int.tryParse('${map['item_barang_id']}'),
       kodeBarang: map['kode_barang']?.toString(),
       unit: map['unit']?.toString(),
       status: map['status']?.toString(),
-      quantity: map['quantity'] is int ? map['quantity'] as int : int.tryParse('${map['quantity']}'),
+      quantity: parsedQuantity,
       panjang: map['panjang']?.toString(),
       lebar: map['lebar']?.toString(),
       tebal: map['tebal']?.toString(),
-      qty: map['qty'] is int ? map['qty'] as int : int.tryParse('${map['qty']}'),
+      qty: parsedQty ?? parsedQuantity ?? 1,
       jenisBarangId: map['jenis_barang_id'] is int ? map['jenis_barang_id'] as int : int.tryParse('${map['jenis_barang_id']}'),
       bentukBarangId: map['bentuk_barang_id'] is int ? map['bentuk_barang_id'] as int : int.tryParse('${map['bentuk_barang_id']}'),
       gradeBarangId: map['grade_barang_id'] is int ? map['grade_barang_id'] as int : int.tryParse('${map['grade_barang_id']}'),
