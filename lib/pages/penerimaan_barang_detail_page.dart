@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/penerimaan_barang_model.dart';
 import '../models/item_barang_group_model.dart';
 import '../controllers/penerimaan_barang_list_controller.dart';
+import '../services/printer_service.dart';
 
 class PenerimaanBarangDetailPage extends StatefulWidget {
   final PenerimaanBarang penerimaanBarang;
@@ -79,6 +80,170 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
         });
       }
     }
+  }
+
+  final PrinterService _printerService = PrinterService();
+
+  Future<void> _printDetail(PenerimaanBarangDetail detail, {int copies = 1, String printType = 'QR'}) async {
+    if (detail.itemBarang == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Data item barang tidak tersedia untuk di-print.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    try {
+      await _printerService.printItem(detail, copies: copies, printType: printType);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✓ Berhasil cetak $copies label untuk ${detail.itemBarang!.kodeBarang}'),
+            backgroundColor: Colors.green[700],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal cetak: $e'),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showPrintDialog(PenerimaanBarangDetail detail) async {
+    int copies = 1;
+    String printType = 'QR';
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx2, setDlg) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E1E1E),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Icon(Icons.print, color: Colors.blue[400], size: 22),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Cetak Label QR',
+                    style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    detail.itemBarang?.kodeBarang ?? '-',
+                    style: TextStyle(color: Colors.blue[300], fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 16),
+                  // Print type toggle
+                  Text('Tipe Label', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setDlg(() => printType = 'QR'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: printType == 'QR' ? Colors.blue[700] : const Color(0xFF2A2A2A),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: printType == 'QR' ? Colors.blue[400]! : Colors.grey[700]!,
+                              ),
+                            ),
+                            child: const Center(
+                              child: Text('QR Code', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setDlg(() => printType = 'Barcode'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: printType == 'Barcode' ? Colors.purple[700] : const Color(0xFF2A2A2A),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: printType == 'Barcode' ? Colors.purple[400]! : Colors.grey[700]!,
+                              ),
+                            ),
+                            child: const Center(
+                              child: Text('Barcode', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Copies selector
+                  Text('Jumlah Copy', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2A2A2A),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.grey[700]!),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          onPressed: () => setDlg(() { if (copies > 1) copies--; }),
+                          icon: const Icon(Icons.remove, color: Colors.orangeAccent),
+                        ),
+                        Text(
+                          '$copies',
+                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        IconButton(
+                          onPressed: () => setDlg(() { if (copies < 20) copies++; }),
+                          icon: const Icon(Icons.add, color: Colors.greenAccent),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text('Batal', style: TextStyle(color: Colors.grey[400])),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _printDetail(detail, copies: copies, printType: printType);
+                  },
+                  icon: const Icon(Icons.print, size: 18),
+                  label: const Text('Cetak'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[700],
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -749,6 +914,69 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                   ),
                 ),
               ),
+              // Print All button
+              if (penerimaanBarang.penerimaanBarangDetails.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Print semua label',
+                  child: InkWell(
+                    onTap: () async {
+                      final details = penerimaanBarang.penerimaanBarangDetails
+                          .where((d) => d.itemBarang != null)
+                          .toList();
+                      if (details.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Tidak ada item yang bisa di-print.'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                        return;
+                      }
+                      try {
+                        await _printerService.printBatch(details, copies: 1, printType: 'QR');
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('✓ Berhasil cetak ${details.length} label'),
+                              backgroundColor: Colors.green[700],
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Gagal cetak: $e'),
+                              backgroundColor: Colors.red[700],
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[800],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue[600]!),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.print, size: 14, color: Colors.blue[200]),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Print Semua',
+                            style: TextStyle(color: Colors.blue[200], fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 12),
@@ -888,6 +1116,34 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
+                                // Print button per item
+                                if (itemBarang != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: InkWell(
+                                      onTap: () => _showPrintDialog(detail),
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue[900]?.withOpacity(0.5),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: Colors.blue[700]!),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.qr_code, size: 14, color: Colors.blue[300]),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'Print QR',
+                                              style: TextStyle(color: Colors.blue[300], fontSize: 11, fontWeight: FontWeight.w600),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                   decoration: BoxDecoration(

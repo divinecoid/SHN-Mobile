@@ -39,11 +39,18 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
     _controller = InputPenerimaanBarangController();
     _numberController = TextEditingController(text: _controller.scannedNumber);
     _rakController = _controller.rakController;
-    
+
+    // Listen to controller changes so page rebuilds when qty etc. changes
+    _controller.addListener(_onControllerChange);
+
     // Pre-load all necessary data when page initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initialLoad();
     });
+  }
+
+  void _onControllerChange() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _initialLoad() async {
@@ -63,6 +70,7 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
   void dispose() {
     _debounce?.cancel();
     _numberController.dispose();
+    _controller.removeListener(_onControllerChange);
     _controller.dispose();
     super.dispose();
   }
@@ -1521,157 +1529,177 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                 final isScanned = isPo || _controller.isItemScanned(item.kodeBarang);
                 return Card(
                   color: isPo ? Colors.grey[850] : (isScanned ? Colors.green[900] : Colors.grey[850]),
-                  margin: const EdgeInsets.only(bottom: 8),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey[800]!),
+                  ),
                   child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Small icon
-                        Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: Colors.purple[800],
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Icon(
-                            Icons.inventory_2,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Item details
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
+                        // 1. Top Row: Icon + Kode Barang (Full Width across top!)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.purple[900]?.withOpacity(0.6),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.inventory_2_outlined,
+                                color: Colors.purple[300],
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
                                 item.kodeBarang != null && item.kodeBarang!.isNotEmpty
                                     ? item.kodeBarang!
                                     : 'Item #${item.itemBarangId ?? item.id ?? (index + 1)}',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                                  fontSize: 15,
+                                  height: 1.3,
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Ukuran: ${item.panjang ?? '-'} x ${item.lebar ?? '-'} x ${item.tebal ?? '-'}',
-                                style: TextStyle(
-                                  color: Colors.grey[300],
-                                  fontSize: 12,
-                                ),
-                              ),
-                              if (item.catatan != null && item.catatan!.isNotEmpty) ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Catatan: ${item.catatan}',
-                                  style: TextStyle(
-                                    color: Colors.grey[400],
-                                    fontSize: 11,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                        // Qty adjuster for PO or actions for Mutation
-                        if (isPo) ...[
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey[900],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey[700]!),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.remove, color: Colors.orange, size: 18),
-                                  onPressed: () {
-                                    setState(() {
-                                      _controller.updateItemQty(index, item.qty - 1);
-                                    });
-                                  },
-                                  padding: const EdgeInsets.all(4),
-                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'Qty Terima',
-                                        style: TextStyle(color: Colors.grey[400], fontSize: 9),
-                                      ),
-                                      Text(
-                                        '${item.qty}',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.add, color: Colors.green, size: 18),
-                                  onPressed: () {
-                                    setState(() {
-                                      _controller.updateItemQty(index, item.qty + 1);
-                                    });
-                                  },
-                                  padding: const EdgeInsets.all(4),
-                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          IconButton(
-                            onPressed: () {
-                              setState(() {
-                                _controller.scannedItems.removeAt(index);
-                              });
-                            },
-                            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                            tooltip: 'Hapus item',
-                          ),
-                        ] else ...[
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (isScanned)
-                                IconButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _controller.removeScannedBarcode(item.kodeBarang!);
-                                    });
-                                  },
-                                  icon: const Icon(Icons.undo, color: Colors.orange, size: 20),
-                                  tooltip: 'Batalkan scan',
-                                  padding: const EdgeInsets.all(4),
-                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                ),
-                              IconButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _controller.scannedItems.removeAt(index);
-                                  });
-                                },
-                                icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                                padding: const EdgeInsets.all(4),
-                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+
+                        const SizedBox(height: 10),
+                        Divider(color: Colors.grey[800], height: 1),
+                        const SizedBox(height: 10),
+
+                        // 2. Middle Row: Ukuran & Catatan
+                        Row(
+                          children: [
+                            Icon(Icons.straighten, size: 14, color: Colors.grey[400]),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Ukuran: ',
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
                               ),
-                            ],
+                            ),
+                            Text(
+                              '${item.panjang ?? '-'} x ${item.lebar ?? '-'} x ${item.tebal ?? '-'}',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (item.catatan != null && item.catatan!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Catatan: ${item.catatan}',
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 11,
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
                         ],
+
+                        const SizedBox(height: 12),
+
+                        // 3. Bottom Row: Qty Terima Adjuster (Left) + Delete Button (Right)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            if (isPo)
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[900],
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.grey[700]!),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () {
+                                          setState(() {
+                                            _controller.updateItemQty(index, item.qty - 1);
+                                          });
+                                        },
+                                        borderRadius: const BorderRadius.horizontal(left: Radius.circular(9)),
+                                        child: const Padding(
+                                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                          child: Icon(Icons.remove, color: Colors.orangeAccent, size: 18),
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      constraints: const BoxConstraints(minWidth: 46),
+                                      alignment: Alignment.center,
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'QTY TERIMA',
+                                            style: TextStyle(
+                                              color: Colors.grey[500],
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${item.qty}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () {
+                                          setState(() {
+                                            _controller.updateItemQty(index, item.qty + 1);
+                                          });
+                                        },
+                                        borderRadius: const BorderRadius.horizontal(right: Radius.circular(9)),
+                                        child: const Padding(
+                                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                          child: Icon(Icons.add, color: Colors.greenAccent, size: 18),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              const SizedBox.shrink(),
+
+                            IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _controller.scannedItems.removeAt(index);
+                                });
+                              },
+                              icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 22),
+                              tooltip: 'Hapus Item',
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),

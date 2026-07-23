@@ -540,8 +540,8 @@ class InputPenerimaanBarangController extends ChangeNotifier {
   }
 
   String getScanProgress() {
-    if (_selectedOrigin == 'nonpo') return '${_nonPoDetails.length} items';
-    if (_selectedOrigin == 'purchaseorder') return '${_scannedItems.length} items';
+    if (_selectedOrigin == 'nonpo') return '${_nonPoDetails.length} Item';
+    if (_selectedOrigin == 'purchaseorder') return '${_scannedItems.length} Item';
     if (_scannedItems.isEmpty) return '0/0';
     return '${_scannedBarcodes.length}/${_scannedItems.length}';
   }
