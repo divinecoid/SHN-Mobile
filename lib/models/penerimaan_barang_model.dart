@@ -700,8 +700,10 @@ class DetailBarangSubmit {
   final String namaItem;
   final String ukuran;
   final int qty;
+  final double? saldoBerat;
   final String statusScan;
   final int idRak;
+  final int? poItemId; // ID from trx_purchase_order_item
 
   DetailBarangSubmit({
     required this.id,
@@ -709,8 +711,10 @@ class DetailBarangSubmit {
     required this.namaItem,
     required this.ukuran,
     required this.qty,
+    this.saldoBerat,
     required this.statusScan,
     required this.idRak,
+    this.poItemId,
   });
 
   Map<String, dynamic> toMap() {
@@ -720,8 +724,10 @@ class DetailBarangSubmit {
       'nama_item': namaItem,
       'ukuran': ukuran,
       'qty': qty,
+      if (saldoBerat != null) 'saldo_berat': saldoBerat,
       'status_scan': statusScan,
       'id_rak': idRak,
+      if (poItemId != null) 'po_item_id': poItemId,
     };
   }
 }

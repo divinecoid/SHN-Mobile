@@ -1619,72 +1619,113 @@ class _InputPenerimaanBarangPageState extends State<InputPenerimaanBarangPage> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             if (isPo)
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[900],
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: Colors.grey[700]!),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        onTap: () {
-                                          setState(() {
-                                            _controller.updateItemQty(index, item.qty - 1);
-                                          });
-                                        },
-                                        borderRadius: const BorderRadius.horizontal(left: Radius.circular(9)),
-                                        child: const Padding(
-                                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                          child: Icon(Icons.remove, color: Colors.orangeAccent, size: 18),
-                                        ),
-                                      ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[900],
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: Colors.grey[700]!),
                                     ),
-                                    Container(
-                                      constraints: const BoxConstraints(minWidth: 46),
-                                      alignment: Alignment.center,
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            'QTY TERIMA',
-                                            style: TextStyle(
-                                              color: Colors.grey[500],
-                                              fontSize: 8,
-                                              fontWeight: FontWeight.bold,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: () {
+                                              setState(() {
+                                                _controller.updateItemQty(index, item.qty - 1);
+                                              });
+                                            },
+                                            borderRadius: const BorderRadius.horizontal(left: Radius.circular(9)),
+                                            child: const Padding(
+                                              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                              child: Icon(Icons.remove, color: Colors.orangeAccent, size: 18),
                                             ),
                                           ),
-                                          Text(
-                                            '${item.qty}',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
+                                        ),
+                                        Container(
+                                          constraints: const BoxConstraints(minWidth: 46),
+                                          alignment: Alignment.center,
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                'QTY TERIMA',
+                                                style: TextStyle(
+                                                  color: Colors.grey[500],
+                                                  fontSize: 8,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              Text(
+                                                '${item.qty}',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: () {
+                                              setState(() {
+                                                _controller.updateItemQty(index, item.qty + 1);
+                                              });
+                                            },
+                                            borderRadius: const BorderRadius.horizontal(right: Radius.circular(9)),
+                                            child: const Padding(
+                                              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                              child: Icon(Icons.add, color: Colors.greenAccent, size: 18),
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    ),
-                                    Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        onTap: () {
-                                          setState(() {
-                                            _controller.updateItemQty(index, item.qty + 1);
-                                          });
-                                        },
-                                        borderRadius: const BorderRadius.horizontal(right: Radius.circular(9)),
-                                        child: const Padding(
-                                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                          child: Icon(Icons.add, color: Colors.greenAccent, size: 18),
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  // Saldo Berat input field
+                                  Container(
+                                    width: 140,
+                                    height: 38,
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[900],
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.grey[700]!),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.scale, size: 14, color: Colors.green[400]),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: TextFormField(
+                                            initialValue: item.berat != null ? '${item.berat}' : '',
+                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                                            decoration: InputDecoration(
+                                              hintText: 'Saldo Berat',
+                                              hintStyle: TextStyle(color: Colors.grey[600], fontSize: 11),
+                                              border: InputBorder.none,
+                                              isDense: true,
+                                              contentPadding: EdgeInsets.zero,
+                                            ),
+                                            onChanged: (val) {
+                                              item.berat = double.tryParse(val.replaceAll(',', '.'));
+                                            },
+                                          ),
+                                        ),
+                                        Text('kg', style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               )
                             else
                               const SizedBox.shrink(),

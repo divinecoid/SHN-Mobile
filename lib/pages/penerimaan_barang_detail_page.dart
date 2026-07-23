@@ -358,7 +358,7 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
             children: [
               Icon(Icons.receipt_long, color: Colors.blue[400], size: 24),
               const SizedBox(width: 8),
-              Text(
+              const Text(
                 'INFORMASI PENERIMAAN',
                 style: TextStyle(
                   color: Colors.white,
@@ -366,23 +366,23 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getOriginColor(penerimaanBarang.origin),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  _getOriginLabel(penerimaanBarang.origin),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
             ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: _getOriginColor(penerimaanBarang.origin),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              _getOriginLabel(penerimaanBarang.origin),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           Container(
@@ -886,11 +886,12 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Title row
           Row(
             children: [
               Icon(Icons.inventory, color: Colors.orange[400], size: 24),
               const SizedBox(width: 8),
-              Text(
+              const Text(
                 'DETAIL BARANG',
                 style: TextStyle(
                   color: Colors.white,
@@ -898,7 +899,12 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const Spacer(),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Badge + Print All row
+          Row(
+            children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -914,15 +920,15 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                   ),
                 ),
               ),
+              const Spacer(),
               // Print All button
-              if (penerimaanBarang.penerimaanBarangDetails.isNotEmpty) ...[
-                const SizedBox(width: 8),
+              if (penerimaanBarang.penerimaanBarangDetails.isNotEmpty)
                 Tooltip(
                   message: 'Print semua label',
                   child: InkWell(
                     onTap: () async {
                       final details = penerimaanBarang.penerimaanBarangDetails
-                          .where((d) => d.itemBarang != null)
+                          .where((d) => d.itemBarang != null || d.itemBarangGroup != null || d.idItemBarang > 0)
                           .toList();
                       if (details.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -976,7 +982,6 @@ class _PenerimaanBarangDetailPageState extends State<PenerimaanBarangDetailPage>
                     ),
                   ),
                 ),
-              ],
             ],
           ),
           const SizedBox(height: 12),

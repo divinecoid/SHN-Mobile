@@ -200,39 +200,51 @@ class PrinterService {
       for (int i = 0; i < items.length; i++) {
         final detail = items[i];
         final item = detail.itemBarang;
-        if (item == null) continue;
-
         final group = detail.itemBarangGroup;
-        
-        // Build payload for QR
-        final payloadMap = {
-          "id": item.id,
-          "kode": item.kodeBarang,
-          "nama": item.namaItemBarang
-        };
-        final payloadJson = jsonEncode(payloadMap);
-        
+
+        // Determine label and QR content
+        String kode;
+        String nama;
+        String payloadJson;
+
+        if (item != null) {
+          kode = item.kodeBarang;
+          nama = item.namaItemBarang;
+          payloadJson = jsonEncode({"id": item.id, "kode": kode, "nama": nama});
+        } else if (group != null) {
+          kode = 'GRP-${group.id}';
+          nama = group.namaGroupBarang;
+          payloadJson = jsonEncode({"group_id": group.id, "nama": nama});
+        } else if (detail.idItemBarang > 0) {
+          // Fallback: relasi item belum ter-load, gunakan ID
+          kode = 'ITEM-${detail.idItemBarang}';
+          nama = 'Item Barang #${detail.idItemBarang}';
+          payloadJson = jsonEncode({"id": detail.idItemBarang, "kode": kode});
+        } else {
+          continue; // skip if no identifiable data
+        }
+
         final String dimensi = _buildDimensiItem(detail);
-        final dateStr = DateFormat('dd-MM-yyyy HH:mm:ss').format(DateTime.now());
 
         for (int j = 0; j < copies; j++) {
           bluetooth.printCustom("PT SURYA HARSA NAGARA", 1, 1);
-          if (printType == 'Barcode') {
+          if (printType == 'Barcode' && item != null) {
             // Render Barcode as image to ensure compatibility with 58mm thermal printers
             final barcodeImg = img.Image(width: 384, height: 90);
             img.fill(barcodeImg, color: img.ColorRgb8(255, 255, 255));
-            drawBarcode(barcodeImg, Barcode.code128(), item.kodeBarang);
+            drawBarcode(barcodeImg, Barcode.code128(), kode);
             final pngBytes = img.encodePng(barcodeImg);
             await bluetooth.printImageBytes(Uint8List.fromList(pngBytes));
           } else {
             bluetooth.printQRcode(payloadJson, 250, 250, 1);
           }
 
-           bluetooth.printCustom("Kode Barang:", 0, 0);
-           bluetooth.printCustom(item.kodeBarang, 1, 0);
+          bluetooth.printCustom("Kode Barang:", 0, 0);
+          bluetooth.printCustom(kode, 1, 0);
+          if (group != null) {
+            bluetooth.printCustom(nama, 0, 0);
+          }
 
-
-          
           // Pemisah antar item batch
           if (i < items.length - 1 || j < copies - 1) {
             bluetooth.printNewLine();

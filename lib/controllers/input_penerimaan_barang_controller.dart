@@ -582,13 +582,15 @@ class InputPenerimaanBarangController extends ChangeNotifier {
         final detailBarang = _scannedItems.map((item) {
           final isScanned = _selectedOrigin == 'purchaseorder' || _scannedBarcodes.contains(item.kodeBarang);
           return DetailBarangSubmit(
-            id: item.itemBarangId ?? item.id ?? 0,
+            id: item.itemBarangId ?? 0, // id_item_barang (0 = belum ada, backend akan create)
             kode: item.kodeBarang ?? '',
-            namaItem: 'Item ${item.itemBarangId ?? item.id ?? 0}',
+            namaItem: item.kodeBarang ?? '',
             ukuran: '${item.panjang ?? '0'} x ${item.lebar ?? '0'} x ${item.tebal ?? '0'}',
             qty: item.qty,
+            saldoBerat: item.berat,
             statusScan: isScanned ? 'Terscan' : 'Belum Terscan',
-            idRak: _selectedRakId!, 
+            idRak: _selectedRakId!,
+            poItemId: item.id, // ID dari trx_purchase_order_item
           );
         }).toList();
 
@@ -729,6 +731,7 @@ class ScannedItem {
   final String? lebar;
   final String? tebal;
   int qty;
+  double? berat;
   final int? jenisBarangId;
   final int? bentukBarangId;
   final int? gradeBarangId;
@@ -746,6 +749,7 @@ class ScannedItem {
     this.lebar,
     this.tebal,
     int? qty,
+    this.berat,
     this.jenisBarangId,
     this.bentukBarangId,
     this.gradeBarangId,
@@ -756,6 +760,7 @@ class ScannedItem {
   factory ScannedItem.fromMap(Map<String, dynamic> map) {
     final parsedQty = map['qty'] is int ? map['qty'] as int : int.tryParse('${map['qty']}');
     final parsedQuantity = map['quantity'] is int ? map['quantity'] as int : int.tryParse('${map['quantity']}');
+    final parsedBerat = map['berat'] is num ? (map['berat'] as num).toDouble() : double.tryParse('${map['berat']}');
     return ScannedItem(
       id: map['id'] is int ? map['id'] as int : int.tryParse('${map['id']}'),
       itemBarangId: map['item_barang_id'] is int ? map['item_barang_id'] as int : int.tryParse('${map['item_barang_id']}'),
@@ -767,6 +772,7 @@ class ScannedItem {
       lebar: map['lebar']?.toString(),
       tebal: map['tebal']?.toString(),
       qty: parsedQty ?? parsedQuantity ?? 1,
+      berat: parsedBerat,
       jenisBarangId: map['jenis_barang_id'] is int ? map['jenis_barang_id'] as int : int.tryParse('${map['jenis_barang_id']}'),
       bentukBarangId: map['bentuk_barang_id'] is int ? map['bentuk_barang_id'] as int : int.tryParse('${map['bentuk_barang_id']}'),
       gradeBarangId: map['grade_barang_id'] is int ? map['grade_barang_id'] as int : int.tryParse('${map['grade_barang_id']}'),
